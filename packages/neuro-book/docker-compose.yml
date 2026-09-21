@@ -1,0 +1,27 @@
+services:
+    app:
+        build:
+            context: ../..
+            dockerfile: packages/neuro-book/Dockerfile
+        environment:
+            HOST: 0.0.0.0
+            PORT: ${NUXT_PORT:-3000}
+            DATABASE_KIND: ${DATABASE_KIND:-sqlite}
+            DATABASE_URL: ${DATABASE_URL:-file:./workspace/.nbook/neuro-book.sqlite}
+            NEURO_BOOK_APPLICATION_ROOT: /app
+            NEURO_BOOK_STATE_ROOT: /app
+            NEURO_BOOK_CACHE_ROOT: /app/cache
+            LLMLINT_HOME: /app/tool-state/llmlint
+            LLMLINT_CACHE_DIR: /app/cache/llmlint
+            BUN_INSTALL_CACHE_DIR: /app/cache/bun/install
+            NUXT_SESSION_PASSWORD: ${NUXT_SESSION_PASSWORD:?NUXT_SESSION_PASSWORD must be set}
+        ports:
+            # 容器内按 Boot Config/PORT 监听 NUXT_PORT，宿主与容器必须同端口映射，
+            # 否则非 3000 端口部署会映射到容器内没人监听的 3000。
+            - "${NUXT_PORT:-3000}:${NUXT_PORT:-3000}"
+        volumes:
+            # Compose 文件由应用包拥有；相对路径仍指向 monorepo 的本地运行数据根。
+            - ../../workspace:/app/workspace
+            - ../../workspace/.nbook/tool-state:/app/tool-state
+            - ../../.cache:/app/cache
+        restart: unless-stopped

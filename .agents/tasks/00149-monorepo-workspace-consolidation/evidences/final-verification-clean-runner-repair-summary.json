@@ -1,0 +1,140 @@
+{
+  "schema": "nbook.evidence/v1",
+  "taskId": "00149-monorepo-workspace-consolidation",
+  "stage": "final-verification-clean-runner-repair-and-docs-cutover",
+  "worktree": ".worktree/monorepo-main-app-migration",
+  "branch": "chore/t149-monorepo-workspace",
+  "checkedAt": "2026-08-19T02:53:17Z",
+  "scope": "Clean-checkout owner verification on the migration worktree after the generated-artifact validation worktree (t149-final-verify-3) was declared unreliable. Repairs the fresh-clone prerequisites and completes the main-app docs cutover requested by the user. All reruns use log-file capture with the real exit code recorded, not tail-piped status.",
+  "commits": {
+    "5ac495a6": "docs(main-app): move application docs under packages/neuro-book/docs",
+    "8bbf5296": "fix: repair fresh-clone prerequisites in manager and llmlint",
+    "2ec6e5be": "fix: repair application package test drift after workspace merge"
+  },
+  "repairs": [
+    {
+      "id": "manager-duplicate-imports",
+      "file": "packages/neuro-book-manager/src/{installation-mutation,maintenance,state-integrity,uninstaller,windows-uninstall-host}.test.ts",
+      "change": "Removed five duplicate spaced-style testHostPath imports left by the test-path migration.",
+      "verification": "bun run typecheck (exit 0, previously 10x TS2300)"
+    },
+    {
+      "id": "manager-contract-type-imports",
+      "file": "packages/neuro-book-manager/src/docker.ts",
+      "change": "ContainerEngine/InstallProfile/ProductComponent now imported from @notnotype/neuro-book-contracts/installation instead of the non-exported #manager/types aggregation.",
+      "verification": "bun run typecheck (exit 0, previously 3x TS2459)"
+    },
+    {
+      "id": "manager-stale-tmpdir",
+      "file": "packages/neuro-book-manager/src/app-commands.test.ts",
+      "change": "Podman noise test root now uses testHostPath instead of the stale tmpdir() reference.",
+      "verification": "bun run typecheck (exit 0, previously 1x TS2304)"
+    },
+    {
+      "id": "llmlint-registry-prereq",
+      "file": "packages/llmlint/package.json",
+      "change": "Root typecheck now runs registry:build first, matching the web-side explicit prereq pattern.",
+      "verification": "rm registry.json/rules-report.json then bun run typecheck (exit 0, previously 4x TS2307 on registry.json imports)"
+    },
+    {
+      "id": "test-support-test-paths-prereq",
+      "file": "packages/neuro-book-test-support/src/{test-path.ts,vitest.ts}",
+      "change": "Advisory-confirmed fresh-host defect: testHostPath resolves <agent-temp>/test-paths but nothing created it, so the first mkdtemp(testHostPath(...)) on a fresh host fails with ENOENT; existing host residue masked it. Global vitest setup now creates the TEST_HOST_PATHS_DIR directory, and the constant is shared between test-path.ts and vitest.ts. Regression test added: packages/neuro-book-test-support/tests/vitest.test.ts.",
+      "verification": "NBOOK_AGENT_TEMP_ROOT=<fresh empty dir> bun run test -- docker.test.ts (2 files / 38 tests, exit 0); test-support suite 2 files / 8 tests exit 0"
+    },
+    {
+      "id": "app-duplicate-imports",
+      "file": "packages/neuro-book server/agent, server/api, server/workspace-files, server/low-code-form, server/utils, server/workspace-history (17 test files)",
+      "change": "Removed leftover duplicate testHostPath imports (same mechanical residue as manager; tsc only reported 12, the esbuild transform surfaced 5 more).",
+      "verification": "bun run typecheck exit 0; isolated suites pass"
+    },
+    {
+      "id": "nb-history-smoke-stale-os",
+      "file": "packages/neuro-book/server/workspace-history/nb-history-package-smoke.test.ts",
+      "change": "Replaced stale os.tmpdir() reference with the already-imported testHostPath.",
+      "verification": "isolated suite passes"
+    },
+    {
+      "id": "workspace-archive-missing-import-and-libsql-path",
+      "file": "packages/neuro-book/server/workspace-files/workspace-archive.test.ts",
+      "change": "Restored missing testHostPath import; corrupt-archive child script resolves @libsql/client via import.meta.resolve instead of the hardcoded hoisted lib-esm/node.js path (broke after hoisting + 0.17.4 layout).",
+      "verification": "workspace-archive 4/4 passed"
+    },
+    {
+      "id": "fixture-sweep-scan-root",
+      "file": "packages/neuro-book-test-support/src/tmp.ts",
+      "change": "sweepStaleFixtureRoots scanned the raw system temp dir while fixture roots are created under the agent temp fixtures root; aligned to the actual creation root.",
+      "verification": "test-workspace-fixture sweep test passes"
+    }
+  ],
+  "docsCutover": {
+    "movedTo": "packages/neuro-book/docs/",
+    "directories": [
+      "adr",
+      "archived",
+      "migrations",
+      "research",
+      "runbooks",
+      "specs/foundation",
+      "proposals/character-workbench.md"
+    ],
+    "keptAtRoot": [
+      "README.md",
+      "AGENTS.md",
+      "standards",
+      "testing",
+      "modules",
+      "specs/{README,AGENTS,TEMPLATE}.md",
+      "proposals/README.md"
+    ],
+    "gainedFiles": [
+      "packages/neuro-book/docs/research/deepseek-harness-testing-strategy.md",
+      "packages/neuro-book/docs/research/vscode-extension-system.md",
+      "packages/neuro-book/docs/research/vscode/"
+    ],
+    "contractSwitches": [
+      "scripts/ci/check-documentation.ts REQUIRED_DOC_INDEXES, ADR scan, spec recognition, active-link classification",
+      "scripts/ci/agent-governance.ts historical markdown classification",
+      "scripts/release/state-migration-declaration.ts guide root now packages/neuro-book/docs/migrations",
+      "packages/neuro-book/release-state-migration.json guide path",
+      "active links in AGENTS.md, CONTRIBUTING(.en).md, PROJECT-STATUS.md, docs/{README,specs/README,modules/monorepo-boundaries,proposals/README,testing/README}.md, reference/**, vitepress changelogs"
+    ]
+  },
+  "verification": {
+    "manager": "typecheck exit 0; test 41 files passed / 1 skipped, 336 tests passed / 3 skipped (real exit 0); build exit 0 (7 dist artifacts)",
+    "managerFreshHost": "NBOOK_AGENT_TEMP_ROOT=fresh dir, docker.test.ts 2 files / 38 tests, real exit 0",
+    "llmlint": "verify full chain real exit 0 (registry:build -> tsc -> vitest/bun tests -> --version -> rules json -> guide); fresh registry deletion -> typecheck real exit 0",
+    "desktop": "typecheck exit 0; build real exit 0; audit real exit 0",
+    "testSupport": "test + typecheck real exit 0 (2 files / 8 tests)",
+    "docs": "bun run docs:check 5047 files, failures=[]",
+    "docsCountHistory": "Earlier docs cutover verification reported 5046 files before the resource-audit evidence was added; the latest rerun reported 5047 files and is the final count.",
+    "governance": "bun run governance:check failures=[] warnings=[]",
+    "governanceTests": "3 files / 35 tests passed (check-documentation, agent-governance, workspace-workflows)",
+    "releaseTests": "scripts/release/release-assets.test.ts 1 file / 21 tests passed",
+    "managerDockerTests": "packages/neuro-book-manager src/docker.test.ts 1 file / 30 tests passed",
+    "scriptsTsc": "exit 0",
+    "docsSite": "bun run docs:build complete (existing chunk-size advisory only)",
+    "appFlaky": "An earlier full-suite run intermittently exposed three Harness cases (two abort-queue assertions and one black-box external-signal cleanup ENOTEMPTY); each affected case passed when isolated or on a later focused run. The final full application rerun below passed, so no failure remains in the recorded final run; the timing sensitivity remains a pre-existing residual risk and is not attributed to this change set.",
+    "appTestRerunResult": "packages/neuro-book: bun run test -- --reporter=dot, real exit 0; 416 test files passed / 1 skipped; 3084 tests passed / 3 skipped; command output captured in the run log."
+  },
+  "resourceAudit": {
+    "checkedAt": "2026-08-19T05:30:39Z",
+    "rootReference": "67 tracked files remain at repository root reference/; Profile DSL resolves them from NEURO_BOOK_REPOSITORY_ROOT. This is the repository-level Reference Bookshelf boundary.",
+    "applicationAssets": "224 tracked files are under packages/neuro-book/assets/; Source Dev prepare resolved this package-owned system asset root and prepared 1 variable definition manifest plus 14 profiles.",
+    "desktopEnvelope": "49 tracked files remain under desktop/; the monorepo boundary keeps it as the root-level Desktop Envelope for Electron/Tauri hosts, not application package source.",
+    "rootIgnoredAssets": "Root assets/ has 0 tracked files; the observed contents are ignored local/generated runtime residue, while packages/neuro-book/assets/ remains the canonical application asset root.",
+    "rootPatches": "1 tracked file remains at patches/nitropack@2.13.4.patch; root package.json patchedDependencies, Dockerfile dependency stage, and root CI validation consume this workspace-level dependency patch.",
+    "packageReferenceOrPatches": "0 tracked files under packages/neuro-book/reference/ and packages/neuro-book/patches/; this is intentional ownership, not a missing application runtime directory.",
+    "sourceDevSmoke": "bun run --cwd packages/neuro-book dev with PORT=3149 started Nuxt/Nitro at 127.0.0.1:3149; startup logs showed Prisma generation, system asset preparation, llmlint projection, and user asset sync.",
+    "httpSmoke": "GET /, /api/hello, /api/app/version, /api/agent/skills, /api/agent/profiles/catalog, and /api/agent/workflow/catalog each returned HTTP 200; /api/hello returned the expected message and timestamp JSON.",
+    "referenceFocusedTests": "server/agent/profiles/leader-owned-plot-reference.test.ts and leader-assets-profile.test.ts: 2 files, 18 tests passed.",
+    "worktreeAfterSmoke": "Generated project Prisma output was restored after verification; no source, tracked generated file, or untracked file remains modified."
+  },
+  "notExecuted": [
+    "Real Docker image build (docker unavailable on this host)",
+    "Windows runner, browser manual acceptance, real provider/model",
+    "Windows portable packaging on this host",
+    "Final green tag creation (task stays blocked until platform gates are authorized)"
+  ],
+  "notAccepted": "t149-final-verify-3 evidence is not used for these repairs; its registry/dist artifacts masked ordering prerequisites. The migration worktree itself was verified clean-runner style for the affected owners, with real exit codes after the pipe-masking advisory."
+}

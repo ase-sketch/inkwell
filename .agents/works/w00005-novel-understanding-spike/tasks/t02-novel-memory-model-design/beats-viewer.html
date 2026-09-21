@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>章节拆分查看器 · nbook.novel-beats/v4-spike</title>
+<style>
+/* ─────────────────────────────────────────────────────────
+   宣纸 / 墨 / 朱批 / 石绿。与同目录 viewer.html 同一套色板。
+   Beat 类型渲染成四种色，来源渲染成芯片，时刻渲染成场轨道上的底色。
+   ───────────────────────────────────────────────────────── */
+:root{
+  --paper:#f3f2f7; --card:#ffffff; --sunk:#eceaf3;
+  --ink:#1b1830; --ink2:#4a4660; --ink3:#8b87a3; --ink4:#b3b0c4;
+  --rule:#dedbe8; --rule2:#eae8f1;
+  --gold:#a87515; --gold-bg:rgba(168,117,21,.09);
+  --cinnabar:#c7304f; --cinnabar-bg:rgba(199,48,79,.07);
+  --verdi:#1e8a74; --verdi-bg:rgba(30,138,116,.09);
+  --indigo:#5a4bb8; --indigo-bg:rgba(90,75,184,.09);
+  --slate:#6b7186; --slate-bg:rgba(107,113,134,.09);
+  --f-display:"Noto Serif SC","Songti SC",serif;
+  --f-body:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  --f-mono:"Chivo Mono",ui-monospace,"Consolas",monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:var(--f-body);font-weight:300;font-size:13px;line-height:1.75;
+  -webkit-font-smoothing:antialiased;overflow:hidden;
+}
+button,input,select{font:inherit;color:inherit}
+::selection{background:rgba(168,117,21,.2)}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:2px}
+
+.app{display:grid;grid-template-rows:auto auto 1fr;height:100%}
+
+/* ── 顶栏 ─────────────────────────────────────────────── */
+.bar{
+  display:flex;align-items:center;gap:14px;padding:0 16px;height:50px;
+  background:var(--card);border-bottom:1px solid var(--rule);flex-wrap:nowrap;min-width:0;
+}
+.brand{font-family:var(--f-display);font-weight:700;font-size:15px;letter-spacing:.04em;white-space:nowrap}
+.schema{font-family:var(--f-mono);font-size:10px;color:var(--ink3);letter-spacing:.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chap{font-family:var(--f-display);font-size:13px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-sp{flex:1;min-width:8px}
+.search{
+  width:190px;min-width:0;padding:6px 10px;border:1px solid var(--rule);border-radius:3px;
+  background:var(--paper);font-size:12.5px;
+}
+.search::placeholder{color:var(--ink4)}
+.btn{
+  flex:none;background:var(--card);border:1px solid var(--rule);border-radius:3px;
+  padding:6px 12px;font-size:12px;cursor:pointer;white-space:nowrap;transition:.15s;
+}
+button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.btn:hover{border-color:var(--ink3);background:var(--sunk)}
+.btn.on{background:var(--gold-bg);border-color:rgba(168,117,21,.35);color:var(--gold)}
+.badge{
+  flex:none;font-family:var(--f-mono);font-size:11px;padding:5px 11px;border-radius:3px;
+  border:1px solid transparent;white-space:nowrap;cursor:pointer;
+}
+.badge.ok{background:var(--verdi-bg);color:var(--verdi);border-color:rgba(30,138,116,.28)}
+.badge.bad{background:var(--cinnabar-bg);color:var(--cinnabar);border-color:rgba(199,48,79,.3)}
+.badge.idle{background:var(--sunk);color:var(--ink3);border-color:var(--rule)}
+/* ── 概览条 ───────────────────────────────────────────── */
+.overview{
+  background:var(--card);border-bottom:1px solid var(--rule);padding:9px 16px 11px;
+}
+.ov-row{display:flex;align-items:center;gap:10px;margin-bottom:5px}
+.ov-lab{
+  font-family:var(--f-mono);font-size:9.5px;color:var(--ink3);letter-spacing:.08em;
+  width:52px;flex:none;text-align:right;text-transform:uppercase;
+}
+.ov-track{display:flex;flex:1;height:13px;gap:1px;min-width:0}
+.ov-cell{flex:1 1 0;min-width:0;border-radius:1px;cursor:pointer;transition:.12s}
+.ov-cell:hover{transform:scaleY(1.5)}
+.ov-scene{
+  flex:none;height:13px;border-radius:2px;display:flex;align-items:center;justify-content:center;
+  font-family:var(--f-mono);font-size:9px;letter-spacing:.04em;cursor:pointer;
+  overflow:hidden;white-space:nowrap;border:1px solid transparent;
+}
+.ov-gap{flex:none;height:13px}
+
+/* ── 三栏 ─────────────────────────────────────────────── */
+.body{display:grid;grid-template-columns:250px 1fr;min-height:0}
+.side{
+  background:var(--card);border-right:1px solid var(--rule);
+  overflow-y:auto;padding:14px 14px 40px;
+}
+.main{overflow-y:auto;padding:18px 22px 120px;min-width:0}
+
+.sec{margin-bottom:20px}
+.sec-h{
+  font-family:var(--f-mono);font-size:9.5px;letter-spacing:.1em;color:var(--ink3);
+  text-transform:uppercase;margin-bottom:7px;padding-bottom:4px;border-bottom:1px solid var(--rule2);
+}
+.chk{display:flex;align-items:center;gap:7px;padding:3px 0;cursor:pointer;font-size:12.5px}
+.chk input{margin:0;accent-color:var(--gold)}
+.chk .cnt{margin-left:auto;font-family:var(--f-mono);font-size:10.5px;color:var(--ink4)}
+.swatch{width:9px;height:9px;border-radius:2px;flex:none}
+
+.stat{display:flex;justify-content:space-between;font-size:12px;padding:2.5px 0;color:var(--ink2)}
+.stat b{font-family:var(--f-mono);font-weight:500;color:var(--ink)}
+
+.vitem{
+  font-size:11.5px;line-height:1.6;padding:5px 8px;border-radius:3px;margin-bottom:4px;
+  border-left:2px solid;
+}
+.vitem.ok{background:var(--verdi-bg);border-color:var(--verdi);color:var(--ink2)}
+.vitem.bad{background:var(--cinnabar-bg);border-color:var(--cinnabar);color:var(--ink2)}
+
+.gloss{font-size:11.5px;line-height:1.65;color:var(--ink2);margin-bottom:7px}
+.gloss b{font-family:var(--f-mono);font-weight:500;font-size:11px;color:var(--ink)}
+
+/* ── 场分组 ───────────────────────────────────────────── */
+.scene{margin-bottom:26px}
+.scene-h{
+  display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
+  padding:7px 12px;border-radius:4px 4px 0 0;border:1px solid var(--rule);border-bottom:none;
+}
+.scene-id{font-family:var(--f-mono);font-size:11.5px;font-weight:500;letter-spacing:.05em}
+.scene-gist{font-family:var(--f-display);font-size:13.5px;color:var(--ink)}
+.scene-meta{font-family:var(--f-mono);font-size:10.5px;color:var(--ink3);margin-left:auto;white-space:nowrap}
+.scene-body{border:1px solid var(--rule);border-radius:0 0 4px 4px;padding:12px;background:rgba(255,255,255,.5)}
+
+/* ── Beat 卡片 ────────────────────────────────────────── */
+.beat{
+  background:var(--card);border:1px solid var(--rule);border-left:3px solid var(--ink4);
+  border-radius:3px;margin-bottom:10px;transition:.15s;
+}
+.beat:hover{border-color:var(--ink4)}
+.beat.hit{box-shadow:0 0 0 2px var(--gold-bg),0 0 0 1px rgba(168,117,21,.4)}
+.beat-h{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;padding:9px 12px 8px;cursor:pointer}
+.beat-id{font-family:var(--f-mono);font-size:11.5px;font-weight:500;letter-spacing:.05em}
+.beat-para{font-family:var(--f-mono);font-size:10.5px;color:var(--ink3)}
+.beat-gist{font-family:var(--f-display);font-size:13.5px;line-height:1.6;flex-basis:100%;color:var(--ink)}
+.tag{
+  font-family:var(--f-mono);font-size:10px;padding:2px 7px;border-radius:2px;
+  letter-spacing:.03em;white-space:nowrap;border:1px solid transparent;
+}
+.tag.moment{background:var(--sunk);color:var(--ink2);border-color:var(--rule)}
+.tag.drift{background:var(--cinnabar-bg);color:var(--cinnabar);border-color:rgba(199,48,79,.28)}
+
+.chips{display:flex;flex-wrap:wrap;gap:5px;padding:0 12px 9px}
+.chip{
+  font-size:10.5px;padding:2px 8px;border-radius:10px;white-space:nowrap;
+  border:1px solid var(--rule);background:var(--paper);color:var(--ink2);
+}
+.chip .h{color:var(--ink);font-weight:400}
+.chip.hedged{border-style:dashed;color:var(--ink3)}
+.chip.hedged .h{color:var(--ink2)}
+
+.beat-note{
+  margin:0 12px 10px;padding:7px 10px;border-radius:3px;
+  background:var(--cinnabar-bg);border-left:2px solid var(--cinnabar);
+  font-size:11.5px;line-height:1.65;color:var(--ink2);
+}
+.prose{border-top:1px solid var(--rule2);padding:8px 12px 10px}
+.pline{display:flex;gap:10px;padding:1.5px 0;align-items:baseline}
+.pnum{
+  font-family:var(--f-mono);font-size:10px;color:var(--ink4);width:26px;flex:none;
+  text-align:right;user-select:none;padding-top:2px;
+}
+.ptxt{font-family:var(--f-display);font-size:13.5px;line-height:1.85;color:var(--ink);white-space:pre-wrap;word-break:break-word}
+.pline mark{background:rgba(168,117,21,.24);color:inherit;border-radius:1px}
+
+/* ── 空态 ─────────────────────────────────────────────── */
+.drop{
+  position:fixed;inset:0;background:rgba(243,242,247,.94);z-index:50;
+  display:none;align-items:center;justify-content:center;
+}
+.drop.on{display:flex}
+.drop-in{
+  border:2px dashed var(--gold);border-radius:6px;padding:44px 60px;background:var(--card);
+  font-family:var(--f-display);font-size:16px;color:var(--gold);
+}
+.empty{max-width:640px;margin:40px auto;color:var(--ink2);font-size:13.5px;line-height:1.9}
+.empty h2{font-family:var(--f-display);font-size:19px;color:var(--ink);margin:0 0 12px}
+.empty code{font-family:var(--f-mono);font-size:12px;background:var(--sunk);padding:1px 5px;border-radius:2px}
+.empty ol{padding-left:20px}
+.empty li{margin-bottom:7px}
+.hidden{display:none!important}
+@media (max-width:900px){
+  .bar{height:auto;min-height:50px;flex-wrap:wrap;gap:6px 8px;padding:8px 12px}
+  .brand{order:1}
+  .schema{order:2;flex:1;min-width:0}
+  .chap{order:3;flex:1 1 100%;font-size:12px}
+  .bar-sp{display:none}
+  .search{order:4;flex:1 1 180px;width:auto}
+  .btn{order:5;padding:5px 8px;font-size:11px}
+  .badge{order:6;padding:4px 8px;font-size:10px}
+}
+@media (max-width:700px){
+  body{overflow:auto}
+  .app{height:auto;min-height:100%}
+  .overview{position:sticky;top:0;z-index:10}
+  .body{display:flex;flex-direction:column;min-height:calc(100vh - 110px)}
+  .side{order:1;width:100%;height:auto;max-height:42vh;border-right:0;border-bottom:1px solid var(--rule);padding:12px 14px 24px}
+  .main{order:2;width:100%;height:auto;min-height:52vh;padding:14px 12px 80px}
+  .scene-h{padding-inline:10px}
+  .scene-meta{flex-basis:100%;margin-left:0;white-space:normal}
+  .scene-body{padding:8px}
+  .beat-h{padding-inline:10px}
+  .chips{padding-inline:10px}
+  .prose{padding-inline:10px}
+  .empty{margin:28px auto;padding:0 4px}
+}
+@media (max-width:360px){
+  .bar{padding-inline:8px}
+  .brand{font-size:14px}
+  .schema{font-size:9px}
+  .btn{font-size:10.5px;padding-inline:6px}
+  .badge{font-size:9.5px;padding-inline:6px}
+  .main{padding-inline:8px}
+}
+@media (max-width:500px){
+  .bar{gap:6px;padding-inline:8px}
+  .brand{flex:1 1 auto;min-width:0}
+  .schema{flex:0 1 42%;text-align:right}
+  .search{flex-basis:100%;order:4}
+  .btn{order:5}
+  .badge{order:6;margin-left:auto}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <div class="bar">
+    <span class="brand">章节拆分查看器</span>
+    <span class="schema">nbook.novel-beats/v4-spike</span>
+    <span class="chap" id="chapLabel"></span>
+    <span class="bar-sp"></span>
+    <input class="search" id="q" type="search" aria-label="搜索正文、Beat 摘要或注释" placeholder="搜正文 / 一句话 / 注">
+    <button type="button" class="btn" id="btnProse">载入正文</button>
+    <button type="button" class="btn" id="btnBeats">载入 beats.json</button>
+    <button type="button" class="btn on" id="btnText">显示正文</button>
+    <span class="badge idle" id="vbadge" role="status" aria-live="polite">未载入</span>
+  </div>
+
+  <div class="overview" id="overview" style="display:none">
+    <div class="ov-row">
+      <span class="ov-lab">Beat</span>
+      <div class="ov-track" id="ovBeats"></div>
+    </div>
+    <div class="ov-row" style="margin-bottom:0">
+      <span class="ov-lab">场</span>
+      <div class="ov-track" id="ovScenes" style="gap:2px"></div>
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="side" id="side"></div>
+    <div class="main" id="main"></div>
+  </div>
+
+</div>
+
+<div class="drop" id="drop"><div class="drop-in">松手载入 · .txt 是正文，.json 是 beats</div></div>
+
+<input type="file" id="fileProse" accept=".txt,text/plain" class="hidden">
+<input type="file" id="fileBeats" accept=".json,application/json" class="hidden">
+
+<!-- 数据槽。留空时页面是通用的，靠拖放或按钮载入；
+     填上内容就变成一份自带数据的单文件页。必须在主脚本之前，否则 boot 时读不到。 -->
+<script type="application/json" id="embedded-beats"></script>
+<script type="text/plain"       id="embedded-prose"></script>
+
+<script>
+"use strict";
+
+/* ══════════════════════════════════════════════════════════
+   词表。与 memory-model-v4.md 第 2、3 节一致。
+   英文键是数据里的取值，中文是展示名。
+   ══════════════════════════════════════════════════════════ */
+const TYPES = {
+  paratext:    { zh:"故事外", color:"var(--slate)",   bg:"var(--slate-bg)"   },
+  narrative:   { zh:"叙事",   color:"var(--gold)",    bg:"var(--gold-bg)"    },
+  description: { zh:"描写",   color:"var(--verdi)",   bg:"var(--verdi-bg)"   },
+  exposition:  { zh:"说明",   color:"var(--indigo)",  bg:"var(--indigo-bg)"  }
+};
+const CHANNELS = {
+  narrator:  "叙述者",
+  speech:    "角色说出口",
+  thought:   "角色心里想",
+  inference: "读者推断",
+  system:    "系统通知",
+  author:    "作者"
+};
+const HEDGES = { plain:"直陈", hedged:"带保留", suspended:"悬置" };
+/* 时刻关系的谓词。v4 第 5.7.4 节 */
+const PREDICATES = {
+  before:   "早于",
+  after:    "晚于",
+  same:     "同一",
+  contains: "包含",
+  overlaps: "重叠"
+};
+const MOMENT_TINT = [
+  "rgba(168,117,21,.16)", "rgba(30,138,116,.16)", "rgba(90,75,184,.16)",
+  "rgba(199,48,79,.14)",  "rgba(107,113,134,.16)"
+];
+
+/* ══════════════════════════════════════════════════════════
+   状态
+   ══════════════════════════════════════════════════════════ */
+const S = {
+  prose: null,        // string[]，下标 0 即第 1 段
+  data: null,         // beats.json
+  proseName: "",
+  beatsName: "",
+  showText: true,
+  q: "",
+  offTypes: new Set(),
+  offChannels: new Set(),
+  offMoments: new Set()
+};
+
+const $  = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? "" : s)
+  .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+  .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+
+/* 高亮搜索词，转义在前，标记在后 */
+function mark(text){
+  const t = esc(text);
+  if (!S.q) return t;
+  const re = new RegExp(S.q.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"), "gi");
+  return t.replace(re, (m) => "<mark>" + m + "</mark>");
+}
+
+const typeOf = (t) => TYPES[t] || { zh:t||"?", color:"var(--ink3)", bg:"var(--sunk)" };
+const beats  = () => (S.data && Array.isArray(S.data.beats)) ? S.data.beats : [];
+const scenes = () => (S.data && Array.isArray(S.data.scenes)) ? S.data.scenes : [];
+
+/* 正文总段数：优先用正文文件，其次用 Beat 的最大段号 */
+function totalParas(){
+  if (S.prose) return S.prose.length;
+  let m = 0;
+  for (const b of beats()) if (Array.isArray(b.paragraphs)) m = Math.max(m, b.paragraphs[1] || 0);
+  return m;
+}
+
+/* 每个时刻分一个底色，按出现顺序 */
+function momentTint(id){
+  if (!id) return "var(--sunk)";
+  const list = (S.data && S.data.moments) ? S.data.moments.map(m => m.id) : [];
+  const i = list.indexOf(id);
+  return MOMENT_TINT[(i < 0 ? 0 : i) % MOMENT_TINT.length];
+}
+function momentLabel(id){
+  if (!id) return "无时刻";
+  const m = (S.data && S.data.moments || []).find(x => x.id === id);
+  return m && m.label ? id + " " + m.label : id;
+}
+function entityLabel(id){
+  if (!id) return "";
+  const e = S.data && S.data.entities && S.data.entities[id];
+  if (!e) return id;
+  // entities 的值是一段说明，取第一个句号或逗号前的部分当短名
+  return String(e).split(/[。，,]/)[0] || id;
+}
+
+/* 场覆盖的段号区间：由它首尾两个 Beat 算出来 */
+function sceneRange(sc){
+  const all = beats();
+  const a = all.find(b => b.id === (sc.beats || [])[0]);
+  const z = all.find(b => b.id === (sc.beats || [])[1]);
+  if (!a || !z) return null;
+  return [a.paragraphs[0], z.paragraphs[1]];
+}
+
+/* ══════════════════════════════════════════════════════════
+   校验。v4 第 3.3 节说软边界只能由模型切，代码能做的只有这些。
+   ══════════════════════════════════════════════════════════ */
+function validate(){
+  const out = [];
+  const all = beats();
+  const N = totalParas();
+  if (!all.length) return [{ ok:false, msg:"beats 为空" }];
+
+  // 段号合法
+  let bad = all.filter(b => !Array.isArray(b.paragraphs) || b.paragraphs.length !== 2
+                         || !(b.paragraphs[0] >= 1) || b.paragraphs[1] < b.paragraphs[0]);
+  out.push(bad.length
+    ? { ok:false, msg:"段号区间非法：" + bad.map(b => b.id).join("、") }
+    : { ok:true,  msg:"段号区间合法（" + all.length + " 个 Beat）" });
+
+  // 连续、不重叠、覆盖
+  const sorted = all.slice().sort((x,y) => x.paragraphs[0] - y.paragraphs[0]);
+  const gaps = [], overlaps = [];
+  let cur = 1;
+  for (const b of sorted){
+    if (b.paragraphs[0] > cur) gaps.push(cur + "–" + (b.paragraphs[0]-1));
+    if (b.paragraphs[0] < cur) overlaps.push(b.id);
+    cur = Math.max(cur, b.paragraphs[1] + 1);
+  }
+  out.push(gaps.length
+    ? { ok:false, msg:"有空隙：第 " + gaps.join("、") + " 段没有 Beat" }
+    : { ok:true,  msg:"无空隙" });
+  out.push(overlaps.length
+    ? { ok:false, msg:"有重叠：" + overlaps.join("、") }
+    : { ok:true,  msg:"无重叠" });
+
+  const last = cur - 1;
+  if (S.prose){
+    out.push(last === N
+      ? { ok:true,  msg:"覆盖全章 1–" + N + " 段" }
+      : { ok:false, msg:"覆盖到第 " + last + " 段，正文共 " + N + " 段" });
+  } else {
+    out.push({ ok:true, msg:"覆盖 1–" + last + " 段（未载入正文，无法核对总数）" });
+  }
+
+  // 类型与通道取值
+  const badType = [...new Set(all.filter(b => !TYPES[b.type]).map(b => b.type))];
+  out.push(badType.length
+    ? { ok:false, msg:"未知类型：" + badType.join("、") }
+    : { ok:true,  msg:"类型取值都在词表内" });
+
+  const badCh = new Set();
+  for (const b of all) for (const s of (b.sources||[])) if (!CHANNELS[s.channel]) badCh.add(s.channel);
+  out.push(badCh.size
+    ? { ok:false, msg:"未知来源通道：" + [...badCh].join("、") }
+    : { ok:true,  msg:"来源通道都在词表内" });
+
+  // 时刻引用
+  const mids = new Set((S.data.moments || []).map(m => m.id));
+  const badM = all.filter(b => b.moment && !mids.has(b.moment)).map(b => b.id);
+  out.push(badM.length
+    ? { ok:false, msg:"时刻引用不存在：" + badM.join("、") }
+    : { ok:true,  msg:"时刻引用都能解析" });
+
+  // 时刻关系。v4 第 5.7.4 节：主语必须是已知时刻；锚点为空表示叙述当下，由 at 定位
+  const rels = S.data.momentRelations || [];
+  if (rels.length){
+    const N0 = totalParas();
+    const relBad = [];
+    for (let i = 0; i < rels.length; i++){
+      const r = rels[i], tag = "第 " + (i+1) + " 条";
+      if (!mids.has(r.subject)) relBad.push(tag + " 主语 " + r.subject + " 不是已知时刻");
+      if (r.anchor && r.anchor.type === "moment" && !mids.has(r.anchor.ref))
+        relBad.push(tag + " 锚点 " + r.anchor.ref + " 不是已知时刻");
+      if (!PREDICATES[r.predicate]) relBad.push(tag + " 未知谓词 " + r.predicate);
+      if (!(r.at >= 1 && (!N0 || r.at <= N0))) relBad.push(tag + " 叙述位置 " + r.at + " 越界");
+      if (!r.source || !CHANNELS[r.source.channel]) relBad.push(tag + " 缺来源或通道未知（规则 6）");
+    }
+    out.push(relBad.length
+      ? { ok:false, msg:"时刻关系有问题：" + relBad.join("；") }
+      : { ok:true,  msg:"时刻关系都合法（" + rels.length + " 条，锚点、谓词、来源齐全）" });
+  }
+
+  // 场
+  const ids = new Set(all.map(b => b.id));
+  const scBad = [], scMoment = [];
+  for (const sc of scenes()){
+    const r = (sc.beats || []);
+    if (r.length !== 2 || !ids.has(r[0]) || !ids.has(r[1])) { scBad.push(sc.id); continue; }
+    // v4 第 3.5 节：区间内允许没有时刻的 Beat，不允许带着不同时刻的 Beat
+    const rg = sceneRange(sc);
+    for (const b of all){
+      if (b.paragraphs[0] < rg[0] || b.paragraphs[1] > rg[1]) continue;
+      if (b.moment && sc.moment && b.moment !== sc.moment) scMoment.push(sc.id + "/" + b.id);
+    }
+  }
+  if (scenes().length){
+    out.push(scBad.length
+      ? { ok:false, msg:"场的 Beat 引用非法：" + scBad.join("、") }
+      : { ok:true,  msg:"场的区间端点都能解析（" + scenes().length + " 条场记录）" });
+    out.push(scMoment.length
+      ? { ok:false, msg:"场内混入了别的时刻：" + scMoment.join("、") }
+      : { ok:true,  msg:"场内没有异时刻的 Beat" });
+  }
+
+  return out;
+}
+
+/* ══════════════════════════════════════════════════════════
+   过滤
+   ══════════════════════════════════════════════════════════ */
+function beatText(b){
+  if (!S.prose) return "";
+  return S.prose.slice(b.paragraphs[0]-1, b.paragraphs[1]).join("\n");
+}
+function visible(b){
+  if (S.offTypes.has(b.type)) return false;
+  if (S.offMoments.has(b.moment || "__none__")) return false;
+  const chs = (b.sources || []).map(s => s.channel);
+  if (chs.length && chs.every(c => S.offChannels.has(c))) return false;
+  if (S.q){
+    const hay = [b.id, b.gist, b.note, beatText(b)].join("\n").toLowerCase();
+    if (!hay.includes(S.q.toLowerCase())) return false;
+  }
+  return true;
+}
+
+/* ══════════════════════════════════════════════════════════
+   渲染：概览条
+   ══════════════════════════════════════════════════════════ */
+function renderOverview(){
+  const all = beats();
+  if (!all.length){ $("overview").style.display = "none"; return; }
+  $("overview").style.display = "";
+  const N = totalParas();
+
+  $("ovBeats").innerHTML = all.map(b => {
+    const w = (b.paragraphs[1] - b.paragraphs[0] + 1);
+    const t = typeOf(b.type);
+    const dim = visible(b) ? 1 : .18;
+    return `<div class="ov-cell" style="flex-grow:${w};background:${t.color};opacity:${dim}"
+      title="${esc(b.id)} 第 ${b.paragraphs[0]}–${b.paragraphs[1]} 段 · ${esc(t.zh)}&#10;${esc(b.gist||"")}"
+      data-jump="${esc(b.id)}"></div>`;
+  }).join("");
+
+  // 场轨道按段号铺开，没有场覆盖的段留空
+  const segs = [];
+  let cur = 1;
+  const ordered = scenes().map(sc => ({ sc, r: sceneRange(sc) }))
+                          .filter(x => x.r).sort((a,b) => a.r[0] - b.r[0]);
+  for (const { sc, r } of ordered){
+    if (r[0] > cur) segs.push(`<div class="ov-gap" style="flex-grow:${r[0]-cur}"></div>`);
+    segs.push(`<div class="ov-scene" style="flex-grow:${r[1]-r[0]+1};background:${momentTint(sc.moment)};border-color:${momentTint(sc.moment)}"
+      title="${esc(sc.id)} 第 ${r[0]}–${r[1]} 段 · ${esc(momentLabel(sc.moment))} · ${esc(sc.location||"")}&#10;${esc(sc.gist||"")}"
+      data-jump="${esc((sc.beats||[])[0]||"")}">${esc(sc.id)}</div>`);
+    cur = r[1] + 1;
+  }
+  if (cur <= N) segs.push(`<div class="ov-gap" style="flex-grow:${N-cur+1}"></div>`);
+  $("ovScenes").innerHTML = segs.join("") || `<div class="ov-gap" style="flex-grow:1"></div>`;
+}
+
+/* ══════════════════════════════════════════════════════════
+   渲染：左栏
+   ══════════════════════════════════════════════════════════ */
+function renderSide(){
+  const all = beats();
+  if (!all.length){ $("side").innerHTML = ""; return; }
+  const H = [];
+
+  // 校验
+  const v = validate();
+  const nbad = v.filter(x => !x.ok).length;
+  H.push(`<div class="sec"><div class="sec-h">结构校验</div>`);
+  H.push(v.map(x => `<div class="vitem ${x.ok?"ok":"bad"}">${esc(x.msg)}</div>`).join(""));
+  H.push(`</div>`);
+
+  // 类型
+  const tc = {};
+  for (const b of all) tc[b.type] = (tc[b.type]||0) + 1;
+  H.push(`<div class="sec"><div class="sec-h">类型</div>`);
+  for (const k of Object.keys(TYPES)){
+    if (!tc[k]) continue;
+    H.push(`<label class="chk"><input type="checkbox" data-f="type" value="${k}" ${S.offTypes.has(k)?"":"checked"}>
+      <span class="swatch" style="background:${TYPES[k].color}"></span>${TYPES[k].zh}<span class="cnt">${tc[k]}</span></label>`);
+  }
+  for (const k of Object.keys(tc)) if (!TYPES[k])
+    H.push(`<label class="chk"><input type="checkbox" data-f="type" value="${esc(k)}" ${S.offTypes.has(k)?"":"checked"}>
+      <span class="swatch" style="background:var(--ink3)"></span>${esc(k)}<span class="cnt">${tc[k]}</span></label>`);
+  H.push(`</div>`);
+
+  // 来源通道
+  const cc = {};
+  for (const b of all) for (const s of (b.sources||[])) cc[s.channel] = (cc[s.channel]||0) + 1;
+  H.push(`<div class="sec"><div class="sec-h">来源通道</div>`);
+  for (const k of Object.keys(CHANNELS)){
+    const n = cc[k] || 0;
+    H.push(`<label class="chk" style="${n?"":"opacity:.4"}"><input type="checkbox" data-f="ch" value="${k}" ${S.offChannels.has(k)?"":"checked"} ${n?"":"disabled"}>
+      ${CHANNELS[k]}<span class="cnt">${n}</span></label>`);
+  }
+  H.push(`</div>`);
+
+  // 时刻。没有 Beat 停在上面的时刻也要列出来——v4 第 5.7.2 节：时刻的集合比场的集合大
+  const mc = {};
+  for (const b of all){ const k = b.moment || "__none__"; mc[k] = (mc[k]||0) + 1; }
+  H.push(`<div class="sec"><div class="sec-h">时刻</div>`);
+  for (const m of (S.data.moments || [])){
+    const n = mc[m.id] || 0;
+    H.push(`<label class="chk" style="${n?"":"opacity:.45"}" title="${esc(m.note||"")}">
+      <input type="checkbox" data-f="moment" value="${esc(m.id)}" ${S.offMoments.has(m.id)?"":"checked"} ${n?"":"disabled"}>
+      <span class="swatch" style="background:${momentTint(m.id)}"></span>${esc(momentLabel(m.id))}<span class="cnt">${n||"无 Beat"}</span></label>`);
+  }
+  if (mc.__none__)
+    H.push(`<label class="chk"><input type="checkbox" data-f="moment" value="__none__" ${S.offMoments.has("__none__")?"":"checked"}>
+      <span class="swatch" style="background:var(--sunk)"></span>无时刻<span class="cnt">${mc.__none__}</span></label>`);
+  H.push(`</div>`);
+
+  // 统计
+  const N = totalParas();
+  const spans = all.map(b => b.paragraphs[1] - b.paragraphs[0] + 1);
+  const avg = spans.length ? (spans.reduce((a,b)=>a+b,0) / spans.length).toFixed(1) : "0";
+  H.push(`<div class="sec"><div class="sec-h">统计</div>`);
+  H.push(`<div class="stat"><span>段数</span><b>${N}</b></div>`);
+  H.push(`<div class="stat"><span>Beat 数</span><b>${all.length}</b></div>`);
+  H.push(`<div class="stat"><span>平均每 Beat</span><b>${avg} 段</b></div>`);
+  H.push(`<div class="stat"><span>最长 / 最短</span><b>${Math.max(...spans)} / ${Math.min(...spans)}</b></div>`);
+  H.push(`<div class="stat"><span>场记录</span><b>${scenes().length}</b></div>`);
+  H.push(`<div class="stat"><span>时刻</span><b>${(S.data.moments||[]).length}</b></div>`);
+  H.push(`</div>`);
+
+  // 时刻关系。形状见 v4 第 5.7.4 节：主语 + 谓词 + 锚点 + 偏移 + at + 来源
+  const rels = S.data.momentRelations || [];
+  if (rels.length){
+    H.push(`<div class="sec"><div class="sec-h">时刻关系</div>`);
+    for (const r of rels){
+      const a = r.anchor;
+      const anchorTxt = !a
+        ? `叙述当下（第 ${esc(String(r.at))} 段）`
+        : (a.type === "moment" ? esc(momentLabel(a.ref)) : esc(a.ref || JSON.stringify(a)));
+      const o = r.offset;
+      const off = (o && o.value != null) ? ` ${esc(String(o.value))}${esc(o.unit||"")}` : "";
+      const src = r.source ? `${CHANNELS[r.source.channel] || r.source.channel}${r.source.holder ? "·" + entityLabel(r.source.holder) : ""}` : "";
+      H.push(`<div class="gloss"><b>${esc(momentLabel(r.subject))}</b> ${esc(PREDICATES[r.predicate] || r.predicate)}
+        <b>${anchorTxt}</b>${off}
+        <br><span style="color:var(--ink4)">第 ${esc(String(r.at))} 段 · ${esc(src)}</span></div>`);
+    }
+    H.push(`</div>`);
+  }
+
+  // 主体
+  const ents = S.data.entities || {};
+  if (Object.keys(ents).length){
+    H.push(`<div class="sec"><div class="sec-h">主体</div>`);
+    for (const k of Object.keys(ents))
+      H.push(`<div class="gloss"><b>${esc(k)}</b><br>${esc(ents[k])}</div>`);
+    H.push(`</div>`);
+  }
+
+  // 出处
+  const p = S.data.provenance;
+  if (p){
+    H.push(`<div class="sec"><div class="sec-h">出处</div>`);
+    for (const k of Object.keys(p)) H.push(`<div class="gloss"><b>${esc(k)}</b><br>${esc(p[k])}</div>`);
+    H.push(`</div>`);
+  }
+
+  $("side").innerHTML = H.join("");
+  $("side").querySelectorAll('input[type=checkbox]').forEach(el => {
+    el.addEventListener("change", () => {
+      const set = el.dataset.f === "type" ? S.offTypes
+                : el.dataset.f === "ch"   ? S.offChannels : S.offMoments;
+      if (el.checked) set.delete(el.value); else set.add(el.value);
+      render();
+    });
+  });
+
+  const vb = $("vbadge");
+  vb.className = "badge " + (nbad ? "bad" : "ok");
+  vb.textContent = nbad ? (nbad + " 项不通过") : "校验通过";
+}
+
+/* ══════════════════════════════════════════════════════════
+   渲染：Beat 卡片
+   ══════════════════════════════════════════════════════════ */
+function beatCard(b, driftSet){
+  const t = typeOf(b.type);
+  const H = [];
+  H.push(`<div class="beat" id="beat-${esc(b.id)}" style="border-left-color:${t.color}">`);
+  H.push(`<div class="beat-h">`);
+  H.push(`<span class="beat-id" style="color:${t.color}">${esc(b.id)}</span>`);
+  H.push(`<span class="tag" style="background:${t.bg};color:${t.color}">${esc(t.zh)}</span>`);
+  H.push(`<span class="beat-para">第 ${b.paragraphs[0]}–${b.paragraphs[1]} 段 · ${b.paragraphs[1]-b.paragraphs[0]+1} 段</span>`);
+  H.push(`<span class="tag moment" style="background:${momentTint(b.moment)}">${esc(momentLabel(b.moment))}</span>`);
+  if (driftSet && driftSet.has(b.id)) H.push(`<span class="tag drift">视角漂移</span>`);
+  H.push(`<span class="beat-gist">${mark(b.gist || "")}</span>`);
+  H.push(`</div>`);
+
+  if ((b.sources || []).length){
+    H.push(`<div class="chips">`);
+    for (const s of b.sources){
+      const ch = CHANNELS[s.channel] || s.channel;
+      const holder = s.holder ? `<span class="h">${esc(entityLabel(s.holder))}</span> · ` : "";
+      const hedge = s.hedge && s.hedge !== "plain" ? ` · ${esc(HEDGES[s.hedge] || s.hedge)}` : "";
+      H.push(`<span class="chip ${s.hedge && s.hedge!=="plain" ? "hedged":""}">${holder}${esc(ch)}${hedge}</span>`);
+    }
+    H.push(`</div>`);
+  }
+
+  if (b.note) H.push(`<div class="beat-note">${mark(b.note)}</div>`);
+
+  if (S.showText && S.prose){
+    H.push(`<div class="prose">`);
+    for (let i = b.paragraphs[0]; i <= b.paragraphs[1]; i++){
+      const line = S.prose[i-1];
+      if (line == null) continue;
+      H.push(`<div class="pline"><span class="pnum">${i}</span><span class="ptxt">${mark(line)}</span></div>`);
+    }
+    H.push(`</div>`);
+  }
+
+  H.push(`</div>`);
+  return H.join("");
+}
+
+/* ══════════════════════════════════════════════════════════
+   渲染：主栏。按场分组，场外的 Beat 单列一组。
+   ══════════════════════════════════════════════════════════ */
+function renderMain(){
+  const all = beats();
+  if (!all.length){ renderEmpty(); return; }
+
+  const sorted = all.slice().sort((x,y) => x.paragraphs[0] - y.paragraphs[0]);
+  const groups = [];            // { scene|null, beats:[] }
+  const ordered = scenes().map(sc => ({ sc, r: sceneRange(sc) }))
+                          .filter(x => x.r).sort((a,b) => a.r[0] - b.r[0]);
+
+  for (const b of sorted){
+    const hit = ordered.find(x => b.paragraphs[0] >= x.r[0] && b.paragraphs[1] <= x.r[1]);
+    const key = hit ? hit.sc.id : "__free__";
+    const tail = groups[groups.length-1];
+    if (tail && tail.key === key) tail.beats.push(b);
+    else groups.push({ key, sc: hit ? hit.sc : null, beats: [b] });
+  }
+
+  const H = [];
+  for (const g of groups){
+    const vis = g.beats.filter(visible);
+    if (!vis.length) continue;
+    if (g.sc){
+      const r = sceneRange(g.sc);
+      const drift = new Set(g.sc.povDrift || []);
+      H.push(`<div class="scene">`);
+      H.push(`<div class="scene-h" style="background:${momentTint(g.sc.moment)}">`);
+      H.push(`<span class="scene-id">${esc(g.sc.id)}</span>`);
+      H.push(`<span class="scene-gist">${mark(g.sc.gist || "")}</span>`);
+      H.push(`<span class="scene-meta">第 ${r[0]}–${r[1]} 段 · ${esc(momentLabel(g.sc.moment))}`
+        + (g.sc.location ? ` · ${esc(g.sc.location)}` : "")
+        + (g.sc.pov ? ` · 视角 ${esc(entityLabel(g.sc.pov))}` : "") + `</span>`);
+      H.push(`</div><div class="scene-body">`);
+      H.push(vis.map(b => beatCard(b, drift)).join(""));
+      H.push(`</div></div>`);
+    } else {
+      H.push(`<div class="scene"><div class="scene-h" style="background:var(--sunk)">`);
+      H.push(`<span class="scene-id" style="color:var(--ink3)">场外</span>`);
+      H.push(`<span class="scene-gist" style="color:var(--ink2)">不属于任何场的 Beat</span>`);
+      H.push(`<span class="scene-meta">故事外与无时刻的段落按定义不进因果树</span>`);
+      H.push(`</div><div class="scene-body">`);
+      H.push(vis.map(b => beatCard(b, null)).join(""));
+      H.push(`</div></div>`);
+    }
+  }
+
+  const shown = sorted.filter(visible).length;
+  if (!shown) H.push(`<div class="empty">当前过滤条件下没有 Beat。</div>`);
+  else if (shown < sorted.length)
+    H.unshift(`<div class="gloss" style="margin-bottom:14px">显示 ${shown} / ${sorted.length} 个 Beat</div>`);
+
+  // findings 放在最后
+  const f = S.data.findings;
+  if (Array.isArray(f) && f.length && !S.q){
+    H.push(`<div class="sec" style="margin-top:10px"><div class="sec-h">这一章上得到的</div>`);
+    H.push(`<ol style="padding-left:20px;color:var(--ink2);font-size:12.5px;line-height:1.85">`);
+    for (const x of f) H.push(`<li style="margin-bottom:6px">${esc(x)}</li>`);
+    H.push(`</ol></div>`);
+  }
+
+  $("main").innerHTML = H.join("");
+}
+
+function renderEmpty(){
+  $("main").innerHTML = `
+  <div class="empty">
+    <h2>载入一章的拆分</h2>
+    <p>这个页面要两份输入，拖进窗口或用右上角两个按钮都行：</p>
+    <ol>
+      <li><b>正文</b>：一个 <code>.txt</code>，<b>一行就是一段</b>，文件第 N 行即第 N 段。</li>
+      <li><b>拆分</b>：一个 <code>.json</code>，形状是 <code>nbook.novel-beats/v4-spike</code>。</li>
+    </ol>
+    <p>只载入 JSON 也能看，只是没有正文可对照。两份的先后顺序无所谓。</p>
+    <p style="color:var(--ink3);font-size:12.5px">
+      本目录的现成样本：<br>
+      <code>evidences/chapter-01-beats.json</code><br>
+      <code>../t01-novel-understanding-spike/evidences/chapter-001-source-normalized.txt</code>
+    </p>
+  </div>`;
+  $("overview").style.display = "none";
+  $("side").innerHTML = "";
+}
+
+function render(){
+  renderOverview();
+  renderSide();
+  renderMain();
+  const d = S.data;
+  $("chapLabel").textContent = d
+    ? (d.chapter != null ? `第 ${d.chapter} 章` : "") + (d.chapterTitle ? ` ${d.chapterTitle}` : "")
+      + (S.prose ? "" : "（未载入正文）")
+    : "";
+}
+
+/* ══════════════════════════════════════════════════════════
+   载入
+   ══════════════════════════════════════════════════════════ */
+function loadProseText(text, name){
+  // 去掉 BOM 与行尾 \r；末尾空行不算段
+  const lines = text.replace(/^﻿/,"").split(/\r?\n/);
+  while (lines.length && lines[lines.length-1].trim() === "") lines.pop();
+  S.prose = lines; S.proseName = name || "";
+  render();
+}
+function loadBeatsText(text, name){
+  let j;
+  try { j = JSON.parse(text.replace(/^﻿/,"")); }
+  catch(e){ alert("JSON 解析失败：" + e.message); return; }
+  if (!j || !Array.isArray(j.beats)){ alert("这个 JSON 里没有 beats 数组。"); return; }
+  S.data = j; S.beatsName = name || "";
+  render();
+}
+function readFile(file){
+  const r = new FileReader();
+  r.onload = () => {
+    const text = String(r.result);
+    const isJson = /\.json$/i.test(file.name) || /^\s*[{[]/.test(text);
+    if (isJson) loadBeatsText(text, file.name);
+    else loadProseText(text, file.name);
+  };
+  r.readAsText(file, "utf-8");
+}
+
+$("btnProse").onclick = () => $("fileProse").click();
+$("btnBeats").onclick = () => $("fileBeats").click();
+$("fileProse").onchange = (e) => { const f = e.target.files[0]; if (f) readFile(f); e.target.value = ""; };
+$("fileBeats").onchange = (e) => { const f = e.target.files[0]; if (f) readFile(f); e.target.value = ""; };
+
+$("btnText").onclick = () => {
+  S.showText = !S.showText;
+  $("btnText").classList.toggle("on", S.showText);
+  renderMain();
+};
+$("q").addEventListener("input", (e) => { S.q = e.target.value.trim(); render(); });
+
+// 概览条点击跳转
+document.addEventListener("click", (e) => {
+  const el = e.target.closest("[data-jump]");
+  if (!el) return;
+  const t = document.getElementById("beat-" + el.dataset.jump);
+  if (t){ t.scrollIntoView({ behavior:"smooth", block:"center" });
+          t.classList.add("hit"); setTimeout(() => t.classList.remove("hit"), 1400); }
+});
+
+// 拖放
+let depth = 0;
+window.addEventListener("dragenter", (e) => { e.preventDefault(); depth++; $("drop").classList.add("on"); });
+window.addEventListener("dragover",  (e) => e.preventDefault());
+window.addEventListener("dragleave", () => { if (--depth <= 0){ depth = 0; $("drop").classList.remove("on"); } });
+window.addEventListener("drop", (e) => {
+  e.preventDefault(); depth = 0; $("drop").classList.remove("on");
+  for (const f of e.dataTransfer.files) readFile(f);
+});
+
+// 页面顶部两个数据槽有内容时直接开图，没有就是通用空态
+(function boot(){
+  const eb = document.getElementById("embedded-beats");
+  const ep = document.getElementById("embedded-prose");
+  if (ep && ep.textContent.trim()) loadProseText(ep.textContent, "embedded");
+  if (eb && eb.textContent.trim()) loadBeatsText(eb.textContent, "embedded");
+  if (!S.data) renderEmpty();
+})();
+</script>
+
+</body>
+</html>

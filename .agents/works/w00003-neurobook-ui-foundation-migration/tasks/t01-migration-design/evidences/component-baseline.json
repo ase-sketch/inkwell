@@ -1,0 +1,193 @@
+{
+  "schema": "nbook.ui-foundation-component-baseline/v1",
+  "taskId": "t01-migration-design",
+  "scanRevision": "73f37b4d3095aa9072de76fe0d4bdff240862deb",
+  "currentFact": true,
+  "sourceScans": [
+    {
+      "sourceGlob": "packages/neuro-book/app/components/**/*.vue",
+      "command": "git ls-files 'packages/neuro-book/app/components/**/*.vue'",
+      "count": 232,
+      "pathSetSha256": "de84516842d968c231b5e6513ef402c0a43aa3493fc1786c1ba7f874d17e7629",
+      "byTopLevelDomain": {
+        "common": 42,
+        "dnd-test": 2,
+        "markdown-studio": 10,
+        "novel-ide": 158,
+        "profile-template-editor": 14,
+        "workflow-preview": 6
+      }
+    },
+    {
+      "sourceGlob": "packages/nb-ui/src/components/**/*.vue",
+      "command": "git ls-files 'packages/nb-ui/src/components/**/*.vue'",
+      "count": 72,
+      "pathSetSha256": "558cd13441a1b6e995320825099704da046184a13cf386590208b9302167cc63",
+      "byCategory": {
+        "controls": 13,
+        "display": 9,
+        "feedback": 10,
+        "form": 29,
+        "layout": 7,
+        "navigation": 4
+      }
+    }
+  ],
+  "commonVsNbUiNameComparison": {
+    "commonSfcCount": 42,
+    "sameNameCount": 16,
+    "sameNames": [
+      "Combobox",
+      "ContextMenu",
+      "Dialog",
+      "DialogWindow",
+      "Dropdown",
+      "FormCheckbox",
+      "FormField",
+      "FormInput",
+      "FormNumberInput",
+      "FormSelect",
+      "FormTextarea",
+      "IconButton",
+      "NotificationViewport",
+      "SegmentedControl",
+      "TagInput",
+      "Tooltip"
+    ],
+    "commonOnlyNames": [
+      "DesktopTitleBar",
+      "DiffWorkbench",
+      "DiffWorkbenchDialog",
+      "FormColorField",
+      "JsonViewer",
+      "LowCodeCheckboxField",
+      "LowCodeComboboxField",
+      "LowCodeFieldShell",
+      "LowCodeForm",
+      "LowCodeNumberField",
+      "LowCodeRadioField",
+      "LowCodeResourcePresetField",
+      "LowCodeSelectField",
+      "LowCodeSwitchField",
+      "LowCodeTextField",
+      "LowCodeTextareaField",
+      "LucideIconPickerDialog",
+      "OriginalImagePreviewDialog",
+      "ReferenceChip",
+      "ReferencePlainTextEditor",
+      "ReferenceSelectorPopover",
+      "SharedDiffEditor",
+      "SharedMergeEditor",
+      "SideDetailPanel",
+      "SkillChip",
+      "StructuredTextEditor"
+    ],
+    "nbUiOnlyNames": [
+      "Accordion",
+      "AlertDialog",
+      "AspectRatio",
+      "Autocomplete",
+      "Avatar",
+      "Badge",
+      "Breadcrumb",
+      "Button",
+      "Calendar",
+      "CheckboxGroup",
+      "Collapsible",
+      "ColorPicker",
+      "DateField",
+      "DatePicker",
+      "DateRangeField",
+      "DateRangePicker",
+      "Drawer",
+      "Editable",
+      "EmptyState",
+      "FileTree",
+      "HoverCard",
+      "Kbd",
+      "Listbox",
+      "Menubar",
+      "MonthPicker",
+      "MonthRangePicker",
+      "NavigationMenu",
+      "Notification",
+      "Pagination",
+      "Panel",
+      "PinInput",
+      "Popover",
+      "Progress",
+      "RadioGroup",
+      "RangeCalendar",
+      "Rating",
+      "ScrollArea",
+      "Separator",
+      "Skeleton",
+      "Slider",
+      "Spinner",
+      "Splitter",
+      "Stepper",
+      "Switch",
+      "SwitchField",
+      "Table",
+      "Tabs",
+      "TimeField",
+      "TimePicker",
+      "TimePickerDefault",
+      "TimeRangeField",
+      "ToggleGroup",
+      "Toolbar",
+      "Tree",
+      "YearPicker",
+      "YearRangePicker"
+    ]
+  },
+  "legacyReferenceComparison": {
+    "reference": ".worktree/t163-ui-migration-baseline/.agents/tasks/00163-ui-migration-baseline/evidences/component-sfc-inventory.json",
+    "referenceScanRevision": "fcfe0a0f445f8cf269b7ed052a38b1adb86e623b",
+    "currentPathSetEqualsReference": true,
+    "meaning": "仅表示当前扫描路径集合与旧参考相等；旧Task、owner候选和tier推断不因此成为current accepted事实。"
+  },
+  "catalogBoundaryForA": {
+    "catalogSourceFormat": "nbook/app/components/<relative-path>.vue",
+    "physicalSourceFormat": "packages/neuro-book/app/components/<relative-path>.vue",
+    "sourceNormalization": {
+      "physicalRoot": "packages/neuro-book/app/components/",
+      "catalogRoot": "nbook/app/components/",
+      "physicalToCatalog": "只移除physicalRoot一次；剩余relative path必须非空且以.vue结尾",
+      "catalogToPhysical": "只在catalogRoot前添加physicalRoot一次；不改relative path",
+      "bijectionAssertions": [
+        "physicalToCatalog(catalogToPhysical(catalogSource)) === catalogSource",
+        "catalogToPhysical(physicalToCatalog(physicalSource)) === physicalSource"
+      ],
+      "rejects": [
+        "physical path不在physicalRoot下",
+        "catalog path不在catalogRoot下",
+        "非.vue路径",
+        "绝对路径、空relative path或包含..越界段"
+      ],
+      "testContract": "A的静态合同测试以当前git ls-files物理路径全集逐条验证双射，并对越界/非vue输入断言拒绝；本t01未运行该测试。"
+    },
+    "initialStatus": "pending",
+    "pendingRequires": "blockingReason",
+    "readyRequires": "deterministicFixture",
+    "oneEntryPerSfc": true,
+    "parentIdMustReferenceComponentEntry": true,
+    "sliceMechanism": {
+      "partition": "按最终owner划分slice文件；每条catalog entry只允许出现于一个slice",
+      "aggregate": "aggregate只import/concat各slice并执行exact coverage、唯一性、层级与状态校验，不复制entry记录",
+      "authority": "A-owned types与aggregate是唯一索引；E-O以后只修改自己owner slice，不另建catalog或registry真相源",
+      "testContract": "静态测试断言slice并集与物理全集经sourceNormalization精确相等、无重复、无遗漏，aggregate不含第二份记录"
+    },
+    "excludedFromCatalog": [
+      "packages/neuro-book/app.vue",
+      "packages/neuro-book/app/pages/**",
+      "packages/neuro-book/dev/lab/**"
+    ],
+    "ownerRule": "C-O按路径前缀唯一归属；跨批次直接依赖只记录handoff，不改派被依赖SFC owner。"
+  },
+  "reproducibilityNotes": [
+    "count与pathSetSha256由当前HEAD执行git ls-files得到；路径集合不复制用户数据或源码。",
+    "同名比较按app/components/common与nb-ui组件SFC basename去重后计算，不能据此宣称API兼容。",
+    "现有旧清单的tier、owner和handoff冲突是参考推断，A须在current master上重新生成并由合同测试锁定。"
+  ]
+}

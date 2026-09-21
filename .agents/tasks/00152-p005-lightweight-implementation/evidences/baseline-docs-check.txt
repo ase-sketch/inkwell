@@ -1,0 +1,8 @@
+$ bun scripts/ci/check-documentation.ts
+{
+  "failures": [
+    "新 Task 必须链接具体 Spec，或明确说明“行为合同未变”：.agents/tasks/00152-p005-lightweight-implementation/README.md"
+  ],
+  "checkedFiles": 5218
+}
+error: script "docs:check" exited with code 1

@@ -1,0 +1,51 @@
+{
+    "schema": "nbook.evidence/v1",
+    "taskId": "00149-monorepo-workspace-consolidation",
+    "phase": "S4-cross-host-boundaries",
+    "checkpoint": "00dacf89",
+    "status": "green-clean-verified",
+    "contracts": {
+        "desktopAggregateDepot": "packages/neuro-book-contracts/src/desktop-aggregate-depot.ts",
+        "desktopUninstall": "packages/neuro-book-contracts/src/desktop-uninstall.ts",
+        "exports": ["./desktop", "./desktop-aggregate-depot", "./desktop-uninstall"]
+    },
+    "formalEntry": {
+        "desktopPortablePackager": "@notnotype/neuro-book-manager/desktop-installation",
+        "managerBuildEntry": "packages/neuro-book-manager/src/desktop-installation-entry.ts"
+    },
+    "retainedManagerDeepImports": {
+        "scripts/deploy/windows-portable-manager.ts": [
+            "src/config",
+            "src/manifest-store",
+            "src/portable-launchers",
+            "src/runtime",
+            "src/tools",
+            "src/version-info"
+        ],
+        "scripts/release/verify-windows-portable-restart.ts": ["src/manifest-store", "src/paths"],
+        "scripts/release/verify-windows-portable.ts": ["src/product"],
+        "scripts/release/verify-windows-product.ts": ["src/product"],
+        "scripts/release/windows-portable-manager.test.ts": ["src/manifest-store"]
+    },
+    "cleanVerification": {
+        "worktree": ".worktree/s4-clean-verify",
+        "revision": "00dacf89",
+        "lockSha256": {
+            "bun.lock": "8ef0f78f611089540cdae3714024b0d9bfc9427b7dfe65ea5e8a57ed35a246f1",
+            "desktop/electron/bun.lock": "2d077a712a2b26465d9d3ae519fc5bf0ccad68a8b7630a955891d48e0ec8dd9a",
+            "packages/llmlint/web/bun.lock": "2ad60c501682d0ae51189a1db5369d4ef5ec0040deca176245b4d2a71e620d8b",
+            "packages/llmlint/skill/bun.lock": "6bda2ed28651c5e8d4aa931215b6eb8493da9a60f852d649a910fba5ff3c1214"
+        },
+        "finalStatus": "clean",
+        "governance": "passed",
+        "scriptsTypecheck": "passed",
+        "contractsTypecheck": "passed",
+        "contractsTests": {"files": 6, "tests": 32, "status": "passed"},
+        "managerTests": {"files": 41, "passed": 330, "skipped": 3, "status": "passed"},
+        "desktopTests": {"files": 13, "tests": 41, "status": "passed"},
+        "managerBuildPack": "passed",
+        "electronTypecheckBuildAudit": "passed",
+        "desktopSecurityAudit": {"checks": 22, "status": "passed"}
+    },
+    "knownBoundary": "S4 stage clean verification is green. Full workspace regression, real provider/model, private corpus, Docker, Windows runner, remote deployment, publication and production Product measurement remain unverified by plan."
+}

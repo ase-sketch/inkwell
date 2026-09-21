@@ -1,0 +1,20 @@
+{
+    "extends": "./playground/.nuxt/tsconfig.json",
+    "compilerOptions": {
+        "target": "ESNext",
+        "module": "ESNext",
+        "moduleResolution": "Bundler",
+        "strict": true,
+        "skipLibCheck": true,
+        "types": ["node", "vitest/globals"]
+    },
+    "include": [
+        "src/**/*.ts",
+        "src/**/*.vue",
+        "themes/**/*.ts",
+        "themes/**/*.vue",
+        "playground/**/*.ts",
+        "playground/**/*.vue",
+        "vitest.config.ts"
+    ]
+}

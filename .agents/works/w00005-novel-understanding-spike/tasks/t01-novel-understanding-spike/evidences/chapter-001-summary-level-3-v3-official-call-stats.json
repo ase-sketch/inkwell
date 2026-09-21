@@ -1,0 +1,68 @@
+{
+  "schema": "nbook.summary-level-3-v3-official-call-stats.spike/v1",
+  "generatedAt": "2026-08-27T15:27:14.106Z",
+  "provider": "deepseek",
+  "model": "deepseek-v4-flash",
+  "baseUrlHost": "api.deepseek.com",
+  "source": {
+    "ref": "OEBPS/chapter_00001.xhtml",
+    "normalization": "chapter-source-normalization/v1",
+    "textChars": 2122,
+    "visibleChars": 2044,
+    "sha256": "22c9b12d0305da4b64ea39751e809ed47cf9254d574caf875fbff91ef82552ee"
+  },
+  "prompt": {
+    "evidenceRef": "evidences/chapter-001-summary-level-3-prompt-v3.md",
+    "fileSha256": "6b6d00f5c99c485e1b00df091e328c2b65b38589781eefa328d06f3fdab23cbb",
+    "systemSha256": "fe1dcd26e7deb05774036e8a95a17b35e2ac01bc03c3c5c8aa1610dc81c7b038",
+    "userTemplateSha256": "9042fc3dd6caf40ddad422b4aa3f834760d78d62bca5a6c26bc32f6030c196b1",
+    "version": "chapter-summary-level-3/v3",
+    "maxTokens": 4000,
+    "thinking": "disabled"
+  },
+  "transport": {
+    "kind": "single-fetch",
+    "redirects": "error",
+    "httpRequestsAttempted": 1,
+    "applicationRetries": 0,
+    "libraryRetries": 0
+  },
+  "response": {
+    "httpStatus": 200,
+    "finishReason": "stop",
+    "observedChoiceCount": 1,
+    "candidateSha256": "3feb6a2f77b0ce71b4b77a63a945db5e9f77f4c286ec8bb93cd00b4078b59d82",
+    "durationMs": 156,
+    "usage": {
+      "inputTokens": 1757,
+      "outputTokens": 127,
+      "totalTokens": 1884
+    },
+    "requiredExactlyOneChoice": true,
+    "requiredNonEmptyString": true,
+    "responseEnvelopePersisted": false,
+    "candidatePersistedInRepository": false
+  },
+  "persistence": {
+    "temporaryCandidateDeleted": true,
+    "briefPersisted": false,
+    "candidatePersistedInRepository": false
+  },
+  "privacyDiagnostic": {
+    "sourceLeak": {
+      "briefVisibleStart": 162,
+      "briefVisibleEnd": 171,
+      "sourceVisibleStart": 1990,
+      "sourceVisibleEnd": 1999,
+      "matchVisibleChars": 9,
+      "matchSha256": "9f8b743ae326b6bfb1ae198cb64bfb8b1d72e27b4e762c5e8604a2d1cc599c0e"
+    }
+  },
+  "call": {
+    "purpose": "chapter-001-summary-level-3-v3-official",
+    "promptVersion": "chapter-summary-level-3/v3",
+    "status": "failed-after-authorized-request",
+    "failureCategory": "brief-source-leak-found"
+  },
+  "brief": null
+}

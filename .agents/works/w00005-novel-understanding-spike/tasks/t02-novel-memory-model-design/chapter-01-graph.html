@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第一章走查 · 小说记忆模型 v4</title>
+<!--
+  这是一篇走查，不是工具。工具是 viewer.html。
+
+  页面上出现的每一个数都由 scripts/build-viewer.ts 调 schema.ts 算好后注进来
+  （下面 id="dataset" 里的 derived 那一块），页面自己不算。
+  v2 那一版把数写死在页面里，于是文档、数据、页面三处各自漂移——不再这么干。
+-->
+<style>
+:root{
+  --paper:#f3f2f7; --card:#ffffff; --sunk:#eceaf3;
+  --line:#dedbe8; --line-soft:#eae8f1;
+  --quick:#1b1830; --dim:#4a4660; --fade:#8b87a3; --faint:#b3b0c4;
+  --gold:#a87515; --rose:#c7304f; --verdi:#1e8a74; --indigo:#5a4bb8; --slate:#6b7186;
+  --f-display:"Noto Serif SC","Songti SC","Source Han Serif SC",serif;
+  --f-body:"Noto Sans SC","PingFang SC","Microsoft YaHei","Hiragino Sans GB",sans-serif;
+  --f-mono:"Chivo Mono",ui-monospace,"Consolas","SFMono-Regular",monospace;
+  --pad:clamp(20px,5vw,64px);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--paper); color:var(--quick);
+  font-family:var(--f-body); font-weight:300; font-size:14.5px; line-height:1.9;
+  -webkit-font-smoothing:antialiased;
+  background-image:
+    radial-gradient(900px 500px at 12% -8%, rgba(168,117,21,.10), transparent 62%),
+    radial-gradient(760px 460px at 92% 4%, rgba(90,75,184,.07), transparent 60%);
+  background-attachment:fixed;
+}
+::selection{background:rgba(168,117,21,.22)}
+a{color:inherit}
+.wrap{max-width:1180px;margin:0 auto;padding:0 var(--pad)}
+
+/* ── 顶栏 ─────────────────────────────────────────────── */
+.topbar{position:sticky;top:0;z-index:60;background:rgba(255,255,255,.88);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.topbar-in{display:flex;align-items:center;gap:22px;height:52px;flex-wrap:wrap}
+.topbar-mark{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.3em;color:var(--fade);text-transform:uppercase;white-space:nowrap}
+.topnav{display:flex;gap:2px;margin-left:auto;flex-wrap:wrap}
+.topnav a{display:flex;align-items:baseline;gap:7px;text-decoration:none;padding:5px 11px;border-radius:2px;color:var(--dim);transition:.18s}
+.topnav a:hover,.topnav a:focus-visible{color:var(--quick);background:var(--sunk)}
+.topnav b{font-family:var(--f-mono);font-size:11px;font-weight:400;color:var(--gold);letter-spacing:.06em}
+.topnav span{font-size:12.5px}
+
+/* ── Hero ─────────────────────────────────────────────── */
+.hero{padding:clamp(56px,10vw,112px) 0 clamp(26px,4vw,44px)}
+.eyebrow{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.34em;text-transform:uppercase;color:var(--fade);margin:0 0 clamp(26px,4vw,42px)}
+.eyebrow em{font-style:normal;color:var(--gold)}
+.thesis{font-family:var(--f-display);font-weight:200;font-size:clamp(32px,6.8vw,80px);line-height:1.36;letter-spacing:.06em;margin:0;color:var(--quick);text-wrap:balance}
+.thesis b{font-weight:900;color:var(--gold);letter-spacing:.02em}
+.thesis i{font-style:normal;color:var(--fade)}
+.deck{max-width:64ch;margin:clamp(28px,4vw,40px) 0 0;color:var(--dim);font-size:15px;line-height:2}
+.deck strong{color:var(--quick);font-weight:400}
+.deck code{font-family:var(--f-mono);font-size:12.5px;color:var(--quick);background:var(--sunk);padding:1px 5px;border-radius:2px}
+.dataline{display:flex;flex-wrap:wrap;gap:0;margin:clamp(30px,4vw,44px) 0 0;border-top:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft)}
+.dataline div{padding:15px 26px 15px 0;margin-right:26px;border-right:1px solid var(--line-soft)}
+.dataline div:last-child{border-right:0;margin-right:0}
+.dataline b{font-family:var(--f-mono);font-weight:400;font-size:21px;color:var(--quick);display:block;line-height:1.3}
+.dataline span{font-size:11px;letter-spacing:.16em;color:var(--fade);font-family:var(--f-mono)}
+
+/* ── 章节 ─────────────────────────────────────────────── */
+.sec{padding:clamp(56px,8vw,96px) 0 0;scroll-margin-top:60px}
+.sec-head{display:flex;align-items:flex-start;gap:20px;margin-bottom:clamp(24px,3.5vw,38px)}
+.sec-letter{font-family:var(--f-mono);font-size:12px;color:var(--gold);border:1px solid rgba(168,117,21,.45);border-radius:2px;width:34px;height:30px;flex:0 0 34px;display:grid;place-items:center;margin-top:5px}
+.sec-title{font-family:var(--f-display);font-weight:700;font-size:clamp(21px,3vw,29px);letter-spacing:.05em;margin:0;line-height:1.5}
+.sec-note{margin:7px 0 0;color:var(--dim);font-size:13.5px;max-width:72ch;line-height:1.85}
+.sec-note code{font-family:var(--f-mono);font-size:12px;color:var(--quick);background:var(--sunk);padding:1px 5px;border-radius:2px}
+.sec-note b{color:var(--quick);font-weight:400}
+.panel{background:var(--card);border:1px solid var(--line-soft);border-radius:3px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:16px;align-items:start}
+
+/* ── Beat 带子 ────────────────────────────────────────── */
+.strip{padding:clamp(18px,3vw,30px) clamp(14px,3vw,26px) 18px}
+.strip svg{width:100%;height:auto;display:block;overflow:visible}
+.bt-block{cursor:pointer;transition:.18s}
+.bt-block:hover rect{filter:brightness(.93)}
+.bt-id{font-family:var(--f-mono);font-size:8.5px;fill:var(--fade)}
+.bt-axis{font-family:var(--f-mono);font-size:9.5px;fill:var(--faint)}
+.strip-foot{display:flex;flex-wrap:wrap;gap:10px 24px;margin-top:14px;padding-top:13px;border-top:1px solid var(--line-soft);font-family:var(--f-mono);font-size:10px;letter-spacing:.12em;color:var(--fade)}
+.strip-foot i{font-style:normal;display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.readout{min-height:52px;margin-top:12px;font-size:13px;color:var(--dim);line-height:1.8}
+.readout b{font-family:var(--f-mono);font-size:11px;color:var(--gold);letter-spacing:.1em;margin-right:8px}
+
+/* ── 表 ───────────────────────────────────────────────── */
+.tbl{width:100%;border-collapse:collapse;font-size:12.8px}
+.tbl th{text-align:left;font-family:var(--f-mono);font-weight:400;font-size:9.5px;letter-spacing:.18em;color:var(--fade);text-transform:uppercase;padding:0 14px 10px 0;border-bottom:1px solid var(--line)}
+.tbl td{padding:10px 14px 10px 0;border-bottom:1px solid var(--line-soft);color:var(--dim);vertical-align:top}
+.tbl tr:last-child td{border-bottom:0}
+.tbl .m{font-family:var(--f-mono);font-size:11.5px;color:var(--quick)}
+.tbl .gold{color:var(--gold)}
+.tbl .rose{color:var(--rose)}
+.tbl-scroll{overflow-x:auto;padding:20px 22px}
+.bar{height:3px;background:var(--line-soft);border-radius:2px;overflow:hidden;width:64px;margin-top:7px}
+.bar i{display:block;height:100%;background:var(--gold)}
+
+/* ── 卡片 ─────────────────────────────────────────────── */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(228px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--line-soft);border-radius:3px;padding:16px 18px}
+.card.hi{border-color:rgba(168,117,21,.5);background:rgba(168,117,21,.05)}
+.card h4{font-family:var(--f-mono);font-size:10px;letter-spacing:.2em;color:var(--fade);text-transform:uppercase;margin:0 0 10px;font-weight:400}
+.card .big{font-family:var(--f-display);font-size:19px;font-weight:700;letter-spacing:.03em;line-height:1.45;margin-bottom:6px}
+.card p{margin:0;font-size:12.5px;color:var(--dim);line-height:1.8}
+.card .chips{margin-top:9px}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.06em;border:1px solid var(--line);border-radius:2px;padding:2px 7px;color:var(--dim);white-space:nowrap}
+.chip.on{border-color:rgba(168,117,21,.5);color:var(--gold);background:rgba(168,117,21,.07)}
+.chip.no{color:var(--faint)}
+.chip.ver{border-color:rgba(30,138,116,.45);color:var(--verdi)}
+.chip.rose{border-color:rgba(199,48,79,.42);color:var(--rose)}
+
+/* ── 记录展开 ─────────────────────────────────────────── */
+.record{padding:22px 24px}
+.record-h{font-family:var(--f-mono);font-size:10px;letter-spacing:.22em;color:var(--fade);text-transform:uppercase;margin-bottom:15px}
+.record-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:1px;background:var(--line-soft)}
+.record-g div{background:var(--card);padding:10px 13px}
+.record-g dt{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.12em;color:var(--fade);margin-bottom:4px}
+.record-g dd{margin:0;font-family:var(--f-mono);font-size:12px;color:var(--quick);word-break:break-all}
+.record-g dd.na{color:var(--faint)}
+
+/* ── 切片 ─────────────────────────────────────────────── */
+.slice{padding:22px 24px 24px}
+.slice-top{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+.slice-k{font-family:var(--f-mono);font-size:23px;color:var(--gold);min-width:96px}
+.slice input[type=range]{flex:1;min-width:220px;accent-color:var(--gold)}
+.slice-num{display:flex;gap:22px;flex-wrap:wrap;font-family:var(--f-mono);font-size:12px;color:var(--dim)}
+.slice-num b{color:var(--quick);font-size:16px;font-weight:400}
+.curve{width:100%;height:110px;display:block;margin-top:6px}
+.namewall{display:grid;grid-template-columns:repeat(auto-fit,minmax(226px,1fr));gap:10px;margin-top:18px}
+.namecell{border:1px solid var(--line-soft);border-radius:3px;padding:10px 13px;background:var(--card)}
+.namecell em{font-style:normal;font-family:var(--f-mono);font-size:9.5px;letter-spacing:.14em;color:var(--faint);display:block;margin-bottom:5px}
+.namecell strong{font-family:var(--f-display);font-size:15.5px;font-weight:700;color:var(--quick);display:block;line-height:1.5}
+.namecell small{font-size:11px;color:var(--fade);font-family:var(--f-mono)}
+.namecell.changed{border-color:rgba(168,117,21,.5)}
+
+/* ── 走查 ─────────────────────────────────────────────── */
+.trace{padding:24px 26px 26px}
+.trace-q{font-family:var(--f-display);font-weight:700;font-size:18px;letter-spacing:.04em;margin:0 0 18px;line-height:1.6}
+.trace-q::before{content:"？";color:var(--gold);margin-right:10px;font-weight:200}
+.step{display:flex;gap:16px;padding:9px 0;border-top:1px solid var(--line-soft);font-size:12.8px}
+.step em{font-family:var(--f-mono);font-style:normal;font-size:10px;letter-spacing:.12em;color:var(--fade);flex:0 0 86px;padding-top:4px}
+.step div{color:var(--dim);min-width:0;word-break:break-word}
+.verdict{margin-top:18px;padding:16px 19px;border-left:2px solid var(--verdi);background:rgba(30,138,116,.07);font-size:13.5px;line-height:1.95;color:var(--quick)}
+.verdict b{color:var(--verdi);font-weight:400;font-family:var(--f-mono);font-size:10px;letter-spacing:.2em;display:block;margin-bottom:7px;text-transform:uppercase}
+.fail{border-left-color:var(--rose);background:rgba(199,48,79,.07)}
+.fail b{color:var(--rose)}
+
+/* ── 缺口 ─────────────────────────────────────────────── */
+.gaps{counter-reset:g;padding:20px 24px 22px}
+.gap{display:flex;gap:15px;padding:11px 0;border-top:1px solid var(--line-soft);font-size:13px;color:var(--dim);line-height:1.85}
+.gap:first-child{border-top:0}
+.gap::before{counter-increment:g;content:counter(g,decimal-leading-zero);font-family:var(--f-mono);font-size:10px;color:var(--faint);flex:0 0 26px;padding-top:5px}
+
+.foot{margin-top:clamp(70px,10vw,120px);border-top:1px solid var(--line-soft);padding:32px 0 60px;color:var(--fade);font-size:12px;line-height:2}
+.foot p{margin:0 0 8px;max-width:80ch}
+.foot code{font-family:var(--f-mono);font-size:11px;color:var(--dim)}
+:focus-visible{outline:2px solid var(--gold);outline-offset:3px;border-radius:2px}
+@media (max-width:900px){ .strip{overflow-x:auto} }
+@media (prefers-reduced-motion:reduce){ html{scroll-behavior:auto} *{transition-duration:.01ms!important} }
+@media (max-width:700px){
+  .topbar-in{height:auto;min-height:52px;padding:8px 0 10px;align-items:flex-start;gap:8px 16px}
+  .topbar-mark{flex:1 0 100%;letter-spacing:.2em}
+  .topnav{width:100%;margin-left:0;gap:2px 0}
+  .topnav a{padding:4px 7px}
+  .two{grid-template-columns:minmax(0,1fr)}
+  .strip{padding-inline:12px}
+  .deck code,.sec-note code,.foot code{overflow-wrap:anywhere}
+}
+@media (max-width:360px){
+  :root{--pad:16px}
+  .topnav a{padding-inline:5px}
+  .topnav{gap:0}
+  .sec-head{gap:12px}
+  .sec-letter{width:30px;flex-basis:30px}
+  .sec-title{font-size:20px}
+  .trace,.record,.slice,.gaps{padding-inline:16px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap topbar-in">
+    <span class="topbar-mark">第一章 · v4 走查</span>
+    <nav class="topnav" aria-label="章节结构导航">
+      <a href="#sec-b"><b>B</b><span>拆分</span></a>
+      <a href="#sec-m"><b>M</b><span>时刻</span></a>
+      <a href="#sec-s"><b>S</b><span>槽</span></a>
+      <a href="#sec-d"><b>D</b><span>披露</span></a>
+      <a href="#sec-r"><b>R</b><span>关系</span></a>
+      <a href="#sec-t"><b>T</b><span>切片</span></a>
+      <a href="#sec-w"><b>W</b><span>缺口</span></a>
+      <a href="#sec-run"><b>→</b><span>走查</span></a>
+    </nav>
+  </div>
+</div>
+
+<header class="hero wrap">
+  <p class="eyebrow">小说记忆模型 v4 <em>/</em> 第一章手工装填 <em>/</em> 未经实现验证</p>
+  <h1 class="thesis">一句话不是<i>事实</i>，<br>是<b>谁在第几段说的</b>。</h1>
+  <p class="deck">
+    v2 存的是「事实」：一条断言，加一个确定性档位。v4 不存事实——它存
+    <strong>披露</strong>：某个来源，在第某段，往某个槽里放了一个值。
+    「现在为真的是什么」不再是库里的一行，而是读到第 k 段时<strong>算出来的答案</strong>。
+    这一页把整章手工装完，看这套换法换来了什么、又露出了什么。
+  </p>
+  <p class="deck" style="margin-top:18px">
+    一章分两份存：<code>evidences/chapter-01-beats.json</code> 记正文怎么切，
+    <code>chapter-01.json</code> 记记住了什么。两份都是真源，靠段号和主体 id 对接。
+    下面每一个数都是 <code>scripts/build-viewer.ts</code> 调 <code>schema.ts</code> 算好注进来的，
+    这一页自己不算——省得文档、数据、页面三处各自漂移。
+  </p>
+  <div class="dataline" id="dataline"></div>
+</header>
+
+<!-- ═══ B 拆分 ═══════════════════════════════════════════ -->
+<section class="sec wrap" id="sec-b">
+  <div class="sec-head">
+    <span class="sec-letter">B</span>
+    <div>
+      <h2 class="sec-title">拆分层：正文怎么切，和记住了什么，是两件事</h2>
+      <p class="sec-note">
+        Beat 是正文的连续切分：<b>不留缝、不重叠、铺满全章</b>。每个 Beat 有类型和来源，
+        叙事与描写的 Beat 还停在某个时刻上，故事外与说明的不停。
+        下面每一格是一个 Beat，宽度是它占的段数，<b>高度是它产出的披露条数</b>——
+        高度为零的那几格最要紧：它们证明 Beat 层不能省。
+      </p>
+    </div>
+  </div>
+  <div class="panel strip">
+    <svg id="strip" viewBox="0 0 1080 190" role="img" aria-label="第一章 Beat 拆分与披露产出"></svg>
+    <div class="strip-foot" id="stripLegend"></div>
+    <div class="readout" id="stripRead">把鼠标移到某一格上。</div>
+  </div>
+  <div class="panel tbl-scroll" style="margin-top:16px">
+    <table class="tbl">
+      <thead><tr><th>零产出的 Beat</th><th>类型</th><th>段</th><th>时刻</th><th>写的是什么</th></tr></thead>
+      <tbody id="zeroBody"></tbody>
+    </table>
+  </div>
+  <p class="sec-note" style="margin-top:14px" id="zeroNote"></p>
+</section>
+
+<!-- ═══ M 时刻 ═══════════════════════════════════════════ -->
+<section class="sec wrap" id="sec-m">
+  <div class="sec-head">
+    <span class="sec-letter">M</span>
+    <div>
+      <h2 class="sec-title">时刻层：时刻不带钟点，先后是算出来的</h2>
+      <p class="sec-note">
+        时刻只是「故事时间轴上的一个位置」，本身不带任何数值，名字里也不许写相对时间词。
+        「五分钟前」不是名字，是一条<b>关系</b>：主语 + 谓词 + 锚点 + 偏移 + 说这话的段号 + 来源。
+        锚点留空表示锚在<b>叙述当下</b>——具体是哪一刻，由那条关系自己的段号定位。
+      </p>
+    </div>
+  </div>
+  <div class="cards" id="momentCards"></div>
+
+  <div class="two" style="margin-top:16px">
+    <div class="panel tbl-scroll">
+      <table class="tbl">
+        <thead><tr><th>关系</th><th>锚点</th><th>偏移</th><th>说于</th><th>来源</th></tr></thead>
+        <tbody id="mrelBody"></tbody>
+      </table>
+    </div>
+    <div class="panel tbl-scroll">
+      <table class="tbl">
+        <thead><tr><th>推出来的下界</th><th>至少</th></tr></thead>
+        <tbody id="boundBody"></tbody>
+      </table>
+      <p class="sec-note" style="margin-top:12px;font-size:12.5px" id="boundNote"></p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ S 槽 ═════════════════════════════════════════════ -->
+<section class="sec wrap" id="sec-s">
+  <div class="sec-head">
+    <span class="sec-letter">S</span>
+    <div>
+      <h2 class="sec-title">槽层：是节点的是槽，不是命题</h2>
+      <p class="sec-note">
+        三个词分清楚，后面才不会乱：<b>槽</b>是主体加谓词，是个节点，id 一旦建好永不改；
+        <b>命题</b>是槽加一个值，它没有 id，也不进库；<b>披露</b>是命题加来源加叙述位置，
+        是另一种节点，只增不改。往一个槽里放第二个值，不是「改」，是<b>再加一条披露</b>。
+      </p>
+    </div>
+  </div>
+  <div class="cards">
+    <div class="card"><h4>槽 · 节点</h4><div class="big">苏天晴 · 居于哪具身体</div>
+      <p>id 是 <code>S_su_inhabits</code>。它永远存在，哪怕一条披露都没有——那时它是空的，
+        「空」和「不知道」是两回事。</p></div>
+    <div class="card"><h4>命题 · 不是节点</h4><div class="big">（这个槽）= 这具狐女身体</div>
+      <p>没有 id，不进库。它只是「某条披露说了什么」的那一半。</p></div>
+    <div class="card hi"><h4>披露 · 节点</h4><div class="big">第 16 段 · 叙述者 · 直陈</div>
+      <p>命题 + 来源 + 叙述位置（+ 时间指示）。只增不改：第 16 段确实写了这句，
+        这件事永远为真，后文再怎么翻案也改不了它。</p></div>
+  </div>
+
+  <div class="panel tbl-scroll" style="margin-top:16px">
+    <table class="tbl">
+      <thead><tr><th>披露最密的槽</th><th>条数</th><th>基数</th><th>读完之后为真的</th></tr></thead>
+      <tbody id="loadBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══ D 披露 ═══════════════════════════════════════════ -->
+<section class="sec wrap" id="sec-d">
+  <div class="sec-head">
+    <span class="sec-letter">D</span>
+    <div>
+      <h2 class="sec-title">披露层：来源和位置是字段，不是备注</h2>
+      <p class="sec-note">
+        每条披露都必须回答三个问题：<b>谁说的</b>（通道 + 说话人）、<b>说得多硬</b>（直陈 / 带保留 / 文本明确悬置）、
+        <b>在第几段说的</b>。第三个是这一版的关键——有了它，「读到第 k 段的读者知道什么」才算得出来。
+        读者推断是第六种通道，它额外要写明<b>推断自哪些槽</b>，而且不能拿另一条推断当前提。
+      </p>
+    </div>
+  </div>
+  <div class="two">
+    <div class="panel tbl-scroll">
+      <table class="tbl">
+        <thead><tr><th>来源通道</th><th>条数</th><th>要不要写说话人</th></tr></thead>
+        <tbody id="chanBody"></tbody>
+      </table>
+    </div>
+    <div class="panel tbl-scroll">
+      <table class="tbl">
+        <thead><tr><th>说得多硬</th><th>条数</th><th>进不进「为真」那一堆</th></tr></thead>
+        <tbody id="hedgeBody"></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="panel record" style="margin-top:16px">
+    <div class="record-h">一条披露的全部字段 · <span id="recId"></span></div>
+    <div class="record-g" id="recGrid"></div>
+  </div>
+  <p class="sec-note" style="margin-top:14px" id="inferNote"></p>
+</section>
+
+<!-- ═══ R 关系 ═══════════════════════════════════════════ -->
+<section class="sec wrap" id="sec-r">
+  <div class="sec-head">
+    <span class="sec-letter">R</span>
+    <div>
+      <h2 class="sec-title">关系层：同一个槽里两条披露，是什么关系</h2>
+      <p class="sec-note">
+        判据只看三样：两条披露的<b>时刻</b>是不是同一个、<b>值</b>是不是相同、<b>来源通道</b>是不是相同。
+        设计文档第 5.6 节列了五行。装数据时补了第六行「并列累加」——
+        那张表默认两个值互斥，而互不互斥由<b>基数</b>说了算：多值谓词上两个不同的值根本不构成一对关系。
+        不看基数就照表判，这一章会凭空判出三处「竞争」。
+      </p>
+    </div>
+  </div>
+  <div class="panel tbl-scroll">
+    <table class="tbl">
+      <thead><tr><th>关系</th><th>时刻</th><th>值</th><th>通道</th><th>命中的披露对</th><th>实例</th></tr></thead>
+      <tbody id="relBody"></tbody>
+    </table>
+  </div>
+  <p class="sec-note" style="margin-top:14px" id="relNote"></p>
+</section>
+
+<!-- ═══ T 切片 ═══════════════════════════════════════════ -->
+<section class="sec wrap" id="sec-t">
+  <div class="sec-head">
+    <span class="sec-letter">T</span>
+    <div>
+      <h2 class="sec-title">切片：读到第几段，库里就只有几条</h2>
+      <p class="sec-note">
+        每条披露都带着自己的段号，所以「读到第 k 段的读者知道什么」只是一次过滤。
+        名字也跟着变：这一章里，古书先叫「黑色古书」，第 30 段才拿到专名。
+        检索时若不做这一刀，第一段就会把全书的专名漏给读者。
+      </p>
+    </div>
+  </div>
+  <div class="panel slice">
+    <div class="slice-top">
+      <span class="slice-k" id="sliceK">第 1 段</span>
+      <input type="range" id="sliceRange" min="1" max="77" value="1" step="1" aria-label="叙述位置">
+      <span class="slice-num" id="sliceNum"></span>
+    </div>
+    <svg class="curve" id="curve" viewBox="0 0 1080 110" preserveAspectRatio="none" role="img" aria-label="三条计数随叙述位置的增长"></svg>
+    <div class="namewall" id="namewall"></div>
+  </div>
+</section>
+
+<!-- ═══ W 缺口 ═══════════════════════════════════════════ -->
+<section class="sec wrap" id="sec-w">
+  <div class="sec-head">
+    <span class="sec-letter">W</span>
+    <div>
+      <h2 class="sec-title">缺口：装完这一章才看出来的事</h2>
+      <p class="sec-note">
+        装数据的价值不在于装完，在于装不下去的地方。下面是这一章逼出来的问题，
+        原样记在两份 JSON 的 <code>findings</code> 里。
+      </p>
+    </div>
+  </div>
+  <div class="panel" id="w11Box" style="margin-bottom:16px"></div>
+  <div class="panel gaps" id="findings"></div>
+</section>
+
+<!-- ═══ → 走查 ═══════════════════════════════════════════ -->
+<section class="sec wrap" id="sec-run">
+  <div class="sec-head">
+    <span class="sec-letter">→</span>
+    <div>
+      <h2 class="sec-title">走查：两次查询，一次对，一次错</h2>
+      <p class="sec-note">
+        下面两段步骤由 <code>schema.ts</code> 的 <code>evaluateSlot()</code> 实际跑出来，不是手写的。
+        第二段故意留着错答案——遮住它没有任何好处。
+      </p>
+    </div>
+  </div>
+  <div class="two">
+    <div class="panel trace" id="traceOk"></div>
+    <div class="panel trace" id="traceBad"></div>
+  </div>
+</section>
+
+<footer class="foot wrap">
+  <p><b>怎么重建这一页</b>：<code>node --experimental-strip-types scripts/build-viewer.ts</code>。
+     它校验两份 JSON，然后把数据注进 <code>viewer.html</code>，把数据加算好的 derived 注进本页。
+     校验不过就不写文件。</p>
+  <p><b>两个页面分工</b>：本页是走查，只摆不算；<code>viewer.html</code> 是工具，自带一套独立实现的求值与校验，
+     和 <code>schema.ts</code> 相互印证。</p>
+  <p><b>不在范围内</b>：真实检索、真实 Provider 调用、浏览器人工验收、跨章。这一章是手工装填的孤例，
+     它证明模型装得下什么，不证明实现跑得通。</p>
+  <p id="footStamp"></p>
+</footer>
+
+<script type="application/json" id="dataset">
+{"memory":{"schema":"nbook.novel-memory/v4-spike","provenance":{"method":"人工通读手工装填，不是抽取管线输出","model":"memory-model-v4.md 第 5、6 节","sourceText":"../t01-novel-understanding-spike/evidences/chapter-001-source-normalized.txt","sourceNormalization":"chapter-source-normalization/v1，文件第 N 行即第 N 段","companion":"evidences/chapter-01-beats.json 是同一章的另一半（正文怎么切）。时刻的真源在那个文件里，本文件的 timeRef 按 id 引用它；主体 id 两边必须一致，scripts/build-viewer.ts 会核对","note":"本文件不构成任何召回率或准确率证据。v2 版本（nbook.novel-memory/v2-spike，8 个 Episode、26 条 Fact）已按 v4 第 11 节 W6 的倾向重建，不是迁移——v2 的 Episode 与 v4 的 Beat 不是同一个尺度，逐条搬运没有意义"},"chapter":1,"chapterTitle":"反派魔法少女","paragraphCount":77,"kinds":[{"id":"K_fox_girl","name":"狐女","note":"第 11 段「一只娇小的金毛狐女」","category":"body"},{"id":"K_codex","name":"典籍","note":"第 8 段「这本飘浮在半空中的黑色古书」","category":"item"},{"id":"K_sapient","name":"智慧体","note":"文本从没说过它有自我意识。这个类只能由读者推断挂上去，且按第 5.2 节不能反过来当推理前提","category":"character"},{"id":"K_candidate","name":"适格者","note":"第 30、31 段古书自称在找的那种人","category":"character"},{"id":"K_star_envoy","name":"星界使者","note":"第 45 段古书的自我定位","category":"character"},{"id":"K_magical_girl","name":"魔法少女","note":"第 67 段","category":"character"},{"id":"K_villain_mg","name":"反派魔法少女","note":"第 1 段章标题就出现了，正文第 64 段才由古书说出","category":"character"},{"id":"K_oudou","name":"王道系","note":"第 69 段古书说这一款魔法少女是王道系的","category":"concept"},{"id":"K_creator","name":"造物主","note":"第 67 段，只有古书提过一次","category":"character"}],"entities":[{"id":"su_tianqing","label":"苏天晴","note":"库内标签不是读者知道的名字。读者知道的名字由 (su_tianqing, 专名) 这个槽在某个叙述位置上求值得到"},{"id":"codex","label":"黑色古书","intro":[{"at":12,"text":"一本浮在半空的黑色古书，能以低沉的声音说话。来历不明。"},{"at":32,"text":"墨丘利秘典。自称从星空彼岸而来，为寻找它最优秀的适格者。"}],"note":"第 5.1 节那两条介绍的出处。只存一份全局介绍，读到第 12 段的检索就会泄漏第 30 段才揭晓的专名"},{"id":"body_fox","label":"这具狐女身体","intro":[{"at":8,"text":"镜子里那道陌生的娇小身影。是谁不清楚。"},{"at":12,"text":"一只娇小的金毛狐女：金色长发、毛茸茸的兽耳、白皙的肌肤、背后一只炸毛的大尾巴。"}],"note":"身体是主体。苏天晴与这具身体是两个节点，「她居于其中」是一条读者推断，不是默认前提"},{"id":"body_prev","label":"原来的身体","note":"第 73 段她想回去的那具。本章只有这一处提及"},{"id":"tainai","label":"太奶","note":"第 16 段，猝死前听见她说话。文本没说她是活人还是幻觉"},{"id":"contract","label":"那份契约"},{"id":"star_beyond","label":"星空彼岸","note":"只由古书说出，叙述者一次也没提"},{"id":"room","label":"昏暗的房间"},{"id":"noodle_stall","label":"街边面摊"},{"id":"task_set","label":"那一整套任务"}],"predicates":[{"id":"P_proper_name","name":"专名","cardinality":"single","volatility":"low","note":"正式名字。与「称呼」分开，因为查看器要用它当揭晓前后的显示名"},{"id":"P_appellation","name":"称呼","cardinality":"multi","volatility":"low","note":"文本用来指称它的说法，可以有很多个"},{"id":"P_kind","name":"类","cardinality":"multi","volatility":"low","note":"值指向一个类。文本说出来的类别才走这里；库内粗分类由 Kind.category 提供"},{"id":"P_voice","name":"声音","cardinality":"single","volatility":"low"},{"id":"P_hair","name":"发色","cardinality":"single","volatility":"low"},{"id":"P_ear","name":"耳型","cardinality":"single","volatility":"low","note":"第 5.3 节的例子。耳朵当前是耷拉还是竖起不建槽，那个每一拍都在变"},{"id":"P_ear_count","name":"耳朵数量","cardinality":"single","volatility":"low"},{"id":"P_skin","name":"肤色","cardinality":"single","volatility":"low"},{"id":"P_features","name":"五官","cardinality":"single","volatility":"low"},{"id":"P_tail","name":"尾巴","cardinality":"multi","volatility":"low","note":"基数被迫写成 multi，理由不正当——它只有一条尾巴。写 multi 是为了让第 12 段的外观和第 18 段的触感并存，而不是被判成竞争。见 findings 第 3 条"},{"id":"P_build","name":"体型","cardinality":"single","volatility":"low"},{"id":"P_foot","name":"脚","cardinality":"single","volatility":"low"},{"id":"P_wearing","name":"穿着","cardinality":"single","volatility":"medium","note":"在小说里穿着换得比发色勤。本章只有一条披露，建槽属于边界判断"},{"id":"P_prev_owner","name":"原来的主人","cardinality":"single","volatility":"low"},{"id":"P_inhabits","name":"居于哪具身体","cardinality":"single","volatility":"low"},{"id":"P_cause_of_death","name":"死因","cardinality":"single","volatility":"low"},{"id":"P_prev_work","name":"前世的工作状况","cardinality":"single","volatility":"medium"},{"id":"P_kin","name":"亲属","cardinality":"multi","volatility":"low"},{"id":"P_locomotion","name":"行动方式","cardinality":"single","volatility":"low"},{"id":"P_origin","name":"来处","cardinality":"single","volatility":"low"},{"id":"P_purpose","name":"目的","cardinality":"single","volatility":"low"},{"id":"P_role_to_su","name":"对苏天晴的身份","cardinality":"single","volatility":"low","note":"宾语烧进谓词名里，与第 5.4 节的「(爱丽丝, 对罗兰的态度)」同一种写法"},{"id":"P_attitude_feet","name":"对小脚的态度","cardinality":"single","volatility":"low"},{"id":"P_wish_claim","name":"主张的通用愿望","cardinality":"multi","volatility":"low"},{"id":"P_party","name":"契约相对方","cardinality":"multi","volatility":"low"},{"id":"P_content","name":"契约内容","cardinality":"single","volatility":"low"},{"id":"P_state","name":"契约状态","cardinality":"single","volatility":"medium","note":"整章唯一一个在同一个时刻内部改了值的槽。见 findings 第 2 条"},{"id":"P_task_giver","name":"任务的定制者","cardinality":"single","volatility":"low"},{"id":"P_task_purpose","name":"任务的用途","cardinality":"single","volatility":"low"},{"id":"P_death_rate","name":"死亡率","cardinality":"single","volatility":"low"},{"id":"P_genre_shape","name":"故事里的走向","cardinality":"single","volatility":"low"},{"id":"P_prospect","name":"在王道故事里的处境","cardinality":"single","volatility":"low"}],"slots":[{"id":"S_su_name","subject":{"type":"entity","id":"su_tianqing"},"predicate":"P_proper_name"},{"id":"S_su_voice","subject":{"type":"entity","id":"su_tianqing"},"predicate":"P_voice"},{"id":"S_su_kind","subject":{"type":"entity","id":"su_tianqing"},"predicate":"P_kind"},{"id":"S_su_inhabits","subject":{"type":"entity","id":"su_tianqing"},"predicate":"P_inhabits","note":"第 7 节那条推断落在这个槽上"},{"id":"S_su_cod","subject":{"type":"entity","id":"su_tianqing"},"predicate":"P_cause_of_death"},{"id":"S_su_prev_work","subject":{"type":"entity","id":"su_tianqing"},"predicate":"P_prev_work"},{"id":"S_su_kin","subject":{"type":"entity","id":"su_tianqing"},"predicate":"P_kin"},{"id":"S_su_feet","subject":{"type":"entity","id":"su_tianqing"},"predicate":"P_attitude_feet"},{"id":"S_su_wish","subject":{"type":"entity","id":"su_tianqing"},"predicate":"P_wish_claim"},{"id":"S_codex_name","subject":{"type":"entity","id":"codex"},"predicate":"P_proper_name"},{"id":"S_codex_appel","subject":{"type":"entity","id":"codex"},"predicate":"P_appellation"},{"id":"S_codex_kind","subject":{"type":"entity","id":"codex"},"predicate":"P_kind"},{"id":"S_codex_voice","subject":{"type":"entity","id":"codex"},"predicate":"P_voice"},{"id":"S_codex_locomotion","subject":{"type":"entity","id":"codex"},"predicate":"P_locomotion"},{"id":"S_codex_origin","subject":{"type":"entity","id":"codex"},"predicate":"P_origin"},{"id":"S_codex_purpose","subject":{"type":"entity","id":"codex"},"predicate":"P_purpose","note":"全章唯一一处「认识论并存」"},{"id":"S_codex_role","subject":{"type":"entity","id":"codex"},"predicate":"P_role_to_su"},{"id":"S_body_appel","subject":{"type":"entity","id":"body_fox"},"predicate":"P_appellation"},{"id":"S_body_kind","subject":{"type":"entity","id":"body_fox"},"predicate":"P_kind"},{"id":"S_body_hair","subject":{"type":"entity","id":"body_fox"},"predicate":"P_hair"},{"id":"S_body_ear","subject":{"type":"entity","id":"body_fox"},"predicate":"P_ear"},{"id":"S_body_earcount","subject":{"type":"entity","id":"body_fox"},"predicate":"P_ear_count"},{"id":"S_body_skin","subject":{"type":"entity","id":"body_fox"},"predicate":"P_skin"},{"id":"S_body_features","subject":{"type":"entity","id":"body_fox"},"predicate":"P_features"},{"id":"S_body_tail","subject":{"type":"entity","id":"body_fox"},"predicate":"P_tail"},{"id":"S_body_build","subject":{"type":"entity","id":"body_fox"},"predicate":"P_build"},{"id":"S_body_foot","subject":{"type":"entity","id":"body_fox"},"predicate":"P_foot"},{"id":"S_body_wearing","subject":{"type":"entity","id":"body_fox"},"predicate":"P_wearing"},{"id":"S_body_prev_owner","subject":{"type":"entity","id":"body_fox"},"predicate":"P_prev_owner"},{"id":"S_bprev_appel","subject":{"type":"entity","id":"body_prev"},"predicate":"P_appellation"},{"id":"S_tainai_appel","subject":{"type":"entity","id":"tainai"},"predicate":"P_appellation"},{"id":"S_creator_appel","subject":{"type":"kind","id":"K_creator"},"predicate":"P_appellation"},{"id":"S_creator_kind","subject":{"type":"kind","id":"K_creator"},"predicate":"P_kind"},{"id":"S_contract_appel","subject":{"type":"entity","id":"contract"},"predicate":"P_appellation"},{"id":"S_contract_party","subject":{"type":"entity","id":"contract"},"predicate":"P_party"},{"id":"S_contract_content","subject":{"type":"entity","id":"contract"},"predicate":"P_content"},{"id":"S_contract_state","subject":{"type":"entity","id":"contract"},"predicate":"P_state"},{"id":"S_mg_appel","subject":{"type":"kind","id":"K_magical_girl"},"predicate":"P_appellation"},{"id":"S_mg_kind","subject":{"type":"kind","id":"K_magical_girl"},"predicate":"P_kind"},{"id":"S_mg_death_rate","subject":{"type":"kind","id":"K_magical_girl"},"predicate":"P_death_rate"},{"id":"S_vmg_appel","subject":{"type":"kind","id":"K_villain_mg"},"predicate":"P_appellation"},{"id":"S_vmg_prospect","subject":{"type":"kind","id":"K_villain_mg"},"predicate":"P_prospect"},{"id":"S_oudou_appel","subject":{"type":"kind","id":"K_oudou"},"predicate":"P_appellation"},{"id":"S_oudou_shape","subject":{"type":"kind","id":"K_oudou"},"predicate":"P_genre_shape"},{"id":"S_star_appel","subject":{"type":"entity","id":"star_beyond"},"predicate":"P_appellation"},{"id":"S_room_appel","subject":{"type":"entity","id":"room"},"predicate":"P_appellation"},{"id":"S_stall_appel","subject":{"type":"entity","id":"noodle_stall"},"predicate":"P_appellation"},{"id":"S_task_appel","subject":{"type":"entity","id":"task_set"},"predicate":"P_appellation"},{"id":"S_task_giver","subject":{"type":"entity","id":"task_set"},"predicate":"P_task_giver"},{"id":"S_task_purpose","subject":{"type":"entity","id":"task_set"},"predicate":"P_task_purpose"}],"disclosures":[{"id":"D01","slot":"S_vmg_appel","value":{"t":"literal","v":"反派魔法少女"},"source":{"channel":"author","holder":null,"hedge":"plain"},"at":1,"timeRef":null,"note":"章标题。故事外的 Beat 照样产生披露——读者在第 1 段就读到了这个词，比第 64 段古书说出契约内容早 63 段。第 8 节第五条的实物"},{"id":"D02","slot":"S_su_name","value":{"t":"literal","v":"苏天晴"},"source":{"channel":"speech","holder":"su_tianqing","hedge":"plain"},"at":6,"timeRef":"M_a","note":"她自己报的名"},{"id":"D03","slot":"S_su_voice","value":{"t":"literal","v":"清脆悦耳的女声"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":7,"timeRef":"M_a"},{"id":"D04","slot":"S_codex_voice","value":{"t":"literal","v":"低沉的、仿佛来自遥远彼方的言语"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":7,"timeRef":"M_a"},{"id":"D05","slot":"S_room_appel","value":{"t":"literal","v":"昏暗的房间"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":7,"timeRef":"M_a"},{"id":"D06","slot":"S_su_name","value":{"t":"literal","v":"苏天晴"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":8,"timeRef":"M_a","note":"印证 D02：同槽同值，来源通道不同（角色说出口 / 叙述者）。「她自称苏天晴」到「叙述者也这么叫她」是两件事"},{"id":"D07","slot":"S_codex_appel","value":{"t":"literal","v":"黑色古书"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":8,"timeRef":"M_a"},{"id":"D08","slot":"S_codex_kind","value":{"t":"kind","id":"K_codex"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":8,"timeRef":"M_a"},{"id":"D09","slot":"S_codex_locomotion","value":{"t":"literal","v":"飘浮在半空中"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":8,"timeRef":"M_a"},{"id":"D10","slot":"S_body_appel","value":{"t":"literal","v":"一道陌生的娇小身影"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":8,"timeRef":"M_a","note":"「陌生」是这条披露里最有用的一个字：它是第 7 节那条推断的第一处支持"},{"id":"D11","slot":"S_body_build","value":{"t":"literal","v":"娇小"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":8,"timeRef":"M_a"},{"id":"D12","slot":"S_body_hair","value":{"t":"literal","v":"灿烂的金色长发，垂落在肩膀后背"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":9,"timeRef":"M_a"},{"id":"D13","slot":"S_body_ear","value":{"t":"literal","v":"毛茸茸的耳朵，长在头顶"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":9,"timeRef":"M_a","note":"同一段里的「耷拉」不进这个槽——耳朵姿态每一拍都在变，按第 5.3 节不建槽"},{"id":"D14","slot":"S_body_features","value":{"t":"literal","v":"精致的五官与眼眸"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":9,"timeRef":"M_a"},{"id":"D15","slot":"S_body_skin","value":{"t":"literal","v":"白皙"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":10,"timeRef":"M_a"},{"id":"D16","slot":"S_body_kind","value":{"t":"kind","id":"K_fox_girl"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":11,"timeRef":"M_a"},{"id":"D16b","slot":"S_body_appel","value":{"t":"literal","v":"一只娇小的金毛狐女"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":11,"timeRef":"M_a","note":"与 D16 同一句原文，却是两条披露：一条给称呼，一条给类。读者在这一段之前只有第 8 段那个「一道陌生的娇小身影」，节点在这里当场改名"},{"id":"D17","slot":"S_body_tail","value":{"t":"literal","v":"背后一只正在炸毛的大尾巴"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":12,"timeRef":"M_a"},{"id":"D18","slot":"S_su_prev_work","value":{"t":"literal","v":"连续三个夜班后刚下班"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":16,"timeRef":"M_nightshifts","note":"整份数据里最要紧的一条：它所在的 Beat（B05）停在 M_b（面摊那一刻），而它说的那件事发生在 M_nightshifts。Beat.时刻 与 披露.时间指示 在同一个 Beat 上取了不同的值——第 5.7.3 节「两个挂钩，一种节点」的实物"},{"id":"D19","slot":"S_stall_appel","value":{"t":"literal","v":"街边面摊"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":16,"timeRef":"M_b"},{"id":"D20","slot":"S_tainai_appel","value":{"t":"literal","v":"太奶"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":16,"timeRef":"M_b"},{"id":"D21","slot":"S_su_kin","value":{"t":"ref","id":"tainai"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":16,"timeRef":null,"note":"时间指示为空：亲属关系不系于某一刻。文本没说太奶当时是活人还是回光返照，模型也不替它决定"},{"id":"D22","slot":"S_su_inhabits","value":{"t":"ref","id":"body_fox"},"source":{"channel":"reader_inference","holder":null,"hedge":"plain"},"at":16,"timeRef":"M_a","inferredFrom":["S_body_appel","S_body_kind","S_body_tail","S_su_prev_work"],"note":"第 7 节那条推断。四处支持横跨三个 Beat（B02、B03、B05），没有一处是直说的：读到第 15 段它还立不住，第 16 段才成立。第 41 段的 S_body_prev_owner 是第五处支持，做梦阶段重跑时会把它一起收进来——推断自指向槽而不是指向披露，就是为了让这种重跑成立"},{"id":"D23","slot":"S_body_earcount","value":{"t":"number","v":2,"unit":"只"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":18,"timeRef":"M_a"},{"id":"D24","slot":"S_body_tail","value":{"t":"literal","v":"触感无比柔顺，被薅时的摩挲拉拽感从尾巴尖直冲天灵盖"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":18,"timeRef":"M_a","note":"与 D17 同槽、同时刻、同来源通道，值却不同。按第 5.6 节那张表这是「竞争」，可它们根本不打架——一条讲外观一条讲触感。见 findings 第 3 条"},{"id":"D25","slot":"S_su_kind","value":{"t":"kind","id":"K_fox_girl"},"source":{"channel":"thought","holder":"su_tianqing","hedge":"plain"},"at":26,"timeRef":"M_a","note":"「重生成了一只金毛狐女」。她自己认定的，不是叙述者说的"},{"id":"D26","slot":"S_codex_purpose","value":{"t":"literal","v":"在找某个特定的人"},"source":{"channel":"narrator","holder":null,"hedge":"hedged"},"at":29,"timeRef":"M_a","note":"「像是在思考……到底是不是自己要找的人」。叙述者带保留。与 D28 构成全章唯一一处「认识论并存」：同一个槽、同一个时刻、值不同、来源通道不同，两条并存，不是冲突"},{"id":"D27","slot":"S_codex_name","value":{"t":"literal","v":"墨丘利秘典"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":30,"timeRef":"M_a","note":"专名揭晓。在这一段之前，读者对它的唯一称呼是第 8 段的「黑色古书」"},{"id":"D28","slot":"S_codex_purpose","value":{"t":"literal","v":"寻找它最优秀的适格者"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":30,"timeRef":"M_a"},{"id":"D29","slot":"S_codex_origin","value":{"t":"ref","id":"star_beyond"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":30,"timeRef":"M_a"},{"id":"D30","slot":"S_star_appel","value":{"t":"literal","v":"星空彼岸"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":30,"timeRef":null,"note":"全章唯一的地点披露里，这一个从头到尾只有古书说过，叙述者一次都没提"},{"id":"D31","slot":"S_codex_kind","value":{"t":"kind","id":"K_sapient"},"source":{"channel":"reader_inference","holder":null,"hedge":"plain"},"at":30,"timeRef":"M_a","inferredFrom":["S_codex_voice","S_codex_purpose","S_codex_origin"],"note":"它会说话、有目的、报得出来处。但文本从没说它有自我意识，它也可能只是个复读机——所以这条是推断，而且按第 5.2 节它不能反过来当前提去推别的事"},{"id":"D32","slot":"S_su_kind","value":{"t":"kind","id":"K_candidate"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":31,"timeRef":"M_a","note":"「而那个人就是你，苏天晴小姐。」只有古书这么说，叙述者没证实"},{"id":"D33","slot":"S_body_wearing","value":{"t":"literal","v":"宽松的睡裙"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":33,"timeRef":"M_a"},{"id":"D34","slot":"S_body_foot","value":{"t":"literal","v":"白皙软嫩、带着红晕的小脚"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":34,"timeRef":"M_a"},{"id":"D35","slot":"S_su_feet","value":{"t":"literal","v":"小脚是世界上最美好的瑰宝"},"source":{"channel":"speech","holder":"su_tianqing","hedge":"plain"},"at":39,"timeRef":null,"note":"时间指示为空：这是她一贯的态度，不是这一刻才成立的"},{"id":"D36","slot":"S_body_prev_owner","value":{"t":"special","v":"UNKNOWN"},"source":{"channel":"thought","holder":"su_tianqing","hedge":"plain"},"at":41,"timeRef":"M_a","note":"「这本书知道自己并不是这副身体原来的主人」。UNKNOWN 是文本明确留白：确实有一个原主，是谁本章不说。与「库里没有这条披露」是两回事"},{"id":"D37","slot":"S_codex_kind","value":{"t":"kind","id":"K_star_envoy"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":45,"timeRef":"M_a"},{"id":"D38","slot":"S_codex_role","value":{"t":"literal","v":"引导苏天晴走上完美的生活"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":45,"timeRef":null},{"id":"D39","slot":"S_contract_appel","value":{"t":"literal","v":"一个小小的契约"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":45,"timeRef":"M_a"},{"id":"D40","slot":"S_contract_party","value":{"t":"ref","id":"su_tianqing"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":45,"timeRef":"M_a"},{"id":"D41","slot":"S_contract_party","value":{"t":"ref","id":"codex"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":45,"timeRef":"M_a"},{"id":"D42","slot":"S_contract_state","value":{"t":"literal","v":"尚未签订"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":45,"timeRef":"M_a"},{"id":"D43","slot":"S_codex_appel","value":{"t":"literal","v":"小破书"},"source":{"channel":"speech","holder":"su_tianqing","hedge":"plain"},"at":50,"timeRef":"M_a","note":"称呼是多值的，所以它不与第 8 段的「黑色古书」竞争。专名是单值的，所以第 30 段的「墨丘利秘典」才是显示名"},{"id":"D44","slot":"S_su_wish","value":{"t":"literal","v":"取之不尽的财富"},"source":{"channel":"speech","holder":"su_tianqing","hedge":"plain"},"at":54,"timeRef":null},{"id":"D45","slot":"S_su_wish","value":{"t":"literal","v":"变成萝莉"},"source":{"channel":"speech","holder":"su_tianqing","hedge":"plain"},"at":54,"timeRef":null},{"id":"D46","slot":"S_contract_state","value":{"t":"literal","v":"成立"},"source":{"channel":"speech","holder":"su_tianqing","hedge":"plain"},"at":60,"timeRef":"M_a","note":"与 D42 同槽、同时刻（都是 M_a）、值不同。文本里这明摆着是先后，可 M_a 是一整场对话的区间，第 5.6 节的「接续」要求时刻可判定为不相交，这里判不出来。见 findings 第 2 条"},{"id":"D47","slot":"S_contract_content","value":{"t":"literal","v":"反派魔法少女"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":64,"timeRef":"M_a"},{"id":"D48","slot":"S_vmg_appel","value":{"t":"literal","v":"反派魔法少女"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":64,"timeRef":null,"note":"印证 D01：同槽同值，来源不同（作者 / 古书说出口）。两条隔了 63 段"},{"id":"D49","slot":"S_su_kind","value":{"t":"kind","id":"K_magical_girl"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":67,"timeRef":"M_today","note":"「从今天开始，你就将成为魔法少女」。时间指示指向 M_today——但原话是「从今天开始」，一个开口向后的区间，模型只存得下一个时刻。见 findings 第 8 条"},{"id":"D50","slot":"S_mg_appel","value":{"t":"literal","v":"魔法少女"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":67,"timeRef":null},{"id":"D51","slot":"S_creator_appel","value":{"t":"literal","v":"造物主"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":67,"timeRef":null},{"id":"D51b","slot":"S_creator_kind","value":{"t":"kind","id":"K_creator"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":67,"timeRef":null,"note":"「造物主」这三个字在原文里一次出手同时干了两件事：给这个主体一个称呼，也给了它一个类别。第一章有三个名词是这样（造物主、魔法少女、反派魔法少女），每一个都得建两个节点——见 findings 第 5 条"},{"id":"D52","slot":"S_task_appel","value":{"t":"literal","v":"一整套任务"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":67,"timeRef":"M_a"},{"id":"D53","slot":"S_task_giver","value":{"t":"kind","id":"K_creator"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":67,"timeRef":null},{"id":"D54","slot":"S_task_purpose","value":{"t":"literal","v":"帮助她逐步走上反派魔法少女的顶点"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":67,"timeRef":null},{"id":"D55","slot":"S_mg_death_rate","value":{"t":"number","v":90,"unit":"%"},"source":{"channel":"speech","holder":"su_tianqing","hedge":"hedged"},"at":68,"timeRef":null,"note":"原话是问句（「是那种死亡率高达90%的高危职业吗？！」），所以保留度是带保留。古书的回答绕开了这个数字，没否认也没确认——求值时这条落在「悬而未决」里"},{"id":"D56","slot":"S_mg_kind","value":{"t":"kind","id":"K_oudou"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":69,"timeRef":null},{"id":"D57","slot":"S_oudou_appel","value":{"t":"literal","v":"王道系"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":69,"timeRef":null},{"id":"D58","slot":"S_vmg_prospect","value":{"t":"literal","v":"纯纯的找死"},"source":{"channel":"speech","holder":"su_tianqing","hedge":"plain"},"at":70,"timeRef":null},{"id":"D59","slot":"S_oudou_shape","value":{"t":"literal","v":"魔法少女面对强敌逐渐成长，然后喊着友情和羁绊冲上去把反派干碎"},"source":{"channel":"thought","holder":"su_tianqing","hedge":"plain"},"at":72,"timeRef":null,"note":"全章唯一一条出自说明 Beat（B22）的披露。时间指示必须为空——一般规律不在某一刻为真，这和 B22 本身没有时刻是同一个理由的两面"},{"id":"D60","slot":"S_su_cod","value":{"t":"literal","v":"急性心肌梗死"},"source":{"channel":"thought","holder":"su_tianqing","hedge":"hedged"},"at":73,"timeRef":"M_b","note":"全书这条信息的唯一来源，是她慌乱中的自我推测，不是诊断。第 8 节第六条那条标杆样例"},{"id":"D61","slot":"S_bprev_appel","value":{"t":"literal","v":"原来的身体"},"source":{"channel":"thought","holder":"su_tianqing","hedge":"plain"},"at":73,"timeRef":null},{"id":"D62","slot":"S_codex_name","value":{"t":"literal","v":"墨丘利秘典"},"source":{"channel":"system","holder":null,"hedge":"plain"},"at":74,"timeRef":"M_a","note":"印证 D27。这一条的价值在来源：第 30 段是古书自称，这一条是系统通知——两个不同的通道说了同一个名字，专名从「它自己说的」升级成了两处支持"},{"id":"D63","slot":"S_contract_state","value":{"t":"literal","v":"成立"},"source":{"channel":"system","holder":null,"hedge":"plain"},"at":76,"timeRef":"M_a","note":"印证 D46：同槽同值、来源通道不同（角色说出口 / 系统通知）"},{"id":"D64","slot":"S_su_kind","value":{"t":"kind","id":"K_villain_mg"},"source":{"channel":"system","holder":null,"hedge":"plain"},"at":77,"timeRef":"M_today","note":"「走上反派魔法少女的道路吧，苏天晴。」形式上是祈使句，功能上是系统在宣告她的类别。这一条是本章的落幕，也是第 1 段那个剧透在正文里兑现的地方"}],"findings":["77 段正文装出 9 个类、10 个主体、32 个谓词、50 个槽、66 条披露。密度极不均：第 7 至 11 段五段产出 15 条（外貌描写那一片），第 19 至 25 段连续七段一条都没有。","24 个 Beat 里有 5 个一条披露都不产出：B04（古书再次出声，她茫然）、B07（古书不解她为什么薅尾巴）、B15（她当场就签，古书凌乱）、B17（古书短暂错乱）、B21（她突然有点后悔）。五个全是在写情绪与反应——**推进剧情和产出披露是两回事**，一个 Beat 可以很重要却什么也不往图里存。这也说明 Beat 层不能省：这五段的内容只活在它们的一句话和原文里。","场内的状态变化被判成了「认识论并存」，于是求值给出一个明摆着错的答案。契约状态在第 45 段是「尚未签订」、第 60 段是「成立」，两条的时刻都是 M_a（整场对话是一个区间），值不同、来源通道不同，照第 5.6 节那张表正好落在「认识论并存」这一行——不是冲突，两条并存。结果读到第 77 段时，求值同时认为契约「尚未签订」和「成立」都为真。这不是精度问题，是答错了。出路只有一条：承认同一时刻内部叙述位置可以当次序用。需要拍板，记为 W11。","第 5.6 节那张表默认两个值互斥，可互不互斥由基数决定，而表里一个字都没提基数。不接基数就照表判，第一章会凭空判出三处「竞争」：她列的两个愿望（第 54 段「取之不尽的财富」和「变成萝莉」）、契约的两个相对方（第 45 段她和古书）、古书的两个称呼（「黑色古书」和「小破书」）。schema.ts 因此加了第六行「并列累加」——这不是新裁决，是把第 5.3 节已有的基数接进第 5.6 节。","接上一条，还有一种真的判错。第 12 段说尾巴「正在炸毛」，第 18 段说它「触感无比柔顺」，同槽、同时刻、同来源通道、值不同——照表是「竞争」，可它们一条讲外观一条讲触感，根本不打架。数据里只能把「尾巴」的基数写成多值绕过去，而它明明只有一条尾巴。**基数被用错了地方**：模型缺的是「同一个东西的多面描写」与「同一个位置的多个候选值」之间的区分。","五行关系表实际只用到三行。全章命中：印证 4 处、认识论并存 2 处、并列累加 7 处；竞争、接续、候选同指各 0 处。竞争和整套反驳机制在本章一次都没被演到——第一章还没到翻案的时候，所以这两样在这份数据上没有被验证过。","四处印证，每一处的价值都在「来源换了」而不在「又说了一遍」：专名苏天晴（第 6 段她自称 / 第 8 段叙述者）、专名墨丘利秘典（第 30 段自称 / 第 74 段系统通知）、契约成立（第 60 段她说 / 第 76 段系统通知）、反派魔法少女（第 1 段作者标题 / 第 64 段古书）。最后一处隔了 63 段。","66 条披露里只有 3 条带保留，而这 3 条恰好全落在同一类内容上：第 29 段叙述者揣测古书在想什么、第 68 段她问出的死亡率数字、第 73 段她对自己死因的猜测。求值到第 77 段，悬而未决的槽正好也是这三个——**保留度在这一章是唯一一个真正在起作用的分流器**，时刻一次都没能分出先后。","「类」在 v4 里装了两件事。「苏天晴是狐女」是第 26 段她自己认定的，有来源、有叙述位置、将来可能被推翻；「苏天晴是人物」文本从来没说过，库内粗分类现在由关联 Kind.category 提供，不是 Entity 字段。","同一个名词常常既要当类又要当主体，第一章有三个。「造物主」「魔法少女」「反派魔法少女」当类才能贴到主体身上（第 67、77 段），当主体才能挂自己的槽（魔法少女的「死亡率 90%」在第 68 段）。数据里只能各建两个节点，而 v4 没说这两者之间该不该有边、谁是谁的什么。记为 W10。","读者推断只有两条，一条比一条弱。(苏天晴, 居于哪具身体) 有四处支持横跨三个 Beat；(古书, 类) = 智慧体 只有三处，而且全是它自己的表现——文本从没说过它有自我意识，它也可能只是个复读机。两条都不能反过来当别的推断的前提，schema.ts 的 validate() 会把这条规则查出来。","时间指示与时刻的对不齐有三种，第一章各出现一次。一、Beat 的时刻和披露的时间指示不同：B05 停在 M_b，它的披露 D18 指向 M_nightshifts。二、时间指示是个开口向后的区间：第 67 段「从今天开始」，模型只存得下 M_today 这一个时刻，「从此以后」存不下。三、时间指示为空且必须为空：说明 Beat 产生的披露（D59）、一般态度（D35）、亲属关系（D21）都不发生在某一刻。","第 3 段的作者声明（「本书出场角色均已满18岁」）一条披露都不产生：它没有主体，也不指向虚构世界里的任何东西。与第 1 段的章标题恰好构成一对——同样是故事外的 Beat，一个剧透了 63 段之后的情节，一个什么也没进图。故事外不等于不产生披露，也不等于一定产生披露。","叙述位置切片真的会改名，而且两个主体各改一次。读到第 8 段，古书叫「黑色古书」、身体叫「一道陌生的娇小身影」；读到第 11 段身体改叫「一只娇小的金毛狐女」；读到第 30 段古书改叫「墨丘利秘典」。这不是查看器的效果，是「专名」和「称呼」两个槽在不同叙述位置上求值的结果。读到第 1 段时图上只有一个节点，而它正是那个剧透。"]},"beats":{"schema":"nbook.novel-beats/v4-spike","provenance":{"method":"人工通读手工拆分，不是抽取管线输出","model":"memory-model-v4.md 第 3 节","sourceText":"../../t01-novel-understanding-spike/evidences/chapter-001-source-normalized.txt","sourceNormalization":"chapter-source-normalization/v1，文件第 N 行即第 N 段","note":"本文件不构成任何召回率或准确率证据；它的用途是给 t03 的 S1 当对照答案，以及验证 v4 第 3 节的切分规则在真实正文上能不能落地"},"chapter":1,"chapterTitle":"反派魔法少女","entityLegend":{"note":"只是给本文件 holder 字段用的图例。主体的真源是 ../chapter-01.json 的 entities，两边的 id 必须一致，build-viewer.ts 会核对","su_tianqing":"苏天晴。自称此名的那个人，前世下夜班后猝死","codex":"黑色古书。第 30 段起揭晓专名为墨丘利秘典","body_fox":"金毛狐女的身体。苏天晴现在居于其中，原主本章未说明"},"moments":[{"id":"M_a","grain":"interval","label":null,"note":"第一章当下。房间里这一场连续对话发生的时刻，文本没有给它任何名字。它是一个区间，从第 5 段铺到第 77 段——所以它不能当相对时间词的锚点，见 v4 第 5.7.6 节"},{"id":"M_b","grain":"interval","label":null,"note":"回述那一场发生的时刻，面摊那一刻。文本管它叫「五分钟前」，但那是相对说法，按 v4 第 5.7.2 节只能进关系不能当 label"},{"id":"M_c","grain":"interval","label":null,"note":"古书第一次说那段开场白的时刻。正文里没有这一段——第 30、31 段明写是「重复」，原话在第 5 段之前就说过了。所以这是一个没有任何 Beat 停在上面、也不属于任何场的时刻，见 v4 第 5.7.6 节第二条"},{"id":"M_today","grain":"interval","label":null,"note":"第 67 段古书说的「今天」，包着当下那一刻的那一天。粒度是日，比 M_a 粗——粒度不是时刻的属性，是关系上单位的属性"},{"id":"M_nightshifts","grain":"interval","label":null,"note":"「连续三个夜班」那一段。它不是任何 Beat 停在的地方——B05 停在 M_b（面摊那一刻），这一段是 B05 产生的披露「她连上了三个夜班」指向的时刻。这是 v4 第 5.7.3 节「两个挂钩，一种节点」的实物：Beat.时刻 与 披露.时间指示 在同一个 Beat 上取了不同的值"}],"momentRelations":[{"subject":"M_b","predicate":"before","anchor":null,"offset":{"value":5,"unit":"分钟"},"at":16,"source":{"channel":"narrator","holder":null,"hedge":"plain"},"note":"「五分钟前」。锚点为空表示叙述当下，也就是第 16 段那一刻——不是这个 Beat 的时刻（B05 的时刻是 M_b 本身，写成锚点就成了「面摊比面摊早五分钟」）"},{"subject":"M_c","predicate":"before","anchor":null,"offset":{"value":2,"unit":"分钟"},"at":29,"source":{"channel":"narrator","holder":null,"hedge":"plain"},"note":"「两分钟前的开场白」。与上一条一起构成 v4 第 5.7.6 节那个对撞：两条都锚到 M_a 就会推出「面摊比开场白早 3 分钟」，锚到各自叙述位置只能推出「开场白至少比面摊晚 3 分钟」"},{"subject":"M_today","predicate":"contains","anchor":null,"offset":null,"at":67,"source":{"channel":"speech","holder":"codex","hedge":"plain"},"note":"「从今天开始」。包含关系没有偏移。来源是古书说出口，不是叙述者——同一个「今天」由不同人说出来是两条记录，规则 6"},{"subject":"M_nightshifts","predicate":"before","anchor":{"type":"moment","ref":"M_b"},"offset":null,"at":16,"source":{"channel":"narrator","holder":null,"hedge":"plain"},"note":"「结束了连续三个夜班后刚下班的自己坐在街边面摊上」。全章唯一一条锚点写死的关系——文本明确把夜班挂在面摊那一刻上，不是挂在叙述当下。偏移为空：「后刚下班」有先后没有距离，按第 5.7.4 节不编数字"}],"beats":[{"id":"B01","paragraphs":[1,4],"type":"paratext","sources":[{"channel":"author","holder":null,"hedge":"plain"}],"moment":null,"gist":"章标题「反派魔法少女」与作者的满18岁声明","note":"故事外，但仍向读者披露了「反派魔法少女」这个词——比正文第 64 段揭晓早了 60 段。第 1、2 段标题重复是归一化产物"},{"id":"B02","paragraphs":[5,8],"type":"narrative","sources":[{"channel":"speech","holder":"codex","hedge":"plain"},{"channel":"speech","holder":"su_tianqing","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"}],"moment":"M_a","gist":"古书问名，她报出苏天晴；她坐在床头看着浮空的黑色古书，从镜中瞥见陌生身影"},{"id":"B03","paragraphs":[9,12],"type":"description","sources":[{"channel":"narrator","holder":null,"hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"hedged"}],"moment":"M_a","gist":"这具身体：金色长发、兽耳、精致五官、白皙肌肤、炸毛大尾巴——一只娇小的金毛狐女","note":"全章披露密度最高的一段，一个 Beat 产出 6 条披露。第 12 段「这应该是一只乖巧可爱的」是叙述者带保留的评价，够不上建槽，因此按 v4 第 5.5 节「没有槽就没有披露」不产生任何披露，只活在原文里"},{"id":"B04","paragraphs":[13,15],"type":"narrative","sources":[{"channel":"speech","holder":"codex","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"}],"moment":"M_a","gist":"古书再次出声把她的注意力拽回，她仍然茫然"},{"id":"B05","paragraphs":[16,16],"type":"narrative","sources":[{"channel":"narrator","holder":null,"hedge":"plain"}],"moment":"M_b","gist":"三个夜班后在面摊吃面，听见太奶说话，回头看见她坐在藤椅上织围巾，随后胸口剧痛失去意识","note":"回述。全章唯一一处时刻切换，也是唯一一处硬边界由时刻切出来的地方"},{"id":"B06","paragraphs":[17,19],"type":"narrative","sources":[{"channel":"narrator","holder":null,"hedge":"plain"},{"channel":"thought","holder":"su_tianqing","hedge":"plain"}],"moment":"M_a","gist":"她薅了一把炸毛的尾巴，触感真实得让她耳朵竖起、全身绷直"},{"id":"B07","paragraphs":[20,22],"type":"narrative","sources":[{"channel":"speech","holder":"codex","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"},{"channel":"thought","holder":"codex","hedge":"plain"}],"moment":"M_a","gist":"古书不解她为什么薅自己的尾巴，心想不疼吗","note":"视角漂移第一处：第 21 段后半句是叙述者贴着古书写，第 22 段是古书的心声"},{"id":"B08","paragraphs":[23,27],"type":"narrative","sources":[{"channel":"speech","holder":"su_tianqing","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"},{"channel":"thought","holder":"su_tianqing","hedge":"plain"}],"moment":"M_a","gist":"她干咳掩饰尴尬制止古书说话，理清思绪：我重生了，重生成一只金毛狐女","note":"第 25 至 27 段人称切到第一人称"},{"id":"B09","paragraphs":[28,29],"type":"narrative","sources":[{"channel":"speech","holder":"su_tianqing","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"hedged"}],"moment":"M_a","gist":"她问「你是谁」；古书沉默良久，像是在判断她是不是自己要找的人","note":"视角漂移第二处：第 29 段「像是在思考」是叙述者带保留地揣测古书"},{"id":"B10","paragraphs":[30,32],"type":"narrative","sources":[{"channel":"speech","holder":"codex","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"}],"moment":"M_a","gist":"古书自称墨丘利秘典，从星空彼岸而来寻找最优秀的适格者，认定她就是那个人；她觉得这台词中二","note":"本章设定密度最高的一段。这三条设定全部出自古书自称，叙述者一条也没直陈证实——它只在上一段（第 29 段）带保留地给过一个自己的版本「是不是自己要找的人」，两条落在同一个槽上，构成 v4 第 5.6 节的「认识论并存」"},{"id":"B11","paragraphs":[33,35],"type":"narrative","sources":[{"channel":"narrator","holder":null,"hedge":"plain"},{"channel":"thought","holder":"su_tianqing","hedge":"plain"}],"moment":"M_a","gist":"她跳下床走到镜前，抬脚端详这只白嫩带红晕的小脚，自评完美"},{"id":"B12","paragraphs":[36,39],"type":"narrative","sources":[{"channel":"speech","holder":"codex","hedge":"plain"},{"channel":"speech","holder":"su_tianqing","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"}],"moment":"M_a","gist":"古书以为她满意这具身体、不解她为何盯着脚看；她答小脚是世上最美好的瑰宝"},{"id":"B13","paragraphs":[40,41],"type":"narrative","sources":[{"channel":"narrator","holder":null,"hedge":"plain"},{"channel":"thought","holder":"su_tianqing","hedge":"plain"}],"moment":"M_a","gist":"她一边搭话一边意识到：这本书知道她不是这具身体原来的主人","note":"支持「她不是原主」这条推断的第五处，也是本章最直接的一处"},{"id":"B14","paragraphs":[42,45],"type":"narrative","sources":[{"channel":"speech","holder":"codex","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"}],"moment":"M_a","gist":"古书快进到下一步：她是最佳适格者，它作为星界使者引导她，只需签一个小小的契约"},{"id":"B15","paragraphs":[46,49],"type":"narrative","sources":[{"channel":"speech","holder":"su_tianqing","hedge":"plain"},{"channel":"speech","holder":"codex","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"}],"moment":"M_a","gist":"她当场就签，古书凌乱，问她怎么不犹豫考虑"},{"id":"B16","paragraphs":[50,56],"type":"narrative","sources":[{"channel":"speech","holder":"su_tianqing","hedge":"plain"},{"channel":"speech","holder":"codex","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"}],"moment":"M_a","gist":"她严肃宣称世上最通用的两个愿望是取之不尽的财富和变成萝莉，而变成可爱狐狐本身就是最大的奖励","note":"七段一个 Beat，是全章最长的。来源在这七段里来回换了五次——这正是来源不能当切分依据的例子"},{"id":"B17","paragraphs":[57,58],"type":"narrative","sources":[{"channel":"narrator","holder":null,"hedge":"hedged"}],"moment":"M_a","gist":"古书短暂错乱，随即把话题拖回正题","note":"视角漂移第三处：第 58 段「好像有哪里很对，好像又根本不对」是叙述者贴着古书写，且带保留"},{"id":"B18","paragraphs":[59,63],"type":"narrative","sources":[{"channel":"speech","holder":"codex","hedge":"plain"},{"channel":"speech","holder":"su_tianqing","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"},{"channel":"thought","holder":"su_tianqing","hedge":"plain"}],"moment":"M_a","gist":"契约算成立，她不假思索地承认；随后才想起问契约内容，担心是奴隶契约","note":"如果作者在这里断章，一刀不会切到任何 Beat——好的断章点天然落在 Beat 边界上"},{"id":"B19","paragraphs":[64,67],"type":"narrative","sources":[{"channel":"speech","holder":"codex","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"},{"channel":"speech","holder":"su_tianqing","hedge":"plain"}],"moment":"M_a","gist":"契约内容是反派魔法少女；从今天起她将成为魔法少女，造物主给她定制了一整套任务"},{"id":"B20","paragraphs":[68,70],"type":"narrative","sources":[{"channel":"speech","holder":"su_tianqing","hedge":"plain"},{"channel":"speech","holder":"codex","hedge":"plain"}],"moment":"M_a","gist":"她指出魔法少女死亡率九成；古书说是王道系的那种；她说王道故事里当反派是纯纯找死"},{"id":"B21","paragraphs":[71,71],"type":"narrative","sources":[{"channel":"narrator","holder":null,"hedge":"plain"}],"moment":"M_a","gist":"她突然有点后悔了"},{"id":"B22","paragraphs":[72,72],"type":"exposition","sources":[{"channel":"thought","holder":"su_tianqing","hedge":"plain"}],"moment":null,"gist":"王道系是什么：魔法少女面对强敌逐渐成长，喊着友情和羁绊把反派干碎的那种故事","note":"全章唯一的说明 Beat。形式上是心声，功能上是作者借心声给读者解释概念——类型是说明、来源是心声，两维分开才装得下。它没有时刻，但夹在两个有时刻的 Beat 中间，是「场必须是区间不能是集合」的直接理由"},{"id":"B23","paragraphs":[73,73],"type":"narrative","sources":[{"channel":"thought","holder":"su_tianqing","hedge":"hedged"}],"moment":"M_a","gist":"她想能不能反悔、能不能送回原来的身体，觉得急性心肌梗死或许还有抢救机会","note":"「死因是急性心肌梗死」这条全书唯一的来源就在这里，是她慌乱中的自我推测，不是诊断"},{"id":"B24","paragraphs":[74,77],"type":"narrative","sources":[{"channel":"system","holder":null,"hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"}],"moment":"M_a","gist":"脑中依次响起秘典绑定成功、契约成立、走上反派魔法少女的道路；她欲哭无泪","note":"系统通知通道的唯一出处。第 75 段明写「脑子里响起的声音」，说话人从未出现，四个旧通道一个都装不下"}],"scenes":[{"id":"SC1","beats":["B02","B04"],"moment":"M_a","location":"昏暗的房间","pov":"su_tianqing","gist":"醒来，古书问名，她发现自己变成了狐女"},{"id":"SC2","beats":["B05","B05"],"moment":"M_b","location":"街边面摊","pov":"su_tianqing","gist":"回述：前世下夜班后在面摊猝死"},{"id":"SC3","beats":["B06","B24"],"moment":"M_a","location":"昏暗的房间","pov":"su_tianqing","povDrift":["B07","B09","B17"],"gist":"从薅尾巴到契约成立：她问出古书身份，看新身体，秒签契约，得知自己要当反派魔法少女"}],"findings":["三条场记录，但只有两个时刻。SC1 与 SC3 共享 M_a，是被回述打断的同一场戏——「是同一场」由共享时刻表达，不由场的身份表达。","第一章几乎就是一场戏：一个房间、一段连续时间、两个角色。t03 那次真实 S1 调用切出了 7 个窗口，它切的其实是 Beat，不是场。","24 个 Beat 覆盖全部 77 段，无重叠无空隙，平均 3.2 段。最长的 B16 有 7 段，最短的 B21、B22、B23 各 1 段。","硬边界在这一章只切出过两刀：B05 处时刻变，B22 处类型变。其余 21 处边界全是软边界（一句话概括不了）。","地点在这一章一次都没有切出边界——第 33 段「走到落地镜前」按不换地点处理，落地镜就在房间里。","视角漂移三处（B07、B09、B17），全部漂到古书身上。t03 那次 S1 给七个窗口全标了 pov 苏天晴，三处全漏。","类型分布：叙事 21、描写 1、说明 1、故事外 1。描写和说明各只有一个 Beat，但都是模型里不可替代的一类——B03 是披露密度最高的一段，B22 是「场必须是区间」的理由。","来源通道用到五个：作者、叙述者、角色说出口、角色心里想、系统通知都直接出现在正文里；第六个「读者推断」不出现在 Beat 上，它只出现在披露上。","三处视角漂移里只有 B07 能从字段算出来（心里想 + 持有者=古书）。B09、B17 的漂移载体是「叙述者 + 带保留」，持有者按定义为空，现有字段表达不了它贴着谁——见 v4 的待裁决 W8。","五个时刻里只有两个被 Beat 占用。M_c（第一次说开场白那一刻）、M_today（第 67 段的「今天」）、M_nightshifts（连上三个夜班那一段）都没有任何 Beat 停在上面，M_c 更是完全落在正文之外——时刻的集合比场的集合大，时刻不能由场生成。","M_nightshifts 是「两个挂钩，一种节点」的实物：B05 这个 Beat 停在 M_b（面摊那一刻），可它产生的披露「她连上了三个夜班」指的是 M_b 之前那一段。同一个 Beat 上，Beat.时刻 与 披露.时间指示 取了不同的值，一个字段装不下。","四条时刻关系里三条锚点为空（叙述当下），只有 M_nightshifts 那条锚点写死在 M_b 上——因为文本明确把夜班挂在面摊那一刻上（「结束了连续三个夜班后刚下班的自己坐在街边面摊上」），不是挂在读者读到的那一刻。","全章带数值的时间指示只有两条：第 16 段「五分钟前」、第 29 段「两分钟前」。其余的「随后」「接着」「良久后」「片刻后」「没有丝毫停顿」「后刚下班」全都只有先后没有距离，按 v4 第 5.7.4 节偏移留空，不编数字。","全章一个绝对时间词都没有。第一章的时间线是一团浮着的相对位置，没有任何一点能钉在日历上——这不妨碍回答「面摊那一刻在房间那一刻之前」，但任何想给时刻发坐标的设计在这一章就会开始编造。"]},"derived":{"builtBy":"scripts/build-viewer.ts via schema.ts","nowAssumption":"同一章内，叙述当下按段号单调不减。跨章不作任何假设（见 W9）。","counts":{"kind":9,"entity":10,"predicate":32,"slot":50,"disclosure":66,"beat":24,"scene":3,"moment":5,"momentRelation":4,"paragraph":77},"channel":{"author":1,"speech":30,"narrator":25,"reader_inference":2,"thought":5,"system":3},"hedge":{"plain":63,"hedged":3},"entityFirstAt":{"su_tianqing":6,"codex":7,"body_fox":8,"body_prev":73,"tainai":16,"contract":45,"star_beyond":30,"room":7,"noodle_stall":16,"task_set":67},"nameTimelines":{"su_tianqing":[{"at":1,"name":"苏天晴"}],"codex":[{"at":1,"name":"黑色古书"},{"at":30,"name":"墨丘利秘典"}],"body_fox":[{"at":1,"name":"这具狐女身体"},{"at":8,"name":"一道陌生的娇小身影"},{"at":11,"name":"一只娇小的金毛狐女"}],"body_prev":[{"at":1,"name":"原来的身体"}],"tainai":[{"at":1,"name":"太奶"}],"contract":[{"at":1,"name":"那份契约"},{"at":45,"name":"一个小小的契约"}],"star_beyond":[{"at":1,"name":"星空彼岸"}],"room":[{"at":1,"name":"昏暗的房间"}],"noodle_stall":[{"at":1,"name":"街边面摊"}],"task_set":[{"at":1,"name":"那一整套任务"},{"at":67,"name":"一整套任务"}]},"sliceCounts":[{"k":1,"entities":0,"slots":1,"disclosures":1},{"k":2,"entities":0,"slots":1,"disclosures":1},{"k":3,"entities":0,"slots":1,"disclosures":1},{"k":4,"entities":0,"slots":1,"disclosures":1},{"k":5,"entities":0,"slots":1,"disclosures":1},{"k":6,"entities":1,"slots":2,"disclosures":2},{"k":7,"entities":3,"slots":5,"disclosures":5},{"k":8,"entities":4,"slots":10,"disclosures":11},{"k":9,"entities":4,"slots":13,"disclosures":14},{"k":10,"entities":4,"slots":14,"disclosures":15},{"k":11,"entities":4,"slots":15,"disclosures":17},{"k":12,"entities":4,"slots":16,"disclosures":18},{"k":13,"entities":4,"slots":16,"disclosures":18},{"k":14,"entities":4,"slots":16,"disclosures":18},{"k":15,"entities":4,"slots":16,"disclosures":18},{"k":16,"entities":6,"slots":21,"disclosures":23},{"k":17,"entities":6,"slots":21,"disclosures":23},{"k":18,"entities":6,"slots":22,"disclosures":25},{"k":19,"entities":6,"slots":22,"disclosures":25},{"k":20,"entities":6,"slots":22,"disclosures":25},{"k":21,"entities":6,"slots":22,"disclosures":25},{"k":22,"entities":6,"slots":22,"disclosures":25},{"k":23,"entities":6,"slots":22,"disclosures":25},{"k":24,"entities":6,"slots":22,"disclosures":25},{"k":25,"entities":6,"slots":22,"disclosures":25},{"k":26,"entities":6,"slots":23,"disclosures":26},{"k":27,"entities":6,"slots":23,"disclosures":26},{"k":28,"entities":6,"slots":23,"disclosures":26},{"k":29,"entities":6,"slots":24,"disclosures":27},{"k":30,"entities":7,"slots":27,"disclosures":32},{"k":31,"entities":7,"slots":27,"disclosures":33},{"k":32,"entities":7,"slots":27,"disclosures":33},{"k":33,"entities":7,"slots":28,"disclosures":34},{"k":34,"entities":7,"slots":29,"disclosures":35},{"k":35,"entities":7,"slots":29,"disclosures":35},{"k":36,"entities":7,"slots":29,"disclosures":35},{"k":37,"entities":7,"slots":29,"disclosures":35},{"k":38,"entities":7,"slots":29,"disclosures":35},{"k":39,"entities":7,"slots":30,"disclosures":36},{"k":40,"entities":7,"slots":30,"disclosures":36},{"k":41,"entities":7,"slots":31,"disclosures":37},{"k":42,"entities":7,"slots":31,"disclosures":37},{"k":43,"entities":7,"slots":31,"disclosures":37},{"k":44,"entities":7,"slots":31,"disclosures":37},{"k":45,"entities":8,"slots":35,"disclosures":43},{"k":46,"entities":8,"slots":35,"disclosures":43},{"k":47,"entities":8,"slots":35,"disclosures":43},{"k":48,"entities":8,"slots":35,"disclosures":43},{"k":49,"entities":8,"slots":35,"disclosures":43},{"k":50,"entities":8,"slots":35,"disclosures":44},{"k":51,"entities":8,"slots":35,"disclosures":44},{"k":52,"entities":8,"slots":35,"disclosures":44},{"k":53,"entities":8,"slots":35,"disclosures":44},{"k":54,"entities":8,"slots":36,"disclosures":46},{"k":55,"entities":8,"slots":36,"disclosures":46},{"k":56,"entities":8,"slots":36,"disclosures":46},{"k":57,"entities":8,"slots":36,"disclosures":46},{"k":58,"entities":8,"slots":36,"disclosures":46},{"k":59,"entities":8,"slots":36,"disclosures":46},{"k":60,"entities":8,"slots":36,"disclosures":47},{"k":61,"entities":8,"slots":36,"disclosures":47},{"k":62,"entities":8,"slots":36,"disclosures":47},{"k":63,"entities":8,"slots":36,"disclosures":47},{"k":64,"entities":8,"slots":37,"disclosures":49},{"k":65,"entities":8,"slots":37,"disclosures":49},{"k":66,"entities":8,"slots":37,"disclosures":49},{"k":67,"entities":9,"slots":43,"disclosures":56},{"k":68,"entities":9,"slots":44,"disclosures":57},{"k":69,"entities":9,"slots":46,"disclosures":59},{"k":70,"entities":9,"slots":47,"disclosures":60},{"k":71,"entities":9,"slots":47,"disclosures":60},{"k":72,"entities":9,"slots":48,"disclosures":61},{"k":73,"entities":10,"slots":50,"disclosures":63},{"k":74,"entities":10,"slots":50,"disclosures":64},{"k":75,"entities":10,"slots":50,"disclosures":64},{"k":76,"entities":10,"slots":50,"disclosures":65},{"k":77,"entities":10,"slots":50,"disclosures":66}],"beatLoad":[{"id":"B01","type":"paratext","from":1,"to":4,"moment":null,"gist":"章标题「反派魔法少女」与作者的满18岁声明","n":1},{"id":"B02","type":"narrative","from":5,"to":8,"moment":"M_a","gist":"古书问名，她报出苏天晴；她坐在床头看着浮空的黑色古书，从镜中瞥见陌生身影","n":10},{"id":"B03","type":"description","from":9,"to":12,"moment":"M_a","gist":"这具身体：金色长发、兽耳、精致五官、白皙肌肤、炸毛大尾巴——一只娇小的金毛狐女","n":7},{"id":"B04","type":"narrative","from":13,"to":15,"moment":"M_a","gist":"古书再次出声把她的注意力拽回，她仍然茫然","n":0},{"id":"B05","type":"narrative","from":16,"to":16,"moment":"M_b","gist":"三个夜班后在面摊吃面，听见太奶说话，回头看见她坐在藤椅上织围巾，随后胸口剧痛失去意识","n":5},{"id":"B06","type":"narrative","from":17,"to":19,"moment":"M_a","gist":"她薅了一把炸毛的尾巴，触感真实得让她耳朵竖起、全身绷直","n":2},{"id":"B07","type":"narrative","from":20,"to":22,"moment":"M_a","gist":"古书不解她为什么薅自己的尾巴，心想不疼吗","n":0},{"id":"B08","type":"narrative","from":23,"to":27,"moment":"M_a","gist":"她干咳掩饰尴尬制止古书说话，理清思绪：我重生了，重生成一只金毛狐女","n":1},{"id":"B09","type":"narrative","from":28,"to":29,"moment":"M_a","gist":"她问「你是谁」；古书沉默良久，像是在判断她是不是自己要找的人","n":1},{"id":"B10","type":"narrative","from":30,"to":32,"moment":"M_a","gist":"古书自称墨丘利秘典，从星空彼岸而来寻找最优秀的适格者，认定她就是那个人；她觉得这台词中二","n":6},{"id":"B11","type":"narrative","from":33,"to":35,"moment":"M_a","gist":"她跳下床走到镜前，抬脚端详这只白嫩带红晕的小脚，自评完美","n":2},{"id":"B12","type":"narrative","from":36,"to":39,"moment":"M_a","gist":"古书以为她满意这具身体、不解她为何盯着脚看；她答小脚是世上最美好的瑰宝","n":1},{"id":"B13","type":"narrative","from":40,"to":41,"moment":"M_a","gist":"她一边搭话一边意识到：这本书知道她不是这具身体原来的主人","n":1},{"id":"B14","type":"narrative","from":42,"to":45,"moment":"M_a","gist":"古书快进到下一步：她是最佳适格者，它作为星界使者引导她，只需签一个小小的契约","n":6},{"id":"B15","type":"narrative","from":46,"to":49,"moment":"M_a","gist":"她当场就签，古书凌乱，问她怎么不犹豫考虑","n":0},{"id":"B16","type":"narrative","from":50,"to":56,"moment":"M_a","gist":"她严肃宣称世上最通用的两个愿望是取之不尽的财富和变成萝莉，而变成可爱狐狐本身就是最大的奖励","n":3},{"id":"B17","type":"narrative","from":57,"to":58,"moment":"M_a","gist":"古书短暂错乱，随即把话题拖回正题","n":0},{"id":"B18","type":"narrative","from":59,"to":63,"moment":"M_a","gist":"契约算成立，她不假思索地承认；随后才想起问契约内容，担心是奴隶契约","n":1},{"id":"B19","type":"narrative","from":64,"to":67,"moment":"M_a","gist":"契约内容是反派魔法少女；从今天起她将成为魔法少女，造物主给她定制了一整套任务","n":9},{"id":"B20","type":"narrative","from":68,"to":70,"moment":"M_a","gist":"她指出魔法少女死亡率九成；古书说是王道系的那种；她说王道故事里当反派是纯纯找死","n":4},{"id":"B21","type":"narrative","from":71,"to":71,"moment":"M_a","gist":"她突然有点后悔了","n":0},{"id":"B22","type":"exposition","from":72,"to":72,"moment":null,"gist":"王道系是什么：魔法少女面对强敌逐渐成长，喊着友情和羁绊把反派干碎的那种故事","n":1},{"id":"B23","type":"narrative","from":73,"to":73,"moment":"M_a","gist":"她想能不能反悔、能不能送回原来的身体，觉得急性心肌梗死或许还有抢救机会","n":2},{"id":"B24","type":"narrative","from":74,"to":77,"moment":"M_a","gist":"脑中依次响起秘典绑定成功、契约成立、走上反派魔法少女的道路；她欲哭无泪","n":3}],"relationHits":[{"relation":"corroborate","slot":"S_su_name","slotTitle":"苏天晴 · 专名","a":"D02","b":"D06","valueA":"苏天晴","valueB":"苏天晴","moment":"same","sameValue":true,"sameChannel":false,"cardinality":"single"},{"relation":"accrue","slot":"S_su_kind","slotTitle":"苏天晴 · 类","a":"D25","b":"D32","valueA":"狐女","valueB":"适格者","moment":"same","sameValue":false,"sameChannel":false,"cardinality":"multi"},{"relation":"accrue","slot":"S_su_kind","slotTitle":"苏天晴 · 类","a":"D25","b":"D49","valueA":"狐女","valueB":"魔法少女","moment":"undecidable","sameValue":false,"sameChannel":false,"cardinality":"multi"},{"relation":"accrue","slot":"S_su_kind","slotTitle":"苏天晴 · 类","a":"D25","b":"D64","valueA":"狐女","valueB":"反派魔法少女","moment":"undecidable","sameValue":false,"sameChannel":false,"cardinality":"multi"},{"relation":"accrue","slot":"S_su_kind","slotTitle":"苏天晴 · 类","a":"D32","b":"D49","valueA":"适格者","valueB":"魔法少女","moment":"undecidable","sameValue":false,"sameChannel":true,"cardinality":"multi"},{"relation":"accrue","slot":"S_su_kind","slotTitle":"苏天晴 · 类","a":"D32","b":"D64","valueA":"适格者","valueB":"反派魔法少女","moment":"undecidable","sameValue":false,"sameChannel":false,"cardinality":"multi"},{"relation":"accrue","slot":"S_su_kind","slotTitle":"苏天晴 · 类","a":"D49","b":"D64","valueA":"魔法少女","valueB":"反派魔法少女","moment":"same","sameValue":false,"sameChannel":false,"cardinality":"multi"},{"relation":"accrue","slot":"S_su_wish","slotTitle":"苏天晴 · 主张的通用愿望","a":"D44","b":"D45","valueA":"取之不尽的财富","valueB":"变成萝莉","moment":"same","sameValue":false,"sameChannel":true,"cardinality":"multi"},{"relation":"corroborate","slot":"S_codex_name","slotTitle":"黑色古书 · 专名","a":"D27","b":"D62","valueA":"墨丘利秘典","valueB":"墨丘利秘典","moment":"same","sameValue":true,"sameChannel":false,"cardinality":"single"},{"relation":"accrue","slot":"S_codex_appel","slotTitle":"黑色古书 · 称呼","a":"D07","b":"D43","valueA":"黑色古书","valueB":"小破书","moment":"same","sameValue":false,"sameChannel":false,"cardinality":"multi"},{"relation":"accrue","slot":"S_codex_kind","slotTitle":"黑色古书 · 类","a":"D08","b":"D31","valueA":"典籍","valueB":"智慧体","moment":"same","sameValue":false,"sameChannel":false,"cardinality":"multi"},{"relation":"accrue","slot":"S_codex_kind","slotTitle":"黑色古书 · 类","a":"D08","b":"D37","valueA":"典籍","valueB":"星界使者","moment":"same","sameValue":false,"sameChannel":false,"cardinality":"multi"},{"relation":"accrue","slot":"S_codex_kind","slotTitle":"黑色古书 · 类","a":"D31","b":"D37","valueA":"智慧体","valueB":"星界使者","moment":"same","sameValue":false,"sameChannel":false,"cardinality":"multi"},{"relation":"coexist","slot":"S_codex_purpose","slotTitle":"黑色古书 · 目的","a":"D26","b":"D28","valueA":"在找某个特定的人","valueB":"寻找它最优秀的适格者","moment":"same","sameValue":false,"sameChannel":false,"cardinality":"single"},{"relation":"accrue","slot":"S_body_appel","slotTitle":"这具狐女身体 · 称呼","a":"D10","b":"D16b","valueA":"一道陌生的娇小身影","valueB":"一只娇小的金毛狐女","moment":"same","sameValue":false,"sameChannel":true,"cardinality":"multi"},{"relation":"accrue","slot":"S_body_tail","slotTitle":"这具狐女身体 · 尾巴","a":"D17","b":"D24","valueA":"背后一只正在炸毛的大尾巴","valueB":"触感无比柔顺，被薅时的摩挲拉拽感从尾巴尖直冲天灵盖","moment":"same","sameValue":false,"sameChannel":true,"cardinality":"multi"},{"relation":"accrue","slot":"S_contract_party","slotTitle":"那份契约 · 契约相对方","a":"D40","b":"D41","valueA":"苏天晴","valueB":"墨丘利秘典","moment":"same","sameValue":false,"sameChannel":true,"cardinality":"multi"},{"relation":"coexist","slot":"S_contract_state","slotTitle":"那份契约 · 契约状态","a":"D42","b":"D46","valueA":"尚未签订","valueB":"成立","moment":"same","sameValue":false,"sameChannel":false,"cardinality":"single"},{"relation":"coexist","slot":"S_contract_state","slotTitle":"那份契约 · 契约状态","a":"D42","b":"D63","valueA":"尚未签订","valueB":"成立","moment":"same","sameValue":false,"sameChannel":false,"cardinality":"single"},{"relation":"corroborate","slot":"S_contract_state","slotTitle":"那份契约 · 契约状态","a":"D46","b":"D63","valueA":"成立","valueB":"成立","moment":"same","sameValue":true,"sameChannel":false,"cardinality":"single"},{"relation":"corroborate","slot":"S_vmg_appel","slotTitle":"反派魔法少女 · 称呼","a":"D01","b":"D48","valueA":"反派魔法少女","valueB":"反派魔法少女","moment":"same","sameValue":true,"sameChannel":false,"cardinality":"multi"}],"relationSlotCount":{"corroborate":4,"accrue":7,"coexist":2},"finalState":[{"slot":"S_su_name","title":"苏天晴 · 专名","subject":{"type":"entity","id":"su_tianqing"},"predicate":"专名","cardinality":"single","held":["D02","D06"],"pending":[],"refuted":[],"relations":["corroborate"],"heldText":["苏天晴","苏天晴"]},{"slot":"S_su_voice","title":"苏天晴 · 声音","subject":{"type":"entity","id":"su_tianqing"},"predicate":"声音","cardinality":"single","held":["D03"],"pending":[],"refuted":[],"relations":[],"heldText":["清脆悦耳的女声"]},{"slot":"S_su_kind","title":"苏天晴 · 类","subject":{"type":"entity","id":"su_tianqing"},"predicate":"类","cardinality":"multi","held":["D25","D32","D49","D64"],"pending":[],"refuted":[],"relations":["accrue"],"heldText":["狐女","适格者","魔法少女","反派魔法少女"]},{"slot":"S_su_inhabits","title":"苏天晴 · 居于哪具身体","subject":{"type":"entity","id":"su_tianqing"},"predicate":"居于哪具身体","cardinality":"single","held":["D22"],"pending":[],"refuted":[],"relations":[],"heldText":["一只娇小的金毛狐女"]},{"slot":"S_su_cod","title":"苏天晴 · 死因","subject":{"type":"entity","id":"su_tianqing"},"predicate":"死因","cardinality":"single","held":[],"pending":["D60"],"refuted":[],"relations":[],"heldText":[]},{"slot":"S_su_prev_work","title":"苏天晴 · 前世的工作状况","subject":{"type":"entity","id":"su_tianqing"},"predicate":"前世的工作状况","cardinality":"single","held":["D18"],"pending":[],"refuted":[],"relations":[],"heldText":["连续三个夜班后刚下班"]},{"slot":"S_su_kin","title":"苏天晴 · 亲属","subject":{"type":"entity","id":"su_tianqing"},"predicate":"亲属","cardinality":"multi","held":["D21"],"pending":[],"refuted":[],"relations":[],"heldText":["太奶"]},{"slot":"S_su_feet","title":"苏天晴 · 对小脚的态度","subject":{"type":"entity","id":"su_tianqing"},"predicate":"对小脚的态度","cardinality":"single","held":["D35"],"pending":[],"refuted":[],"relations":[],"heldText":["小脚是世界上最美好的瑰宝"]},{"slot":"S_su_wish","title":"苏天晴 · 主张的通用愿望","subject":{"type":"entity","id":"su_tianqing"},"predicate":"主张的通用愿望","cardinality":"multi","held":["D44","D45"],"pending":[],"refuted":[],"relations":["accrue"],"heldText":["取之不尽的财富","变成萝莉"]},{"slot":"S_codex_name","title":"黑色古书 · 专名","subject":{"type":"entity","id":"codex"},"predicate":"专名","cardinality":"single","held":["D27","D62"],"pending":[],"refuted":[],"relations":["corroborate"],"heldText":["墨丘利秘典","墨丘利秘典"]},{"slot":"S_codex_appel","title":"黑色古书 · 称呼","subject":{"type":"entity","id":"codex"},"predicate":"称呼","cardinality":"multi","held":["D07","D43"],"pending":[],"refuted":[],"relations":["accrue"],"heldText":["黑色古书","小破书"]},{"slot":"S_codex_kind","title":"黑色古书 · 类","subject":{"type":"entity","id":"codex"},"predicate":"类","cardinality":"multi","held":["D08","D31","D37"],"pending":[],"refuted":[],"relations":["accrue"],"heldText":["典籍","智慧体","星界使者"]},{"slot":"S_codex_voice","title":"黑色古书 · 声音","subject":{"type":"entity","id":"codex"},"predicate":"声音","cardinality":"single","held":["D04"],"pending":[],"refuted":[],"relations":[],"heldText":["低沉的、仿佛来自遥远彼方的言语"]},{"slot":"S_codex_locomotion","title":"黑色古书 · 行动方式","subject":{"type":"entity","id":"codex"},"predicate":"行动方式","cardinality":"single","held":["D09"],"pending":[],"refuted":[],"relations":[],"heldText":["飘浮在半空中"]},{"slot":"S_codex_origin","title":"黑色古书 · 来处","subject":{"type":"entity","id":"codex"},"predicate":"来处","cardinality":"single","held":["D29"],"pending":[],"refuted":[],"relations":[],"heldText":["星空彼岸"]},{"slot":"S_codex_purpose","title":"黑色古书 · 目的","subject":{"type":"entity","id":"codex"},"predicate":"目的","cardinality":"single","held":["D28"],"pending":["D26"],"refuted":[],"relations":["coexist"],"heldText":["寻找它最优秀的适格者"]},{"slot":"S_codex_role","title":"黑色古书 · 对苏天晴的身份","subject":{"type":"entity","id":"codex"},"predicate":"对苏天晴的身份","cardinality":"single","held":["D38"],"pending":[],"refuted":[],"relations":[],"heldText":["引导苏天晴走上完美的生活"]},{"slot":"S_body_appel","title":"这具狐女身体 · 称呼","subject":{"type":"entity","id":"body_fox"},"predicate":"称呼","cardinality":"multi","held":["D10","D16b"],"pending":[],"refuted":[],"relations":["accrue"],"heldText":["一道陌生的娇小身影","一只娇小的金毛狐女"]},{"slot":"S_body_kind","title":"这具狐女身体 · 类","subject":{"type":"entity","id":"body_fox"},"predicate":"类","cardinality":"multi","held":["D16"],"pending":[],"refuted":[],"relations":[],"heldText":["狐女"]},{"slot":"S_body_hair","title":"这具狐女身体 · 发色","subject":{"type":"entity","id":"body_fox"},"predicate":"发色","cardinality":"single","held":["D12"],"pending":[],"refuted":[],"relations":[],"heldText":["灿烂的金色长发，垂落在肩膀后背"]},{"slot":"S_body_ear","title":"这具狐女身体 · 耳型","subject":{"type":"entity","id":"body_fox"},"predicate":"耳型","cardinality":"single","held":["D13"],"pending":[],"refuted":[],"relations":[],"heldText":["毛茸茸的耳朵，长在头顶"]},{"slot":"S_body_earcount","title":"这具狐女身体 · 耳朵数量","subject":{"type":"entity","id":"body_fox"},"predicate":"耳朵数量","cardinality":"single","held":["D23"],"pending":[],"refuted":[],"relations":[],"heldText":["2只"]},{"slot":"S_body_skin","title":"这具狐女身体 · 肤色","subject":{"type":"entity","id":"body_fox"},"predicate":"肤色","cardinality":"single","held":["D15"],"pending":[],"refuted":[],"relations":[],"heldText":["白皙"]},{"slot":"S_body_features","title":"这具狐女身体 · 五官","subject":{"type":"entity","id":"body_fox"},"predicate":"五官","cardinality":"single","held":["D14"],"pending":[],"refuted":[],"relations":[],"heldText":["精致的五官与眼眸"]},{"slot":"S_body_tail","title":"这具狐女身体 · 尾巴","subject":{"type":"entity","id":"body_fox"},"predicate":"尾巴","cardinality":"multi","held":["D17","D24"],"pending":[],"refuted":[],"relations":["accrue"],"heldText":["背后一只正在炸毛的大尾巴","触感无比柔顺，被薅时的摩挲拉拽感从尾巴尖直冲天灵盖"]},{"slot":"S_body_build","title":"这具狐女身体 · 体型","subject":{"type":"entity","id":"body_fox"},"predicate":"体型","cardinality":"single","held":["D11"],"pending":[],"refuted":[],"relations":[],"heldText":["娇小"]},{"slot":"S_body_foot","title":"这具狐女身体 · 脚","subject":{"type":"entity","id":"body_fox"},"predicate":"脚","cardinality":"single","held":["D34"],"pending":[],"refuted":[],"relations":[],"heldText":["白皙软嫩、带着红晕的小脚"]},{"slot":"S_body_wearing","title":"这具狐女身体 · 穿着","subject":{"type":"entity","id":"body_fox"},"predicate":"穿着","cardinality":"single","held":["D33"],"pending":[],"refuted":[],"relations":[],"heldText":["宽松的睡裙"]},{"slot":"S_body_prev_owner","title":"这具狐女身体 · 原来的主人","subject":{"type":"entity","id":"body_fox"},"predicate":"原来的主人","cardinality":"single","held":["D36"],"pending":[],"refuted":[],"relations":[],"heldText":["（文本明确留白）"]},{"slot":"S_bprev_appel","title":"原来的身体 · 称呼","subject":{"type":"entity","id":"body_prev"},"predicate":"称呼","cardinality":"multi","held":["D61"],"pending":[],"refuted":[],"relations":[],"heldText":["原来的身体"]},{"slot":"S_tainai_appel","title":"太奶 · 称呼","subject":{"type":"entity","id":"tainai"},"predicate":"称呼","cardinality":"multi","held":["D20"],"pending":[],"refuted":[],"relations":[],"heldText":["太奶"]},{"slot":"S_creator_appel","title":"造物主 · 称呼","subject":{"type":"kind","id":"K_creator"},"predicate":"称呼","cardinality":"multi","held":["D51"],"pending":[],"refuted":[],"relations":[],"heldText":["造物主"]},{"slot":"S_creator_kind","title":"造物主 · 类","subject":{"type":"kind","id":"K_creator"},"predicate":"类","cardinality":"multi","held":["D51b"],"pending":[],"refuted":[],"relations":[],"heldText":["造物主"]},{"slot":"S_contract_appel","title":"那份契约 · 称呼","subject":{"type":"entity","id":"contract"},"predicate":"称呼","cardinality":"multi","held":["D39"],"pending":[],"refuted":[],"relations":[],"heldText":["一个小小的契约"]},{"slot":"S_contract_party","title":"那份契约 · 契约相对方","subject":{"type":"entity","id":"contract"},"predicate":"契约相对方","cardinality":"multi","held":["D40","D41"],"pending":[],"refuted":[],"relations":["accrue"],"heldText":["苏天晴","墨丘利秘典"]},{"slot":"S_contract_content","title":"那份契约 · 契约内容","subject":{"type":"entity","id":"contract"},"predicate":"契约内容","cardinality":"single","held":["D47"],"pending":[],"refuted":[],"relations":[],"heldText":["反派魔法少女"]},{"slot":"S_contract_state","title":"那份契约 · 契约状态","subject":{"type":"entity","id":"contract"},"predicate":"契约状态","cardinality":"single","held":["D42","D46","D63"],"pending":[],"refuted":[],"relations":["coexist","corroborate"],"heldText":["尚未签订","成立","成立"]},{"slot":"S_mg_appel","title":"魔法少女 · 称呼","subject":{"type":"kind","id":"K_magical_girl"},"predicate":"称呼","cardinality":"multi","held":["D50"],"pending":[],"refuted":[],"relations":[],"heldText":["魔法少女"]},{"slot":"S_mg_kind","title":"魔法少女 · 类","subject":{"type":"kind","id":"K_magical_girl"},"predicate":"类","cardinality":"multi","held":["D56"],"pending":[],"refuted":[],"relations":[],"heldText":["王道系"]},{"slot":"S_mg_death_rate","title":"魔法少女 · 死亡率","subject":{"type":"kind","id":"K_magical_girl"},"predicate":"死亡率","cardinality":"single","held":[],"pending":["D55"],"refuted":[],"relations":[],"heldText":[]},{"slot":"S_vmg_appel","title":"反派魔法少女 · 称呼","subject":{"type":"kind","id":"K_villain_mg"},"predicate":"称呼","cardinality":"multi","held":["D01","D48"],"pending":[],"refuted":[],"relations":["corroborate"],"heldText":["反派魔法少女","反派魔法少女"]},{"slot":"S_vmg_prospect","title":"反派魔法少女 · 在王道故事里的处境","subject":{"type":"kind","id":"K_villain_mg"},"predicate":"在王道故事里的处境","cardinality":"single","held":["D58"],"pending":[],"refuted":[],"relations":[],"heldText":["纯纯的找死"]},{"slot":"S_oudou_appel","title":"王道系 · 称呼","subject":{"type":"kind","id":"K_oudou"},"predicate":"称呼","cardinality":"multi","held":["D57"],"pending":[],"refuted":[],"relations":[],"heldText":["王道系"]},{"slot":"S_oudou_shape","title":"王道系 · 故事里的走向","subject":{"type":"kind","id":"K_oudou"},"predicate":"故事里的走向","cardinality":"single","held":["D59"],"pending":[],"refuted":[],"relations":[],"heldText":["魔法少女面对强敌逐渐成长，然后喊着友情和羁绊冲上去把反派干碎"]},{"slot":"S_star_appel","title":"星空彼岸 · 称呼","subject":{"type":"entity","id":"star_beyond"},"predicate":"称呼","cardinality":"multi","held":["D30"],"pending":[],"refuted":[],"relations":[],"heldText":["星空彼岸"]},{"slot":"S_room_appel","title":"昏暗的房间 · 称呼","subject":{"type":"entity","id":"room"},"predicate":"称呼","cardinality":"multi","held":["D05"],"pending":[],"refuted":[],"relations":[],"heldText":["昏暗的房间"]},{"slot":"S_stall_appel","title":"街边面摊 · 称呼","subject":{"type":"entity","id":"noodle_stall"},"predicate":"称呼","cardinality":"multi","held":["D19"],"pending":[],"refuted":[],"relations":[],"heldText":["街边面摊"]},{"slot":"S_task_appel","title":"那一整套任务 · 称呼","subject":{"type":"entity","id":"task_set"},"predicate":"称呼","cardinality":"multi","held":["D52"],"pending":[],"refuted":[],"relations":[],"heldText":["一整套任务"]},{"slot":"S_task_giver","title":"那一整套任务 · 任务的定制者","subject":{"type":"entity","id":"task_set"},"predicate":"任务的定制者","cardinality":"single","held":["D53"],"pending":[],"refuted":[],"relations":[],"heldText":["造物主"]},{"slot":"S_task_purpose","title":"那一整套任务 · 任务的用途","subject":{"type":"entity","id":"task_set"},"predicate":"任务的用途","cardinality":"single","held":["D54"],"pending":[],"refuted":[],"relations":[],"heldText":["帮助她逐步走上反派魔法少女的顶点"]}],"w11":[{"slot":"S_contract_state","title":"那份契约 · 契约状态","subject":{"type":"entity","id":"contract"},"predicate":"契约状态","cardinality":"single","held":["D42","D46","D63"],"pending":[],"refuted":[],"relations":["coexist","corroborate"],"heldText":["尚未签订","成立","成立"]}],"load":[{"slot":"S_su_kind","subject":"entity:su_tianqing","n":4},{"slot":"S_codex_kind","subject":"entity:codex","n":3},{"slot":"S_contract_state","subject":"entity:contract","n":3},{"slot":"S_vmg_appel","subject":"kind:K_villain_mg","n":2},{"slot":"S_su_name","subject":"entity:su_tianqing","n":2},{"slot":"S_codex_appel","subject":"entity:codex","n":2},{"slot":"S_body_appel","subject":"entity:body_fox","n":2},{"slot":"S_body_tail","subject":"entity:body_fox","n":2},{"slot":"S_codex_purpose","subject":"entity:codex","n":2},{"slot":"S_codex_name","subject":"entity:codex","n":2},{"slot":"S_contract_party","subject":"entity:contract","n":2},{"slot":"S_su_wish","subject":"entity:su_tianqing","n":2},{"slot":"S_su_voice","subject":"entity:su_tianqing","n":1},{"slot":"S_codex_voice","subject":"entity:codex","n":1},{"slot":"S_room_appel","subject":"entity:room","n":1},{"slot":"S_codex_locomotion","subject":"entity:codex","n":1},{"slot":"S_body_build","subject":"entity:body_fox","n":1},{"slot":"S_body_hair","subject":"entity:body_fox","n":1},{"slot":"S_body_ear","subject":"entity:body_fox","n":1},{"slot":"S_body_features","subject":"entity:body_fox","n":1},{"slot":"S_body_skin","subject":"entity:body_fox","n":1},{"slot":"S_body_kind","subject":"entity:body_fox","n":1},{"slot":"S_su_prev_work","subject":"entity:su_tianqing","n":1},{"slot":"S_stall_appel","subject":"entity:noodle_stall","n":1},{"slot":"S_tainai_appel","subject":"entity:tainai","n":1},{"slot":"S_su_kin","subject":"entity:su_tianqing","n":1},{"slot":"S_su_inhabits","subject":"entity:su_tianqing","n":1},{"slot":"S_body_earcount","subject":"entity:body_fox","n":1},{"slot":"S_codex_origin","subject":"entity:codex","n":1},{"slot":"S_star_appel","subject":"entity:star_beyond","n":1},{"slot":"S_body_wearing","subject":"entity:body_fox","n":1},{"slot":"S_body_foot","subject":"entity:body_fox","n":1},{"slot":"S_su_feet","subject":"entity:su_tianqing","n":1},{"slot":"S_body_prev_owner","subject":"entity:body_fox","n":1},{"slot":"S_codex_role","subject":"entity:codex","n":1},{"slot":"S_contract_appel","subject":"entity:contract","n":1},{"slot":"S_contract_content","subject":"entity:contract","n":1},{"slot":"S_mg_appel","subject":"kind:K_magical_girl","n":1},{"slot":"S_creator_appel","subject":"kind:K_creator","n":1},{"slot":"S_creator_kind","subject":"kind:K_creator","n":1},{"slot":"S_task_appel","subject":"entity:task_set","n":1},{"slot":"S_task_giver","subject":"entity:task_set","n":1},{"slot":"S_task_purpose","subject":"entity:task_set","n":1},{"slot":"S_mg_death_rate","subject":"kind:K_magical_girl","n":1},{"slot":"S_mg_kind","subject":"kind:K_magical_girl","n":1},{"slot":"S_oudou_appel","subject":"kind:K_oudou","n":1},{"slot":"S_vmg_prospect","subject":"kind:K_villain_mg","n":1},{"slot":"S_oudou_shape","subject":"kind:K_oudou","n":1},{"slot":"S_su_cod","subject":"entity:su_tianqing","n":1},{"slot":"S_bprev_appel","subject":"entity:body_prev","n":1}],"momentBounds":[{"from":"M_b","to":"M_c","minutes":3},{"from":"M_nightshifts","to":"M_c","minutes":3}],"momentUse":[{"id":"M_a","grain":"interval","label":null,"note":"第一章当下。房间里这一场连续对话发生的时刻，文本没有给它任何名字。它是一个区间，从第 5 段铺到第 77 段——所以它不能当相对时间词的锚点，见 v4 第 5.7.6 节","beats":["B02","B03","B04","B06","B07","B08","B09","B10","B11","B12","B13","B14","B15","B16","B17","B18","B19","B20","B21","B23","B24"],"scenes":["SC1","SC3"],"disclosures":["D02","D03","D04","D05","D06","D07","D08","D09","D10","D11","D12","D13","D14","D15","D16","D16b","D17","D22","D23","D24","D25","D26","D27","D28","D29","D31","D32","D33","D34","D36","D37","D39","D40","D41","D42","D43","D46","D47","D52","D62","D63"],"relations":0},{"id":"M_b","grain":"interval","label":null,"note":"回述那一场发生的时刻，面摊那一刻。文本管它叫「五分钟前」，但那是相对说法，按 v4 第 5.7.2 节只能进关系不能当 label","beats":["B05"],"scenes":["SC2"],"disclosures":["D19","D20","D60"],"relations":2},{"id":"M_c","grain":"interval","label":null,"note":"古书第一次说那段开场白的时刻。正文里没有这一段——第 30、31 段明写是「重复」，原话在第 5 段之前就说过了。所以这是一个没有任何 Beat 停在上面、也不属于任何场的时刻，见 v4 第 5.7.6 节第二条","beats":[],"scenes":[],"disclosures":[],"relations":1},{"id":"M_today","grain":"interval","label":null,"note":"第 67 段古书说的「今天」，包着当下那一刻的那一天。粒度是日，比 M_a 粗——粒度不是时刻的属性，是关系上单位的属性","beats":[],"scenes":[],"disclosures":["D49","D64"],"relations":1},{"id":"M_nightshifts","grain":"interval","label":null,"note":"「连续三个夜班」那一段。它不是任何 Beat 停在的地方——B05 停在 M_b（面摊那一刻），这一段是 B05 产生的披露「她连上了三个夜班」指向的时刻。这是 v4 第 5.7.3 节「两个挂钩，一种节点」的实物：Beat.时刻 与 披露.时间指示 在同一个 Beat 上取了不同的值","beats":[],"scenes":[],"disclosures":["D18"],"relations":1}],"traceOk":[{"step":"问题","detail":"读到第 20 段，苏天晴的「居于哪具身体」是什么？"},{"step":"找槽","detail":"S_su_inhabits（单值，易变度 low）—— 槽是节点，值不是"},{"step":"取披露","detail":"全章 1 条，at ≤ 20 的有 1 条：D22@第16段"},{"step":"D22","detail":"一只娇小的金毛狐女 ｜ 读者推断 ｜ 直陈 ｜ 时间指示 M_a"},{"step":"结果","detail":"为真 1 条：一只娇小的金毛狐女　悬而未决 0 条　已被推翻 0 条"}],"traceBad":[{"step":"问题","detail":"读到第 77 段，一个小小的契约的「契约状态」是什么？"},{"step":"找槽","detail":"S_contract_state（单值，易变度 medium）—— 槽是节点，值不是"},{"step":"取披露","detail":"全章 3 条，at ≤ 77 的有 3 条：D42@第45段、D46@第60段、D63@第76段"},{"step":"D42","detail":"尚未签订 ｜ 角色说出口：墨丘利秘典 ｜ 直陈 ｜ 时间指示 M_a ｜ 与 D46 判为「认识论并存」"},{"step":"D46","detail":"成立 ｜ 角色说出口：苏天晴 ｜ 直陈 ｜ 时间指示 M_a ｜ 与 D42 判为「认识论并存」"},{"step":"D63","detail":"成立 ｜ 系统通知 ｜ 直陈 ｜ 时间指示 M_a ｜ 与 D42 判为「认识论并存」"},{"step":"结果","detail":"为真 3 条：尚未签订 | 成立 | 成立　悬而未决 0 条　已被推翻 0 条"}],"issues":[]}}
+</script>
+<script>
+"use strict";
+const RAW = (() => { try { return JSON.parse(document.getElementById('dataset').textContent || '{}'); } catch (e) { return {}; } })();
+const MEM = RAW.memory, BEATS = RAW.beats, D = RAW.derived;
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const $ = id => document.getElementById(id);
+
+if (!MEM || !D) {
+  document.body.innerHTML = '<div style="padding:80px;text-align:center;font-family:var(--f-body)">' +
+    '这一页没有数据。先跑 <code>node --experimental-strip-types scripts/build-viewer.ts</code>。</div>';
+} else {
+
+const BEAT_TYPE_ZH = { paratext:'故事外', narrative:'叙事', description:'描写', exposition:'说明' };
+const BEAT_TYPE_COLOR = { paratext:'#6b7186', narrative:'#5a4bb8', description:'#c7304f', exposition:'#a87515' };
+const CHANNEL_ZH = { narrator:'叙述者', speech:'角色说出口', thought:'角色心里想', system:'系统提示', author:'作者旁白', reader_inference:'读者推断' };
+const HEDGE_ZH = { plain:'直陈', hedged:'带保留', suspended:'文本明确悬置' };
+const MOMENT_PRED_ZH = { before:'早于', after:'晚于', same:'同一', contains:'包含', overlaps:'重叠' };
+const RELATION_ZH = { compete:'竞争', coexist:'认识论并存', succeed:'接续', corroborate:'印证', candidate:'候选同指', accrue:'并列累加' };
+const HOLDERLESS = ['narrator','system','author','reader_inference'];
+const N = D.counts.paragraph;
+const ent = id => MEM.entities.find(e => e.id === id);
+const dcl = id => MEM.disclosures.find(d => d.id === id);
+const nameAt = (id, k) => {
+  const tl = D.nameTimelines[id] || [];
+  let n = (ent(id) || {}).label || id;
+  for (const x of tl) if (x.at <= k) n = x.name;
+  return n;
+};
+
+/* ── Hero 数字条 ─────────────────────────────────────── */
+$('dataline').innerHTML = [
+  [D.counts.paragraph, '段'], [D.counts.beat, 'BEAT'], [D.counts.scene, '场'],
+  [D.counts.moment, '时刻'], [D.counts.entity, '主体'], [D.counts.slot, '槽'],
+  [D.counts.disclosure, '披露'],
+].map(([n, l]) => '<div><b>' + n + '</b><span>' + l + '</span></div>').join('');
+
+/* ── B 拆分带子 ──────────────────────────────────────── */
+(function () {
+  const W = 1080, H = 190, top = 16, botAxis = 34, maxH = H - top - botAxis;
+  const mx = Math.max(1, ...D.beatLoad.map(b => b.n));
+  const x = p => (p - 1) / N * W;
+  let h = '';
+  for (const b of D.beatLoad) {
+    const x0 = x(b.from), w = Math.max(2, x(b.to + 1) - x0 - 1.2);
+    const bh = b.n === 0 ? 4 : 10 + (maxH - 10) * b.n / mx;
+    const y = top + maxH - bh;
+    h += '<g class="bt-block" data-beat="' + esc(b.id) + '">' +
+      '<rect x="' + x0 + '" y="' + y + '" width="' + w + '" height="' + bh + '" rx="1.5" fill="' +
+        BEAT_TYPE_COLOR[b.type] + '" opacity="' + (b.n === 0 ? .28 : .72) + '"></rect>' +
+      '<rect x="' + x0 + '" y="' + top + '" width="' + w + '" height="' + maxH + '" fill="transparent"></rect>' +
+      (w > 15 ? '<text class="bt-id" x="' + (x0 + w / 2) + '" y="' + (top + maxH + 12) + '" text-anchor="middle">' +
+        esc(b.id.replace('B', '')) + '</text>' : '') +
+      '</g>';
+  }
+  h += '<line x1="0" y1="' + (top + maxH) + '" x2="' + W + '" y2="' + (top + maxH) + '" stroke="#dedbe8"></line>';
+  for (const p of [1, 20, 40, 60, N])
+    h += '<text class="bt-axis" x="' + Math.min(W - 18, x(p)) + '" y="' + (H - 6) + '">第 ' + p + ' 段</text>';
+  $('strip').innerHTML = h;
+  $('stripLegend').innerHTML = Object.keys(BEAT_TYPE_ZH).map(t =>
+    '<span><i style="background:' + BEAT_TYPE_COLOR[t] + '"></i>' + BEAT_TYPE_ZH[t] + ' ' +
+    D.beatLoad.filter(b => b.type === t).length + '</span>').join('') +
+    '<span style="color:var(--dim)">柱高＝这个 Beat 产出的披露条数</span>';
+
+  const read = $('stripRead');
+  for (const g of $('strip').querySelectorAll('.bt-block')) {
+    g.addEventListener('mouseenter', () => {
+      const b = D.beatLoad.find(x2 => x2.id === g.dataset.beat);
+      read.innerHTML = '<b>' + esc(b.id) + '</b>' + BEAT_TYPE_ZH[b.type] + ' · 第 ' + b.from + '–' + b.to + ' 段 · ' +
+        (b.moment ? '停在 ' + esc(b.moment) : '不停在时刻上') + ' · 产出 ' + b.n + ' 条披露<br>' + esc(b.gist);
+    });
+  }
+})();
+
+const zero = D.beatLoad.filter(b => b.n === 0);
+$('zeroBody').innerHTML = zero.map(b =>
+  '<tr><td class="m">' + esc(b.id) + '</td><td>' + BEAT_TYPE_ZH[b.type] + '</td>' +
+  '<td class="m">' + b.from + (b.to > b.from ? '–' + b.to : '') + '</td>' +
+  '<td class="m">' + (b.moment ? esc(b.moment) : '—') + '</td>' +
+  '<td>' + esc(b.gist) + '</td></tr>').join('');
+$('zeroNote').innerHTML = '这 ' + zero.length + ' 个 Beat 一条披露都没产出，' +
+  '几乎全是情绪与反应——它们不往记忆里加任何东西，但读者确实读了。' +
+  '如果只留披露、把 Beat 层删掉，这 ' + zero.length + ' 段就从结构里彻底消失了：' +
+  '「这一章有多少内容」和「这一章记住了多少」不是同一个数。';
+
+/* ── M 时刻 ──────────────────────────────────────────── */
+$('momentCards').innerHTML = D.momentUse.map(m => {
+  const orphan = m.beats.length === 0;
+  return '<div class="card' + (orphan && m.disclosures.length ? ' hi' : '') + '">' +
+    '<h4>' + esc(m.id) + ' · ' + (m.grain === 'point' ? '时点' : '时段') + '</h4>' +
+    '<div class="big">' + esc(m.label || '（没有名字）') + '</div>' +
+    '<div class="chips">' +
+      (m.beats.length ? '<span class="chip on">Beat 停在这 ' + m.beats.length + '</span>'
+                      : '<span class="chip no">没有 Beat 停在这</span>') +
+      (m.scenes.length ? '<span class="chip">场 ' + esc(m.scenes.join(' ')) + '</span>' : '') +
+      (m.disclosures.length ? '<span class="chip ver">披露指向这 ' + m.disclosures.length + '</span>' : '') +
+      (m.relations ? '<span class="chip">关系 ' + m.relations + '</span>' : '') +
+    '</div>' +
+    (m.note ? '<p style="margin-top:9px">' + esc(m.note) + '</p>' : '') +
+    '</div>';
+}).join('');
+
+$('mrelBody').innerHTML = BEATS.momentRelations.map(r =>
+  '<tr><td class="m">' + esc(r.subject) + ' <span class="gold">' + MOMENT_PRED_ZH[r.predicate] + '</span></td>' +
+  '<td class="m">' + (r.anchor ? esc(r.anchor.ref) : '叙述当下') + '</td>' +
+  '<td class="m">' + (r.offset ? r.offset.value + ' ' + esc(r.offset.unit) : '—') + '</td>' +
+  '<td class="m">第 ' + r.at + ' 段</td>' +
+  '<td>' + CHANNEL_ZH[r.source.channel] + (r.source.holder ? '：' + esc(nameAt(r.source.holder, N)) : '') + '</td></tr>'
+).join('');
+
+$('boundBody').innerHTML = D.momentBounds.length
+  ? D.momentBounds.map(b => '<tr><td class="m">' + esc(b.from) + ' → ' + esc(b.to) + '</td>' +
+      '<td class="m gold">' + b.minutes + ' 分钟</td></tr>').join('')
+  : '<tr><td colspan="2">这一章推不出任何带数值的下界。</td></tr>';
+$('boundNote').innerHTML = '这些数没有存在任何地方。' +
+  '第 11 段那句「五分钟前」和第 29 段那句「两分钟前」各是一条锚在叙述当下的关系，' +
+  '加上一条假设——<b>' + esc(D.nowAssumption) + '</b>——就能解出上面这张表。' +
+  '文本从没说过「开场白比面摊晚三分钟」，是这套约束替它说的。';
+
+/* ── S 槽 ────────────────────────────────────────────── */
+$('loadBody').innerHTML = D.load.slice(0, 8).map(l => {
+  const st = D.finalState.find(s => s.slot === l.slot) || {};
+  return '<tr><td class="m">' + esc(st.title || l.slot) + '</td>' +
+    '<td class="m">' + l.n + '<div class="bar"><i style="width:' + (l.n / D.load[0].n * 100) + '%"></i></div></td>' +
+    '<td>' + (st.cardinality === 'multi' ? '多值' : '单值') + '</td>' +
+    '<td>' + esc((st.heldText || []).join(' | ') || '—') + '</td></tr>';
+}).join('');
+
+/* ── D 披露 ──────────────────────────────────────────── */
+$('chanBody').innerHTML = Object.entries(D.channel).sort((a, b) => b[1] - a[1]).map(([ch, n]) =>
+  '<tr><td class="m">' + CHANNEL_ZH[ch] + '</td><td class="m">' + n + '</td>' +
+  '<td>' + (HOLDERLESS.includes(ch) ? '不写（写了反而报错）' : '必须写') + '</td></tr>').join('');
+$('hedgeBody').innerHTML = ['plain', 'hedged', 'suspended'].map(hg =>
+  '<tr><td class="m">' + HEDGE_ZH[hg] + '</td><td class="m">' + (D.hedge[hg] || 0) + '</td>' +
+  '<td>' + (hg === 'plain' ? '进' : '不进，除非另有一条直陈的印证它') + '</td></tr>').join('');
+
+(function () {
+  const d = dcl('D18') || MEM.disclosures.find(x => x.timeRef) || MEM.disclosures[0];
+  $('recId').textContent = d.id;
+  const rows = [
+    ['id', d.id], ['slot', d.slot || '—'], ['refutes', d.refutes || '—'],
+    ['value', d.value.t + ' · ' + (d.value.v !== undefined ? d.value.v : d.value.id)],
+    ['source.channel', CHANNEL_ZH[d.source.channel]],
+    ['source.holder', d.source.holder || '（这个通道不写）'],
+    ['source.hedge', HEDGE_ZH[d.source.hedge]],
+    ['at', '第 ' + d.at + ' 段'],
+    ['timeRef', d.timeRef || '（无，落在叙述当下）'],
+    ['inferredFrom', (d.inferredFrom || []).join('、') || '—'],
+  ];
+  $('recGrid').innerHTML = rows.map(([k, v]) =>
+    '<div><dt>' + esc(k) + '</dt><dd' + (v === '—' || String(v).startsWith('（') ? ' class="na"' : '') + '>' + esc(v) + '</dd></div>').join('') +
+    '<div style="grid-column:1/-1"><dt>note</dt><dd style="font-family:var(--f-body);font-size:12.5px;color:var(--dim);word-break:normal">' +
+      esc(d.note || '—') + '</dd></div>';
+})();
+
+(function () {
+  const infs = MEM.disclosures.filter(d => d.source.channel === 'reader_inference');
+  $('inferNote').innerHTML = '这一章有 ' + infs.length + ' 条读者推断。' +
+    '它们的 <code>inferredFrom</code> 指的是<b>槽</b>，不是披露——这样做梦阶段重跑时，' +
+    '拿到的是那些槽当时的最新答案，而不是当初那几条具体的话。' +
+    '注意字段名不叫「支持」：<b>支持是查询时算出来的，不存</b>；存下来的只有「推断自」。' +
+    (infs.length ? '例如 <code>' + esc(infs[0].id) + '</code>（第 ' + infs[0].at + ' 段）推断自 ' +
+      infs[0].inferredFrom.map(s => '<code>' + esc(s) + '</code>').join('、') + '。' : '');
+})();
+
+/* ── R 关系 ──────────────────────────────────────────── */
+(function () {
+  const spec = [
+    ['corroborate', '同一', '相同', '不同', '两处不同来源说的是同一件事'],
+    ['compete', '同一', '不同', '相同', '同一个来源前后打架'],
+    ['coexist', '同一', '不同', '不同', '两个来源各说各的，都留着'],
+    ['succeed', '错开', '不同', '—', '前后两个状态，不是矛盾'],
+    ['candidate', '判不了', '—', '—', '时刻推不出先后，只能挂着'],
+    ['accrue', '—', '不同', '—', '多值谓词，值之间本来就不互斥'],
+  ];
+  const hitsBy = {};
+  for (const h of D.relationHits) (hitsBy[h.relation] = hitsBy[h.relation] || []).push(h);
+  $('relBody').innerHTML = spec.map(([r, m, v, ch, why]) => {
+    const hs = hitsBy[r] || [];
+    const eg = hs[0];
+    return '<tr' + (r === 'accrue' ? ' style="background:rgba(168,117,21,.05)"' : '') + '>' +
+      '<td class="m ' + (hs.length ? 'gold' : '') + '">' + RELATION_ZH[r] + (r === 'accrue' ? ' <span style="color:var(--fade)">（补的第六行）</span>' : '') + '</td>' +
+      '<td>' + m + '</td><td>' + v + '</td><td>' + ch + '</td>' +
+      '<td class="m">' + (hs.length ? hs.length + ' 次' : '<span style="color:var(--faint)">0 次</span>') + '</td>' +
+      '<td>' + (eg ? esc(eg.slotTitle) + '：' + esc(eg.valueA) + ' × ' + esc(eg.valueB)
+                   : '<span style="color:var(--faint)">这一章没出现 —— ' + why + '</span>') + '</td></tr>';
+  }).join('');
+  const miss = spec.filter(([r]) => !(hitsBy[r] || []).length).map(([r]) => RELATION_ZH[r]);
+  $('relNote').innerHTML = '这一章命中了 ' + (spec.length - miss.length) + ' 行，' +
+    (miss.length ? '<b>' + esc(miss.join('、')) + '</b> 这 ' + miss.length + ' 行一次都没命中。' +
+      '还有整套「反驳」机制也没被用到——这一章没有任何一句话推翻前面那句话。' +
+      '没被用过的规则等于没验过，这几行要等第二章。' : '六行全部命中。');
+})();
+
+/* ── T 切片 ──────────────────────────────────────────── */
+(function () {
+  const rng = $('sliceRange');
+  rng.max = String(N);
+  const CH = 110, CW = 1080;
+  const series = [
+    { key: 'disclosures', color: '#a87515', max: D.counts.disclosure, name: '披露' },
+    { key: 'slots', color: '#5a4bb8', max: D.counts.slot, name: '槽' },
+    { key: 'entities', color: '#1e8a74', max: D.counts.entity, name: '主体' },
+  ];
+  const changed = MEM.entities.filter(e => (D.nameTimelines[e.id] || []).length > 1);
+
+  function draw(k) {
+    let h = '';
+    for (const s of series) {
+      const pts = D.sliceCounts.map(c =>
+        ((c.k - 1) / (N - 1) * CW).toFixed(1) + ',' + (CH - 6 - (CH - 14) * c[s.key] / s.max).toFixed(1));
+      h += '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + s.color + '" stroke-width="1.6" opacity=".85"></polyline>';
+    }
+    const kx = (k - 1) / (N - 1) * CW;
+    h += '<line x1="' + kx + '" y1="0" x2="' + kx + '" y2="' + CH + '" stroke="#1b1830" stroke-width="1" opacity=".5"></line>';
+    $('curve').innerHTML = h;
+
+    const c = D.sliceCounts[k - 1];
+    $('sliceK').textContent = '第 ' + k + ' 段';
+    $('sliceNum').innerHTML = series.map(s =>
+      '<span style="color:' + s.color + '">' + s.name + ' <b>' + c[s.key] + '</b>/' + s.max + '</span>').join('');
+    $('namewall').innerHTML = changed.map(e => {
+      const now = nameAt(e.id, k), tl = D.nameTimelines[e.id];
+      const born = D.entityFirstAt[e.id];
+      const next = tl.find(x => x.at > k);
+      return '<div class="namecell' + (k >= tl[1].at ? ' changed' : '') + '">' +
+        '<em>' + esc(e.id) + ' · Kind.category 由关联类提供' + '</em>' +
+        '<strong>' + esc(born && born <= k ? now : '（还没出场）') + '</strong>' +
+        '<small>' + (next ? '第 ' + next.at + ' 段起改叫「' + esc(next.name) + '」' : '这就是最终的叫法') + '</small></div>';
+    }).join('');
+  }
+  rng.addEventListener('input', () => draw(+rng.value));
+  draw(1);
+})();
+
+/* ── W 缺口 ──────────────────────────────────────────── */
+$('w11Box').innerHTML = D.w11.length
+  ? '<div class="trace" style="border-left:2px solid var(--rose);background:rgba(199,48,79,.05)">' +
+    '<p class="trace-q" style="margin-bottom:12px">读完全章，这几个槽给出的是错答案</p>' +
+    D.w11.map(s => '<div class="step"><em>' + esc(s.slot) + '</em><div><b style="color:var(--quick);font-weight:400">' +
+      esc(s.title) + '</b> 是单值谓词，却同时把 <b style="color:var(--rose);font-weight:400">' +
+      esc(s.heldText.join(' | ')) + '</b> 判成为真。</div></div>').join('') +
+    '<div class="verdict fail"><b>成因</b>' +
+      '两条披露挂着同一个时刻、来源通道不同，按第 5.6 节判成「认识论并存」，于是都留在「为真」里。' +
+      '模型现在说不出同一个时刻内部谁先谁后。出口只有一个：承认<b>叙述位置</b>可以在同一个时刻内部排序。' +
+      '这条记在 W11。</div></div>'
+  : '<div class="gaps"><div class="gap">这一章没有互斥同真的槽。</div></div>';
+
+$('findings').innerHTML = [...(MEM.findings || []), ...((BEATS && BEATS.findings) || [])]
+  .map(f => '<div class="gap"><div>' + esc(f) + '</div></div>').join('');
+
+/* ── → 走查 ──────────────────────────────────────────── */
+function renderTrace(box, steps, verdict, cls) {
+  box.innerHTML = '<p class="trace-q">' + esc(steps[0].detail) + '</p>' +
+    steps.slice(1).map(s => '<div class="step"><em>' + esc(s.step) + '</em><div>' + esc(s.detail) + '</div></div>').join('') +
+    '<div class="verdict ' + (cls || '') + '"><b>' + (cls ? '结论 · 错的' : '结论 · 对的') + '</b>' + verdict + '</div>';
+}
+renderTrace($('traceOk'), D.traceOk,
+  '一条披露、一个来源、一个段号，答案唯一。注意「这具狐女身体」这个叫法本身也是算出来的——' +
+  '第 11 段之前它还叫「一道陌生的娇小身影」。查询结果里的名字跟着叙述位置走，不会漏后文的专名。');
+renderTrace($('traceBad'), D.traceBad,
+  '三条披露，两个互斥的值一起为真。这不是「悬而未决」，是模型给了个自相矛盾的答案。' +
+  '记在 W11，等开发者裁决。', 'fail');
+
+$('footStamp').innerHTML = '数据：<code>chapter-01.json</code> · <code>evidences/chapter-01-beats.json</code>　' +
+  '算子：<code>schema.ts</code>　校验：' +
+  (D.issues.filter(i => i.level === 'error').length + ' 错误 / ' + D.issues.filter(i => i.level === 'warn').length + ' 提醒');
+
+}
+</script>
+</body>
+</html>

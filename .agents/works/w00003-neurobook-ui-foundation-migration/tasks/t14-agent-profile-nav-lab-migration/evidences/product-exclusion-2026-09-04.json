@@ -1,0 +1,30 @@
+{
+  "schema": "nbook.t14-product-exclusion-evidence/v1",
+  "taskId": "t14-agent-profile-nav-lab-migration",
+  "buildCommand": "bun run --cwd packages/neuro-book nuxt:build:raw",
+  "buildOutputRoot": "C:\\Users\\notnotype\\Documents\\CodeRepository\\GithubProjects\\neuro-book\\packages\\neuro-book\\.nuxt\\product-raw",
+  "sourceRevision": "b5da5000784ae6ee29fabbe3cc459bb49d731d08",
+  "sourceDirty": true,
+  "sourceIdentity": "HEAD + current worktree changes; raw build does not use a clean revision",
+  "scannedFiles": 0,
+  "scannedBytes": 0,
+  "forbiddenLiterals": [
+    "component-lab",
+    "AgentProfileNavListFixture",
+    "LabShell",
+    "data-lab-subject"
+  ],
+  "forbiddenRoutePattern": "/\\/lab(?:\\/|[\\\"'`] |$)/u",
+  "absolutePathPatterns": [
+    "C:\\\\\\\\Users\\\\\\\\notnotype\\\\\\\\Documents\\\\\\\\CodeRepository\\\\\\\\GithubProjects\\\\\\\\neuro-book",
+    "C:\\/Users\\/notnotype\\/Documents\\/CodeRepository\\/GithubProjects\\/neuro-book",
+    "file:\\/\\/\\/C:\\/Users\\/notnotype\\/Documents\\/CodeRepository\\/GithubProjects\\/neuro-book"
+  ],
+  "hits": [],
+  "routeFilesCount": 0,
+  "formalRoute": "server/chunks/routes/api/app/version.get.mjs",
+  "formalRoutePresent": false,
+  "labRouteFiles": [],
+  "routeFilesSample": [],
+  "scanResult": "failed"
+}

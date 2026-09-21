@@ -1,0 +1,57 @@
+{
+  "schema": "nbook.extraction-stage-call/v1",
+  "generatedAt": "2026-08-29T06:46:05.212Z",
+  "stage": "s1",
+  "provider": "deepseek",
+  "model": "deepseek-v4-flash",
+  "baseUrlHost": "api.deepseek.com",
+  "source": {
+    "ref": ".agents/works/w00005-novel-understanding-spike/tasks/t01-novel-understanding-spike/evidences/chapter-001-source-normalized.txt",
+    "normalization": "chapter-source-normalization/v1",
+    "sha256": "22c9b12d0305da4b64ea39751e809ed47cf9254d574caf875fbff91ef82552ee"
+  },
+  "prompt": {
+    "version": "extraction-stage-prompts/v1",
+    "purpose": "t03-s1-scene-segmentation-official",
+    "systemSha256": "260104f1f64537a301f9ba12fc39ba4234929d3e2c95566bf0af444bc685a3f6",
+    "userSha256": "fb154ccb9eb4cec439f66c7f9733853c44053e310f44c8c01cea41bb3f444a3f",
+    "systemChars": 640,
+    "userChars": 2365,
+    "maxTokens": 4000,
+    "thinking": "disabled",
+    "ref": ".agents/works/w00005-novel-understanding-spike/tasks/t03-extraction-pipeline-design/evidences/stage-prompts.md"
+  },
+  "input": {
+    "paragraphCount": 77
+  },
+  "transport": {
+    "kind": "single-fetch",
+    "redirects": "error",
+    "httpRequestsAttempted": 1,
+    "applicationRetries": 0,
+    "libraryRetries": 0
+  },
+  "response": {
+    "httpStatus": 200,
+    "durationMs": 3058,
+    "finishReason": "stop",
+    "observedChoiceCount": 1,
+    "usage": {
+      "inputTokens": 1854,
+      "outputTokens": 496,
+      "totalTokens": 2350
+    }
+  },
+  "output": {
+    "sha256": "7c8e596ecbe1735cc968d3a2a8517e9900c75c1a9c0c1f4d900897af9b0077cd",
+    "chars": 1339,
+    "visibleChars": 862,
+    "lines": 67
+  },
+  "persistence": {
+    "outputPath": "output.txt",
+    "repositoryWrites": 0,
+    "responseEnvelopePersisted": false
+  },
+  "failureCategory": null
+}

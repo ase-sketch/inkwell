@@ -1,0 +1,80 @@
+{
+    "schema": "nbook.review-evidence/v1",
+    "status": "superseded",
+    "supersededBy": "review-2026-09-07-final.json",
+    "supersededReason": "本文件记录审查整改前的 11 tests 与旧证据；最终状态见 remediation evidence。",
+    "workId": "w00009-issue-123-proper-lockfile",
+    "taskId": "t01-proper-lockfile-exfat",
+    "worktree": "C:/Users/notnotype/Documents/CodeRepository/GithubProjects/neuro-book/.worktree/w00009-issue-123-proper-lockfile",
+    "branch": "fix/w00009-issue-123-proper-lockfile",
+    "head": "64efeb914f1b1929152797ec0379fa037556ec4a",
+    "verdict": "未完成验证",
+    "commands": [
+        {
+            "command": "bun install --frozen-lockfile --ignore-scripts --linker hoisted",
+            "result": "通过；Bun 1.3.14；3 packages installed"
+        },
+        {
+            "command": "bun x vitest run --config scripts/vitest.config.ts scripts/build/proper-lockfile-patch.test.ts",
+            "result": "通过；1 file passed；11 tests passed"
+        },
+        {
+            "command": "bun x tsc --noEmit -p scripts/tsconfig.json",
+            "result": "通过；无输出"
+        },
+        {
+            "command": "bun run --cwd packages/neuro-book nuxt:prepare && bun run --cwd packages/neuro-book test -- server/agent/session/agent-session-store-lease.test.ts server/agent/session/agent-session-store-lease-compromise.test.ts server/agent/session/agent-session-store-release.test.ts",
+            "result": "通过；3 files passed；14 tests passed"
+        },
+        {
+            "command": "bun run --cwd packages/neuro-book test -- server/workspace-files/project-lock.test.ts",
+            "result": "通过；1 file passed；9 tests passed"
+        },
+        {
+            "command": "bun run docs:check",
+            "result": "通过；failures: []；checkedFiles: 5401"
+        },
+        {
+            "command": "git diff --check",
+            "result": "通过；仅有 package.json 的 CRLF 转换提示"
+        },
+        {
+            "command": "bun run governance:check",
+            "result": "失败；既有缺口 .agents/works/w00003-neurobook-ui-foundation-migration/tasks/t14-agent-profile-nav-lab-migration/README.md 缺失"
+        }
+    ],
+    "verifiedBoundaries": {
+        "patchLoaded": true,
+        "patchSourceFilesObserved": [
+            "node_modules/proper-lockfile/lib/mtime-precision.js",
+            "node_modules/proper-lockfile/lib/lockfile.js"
+        ],
+        "productStage": "阻塞；既有入口报 ReferenceError: ProductRuntimeImageBuilder is not defined，已记录为 GitHub #226",
+        "portableProduct": "未完成",
+        "realNtfs120SecondSmoke": "未完成",
+        "realExfat": "未完成；当前主机无 exFAT 卷",
+        "specStatus": "planned"
+    },
+    "requiredFindings": [
+        {
+            "id": "planned-spec-implementation-detail",
+            "path": "docs/specs/agent/session-store-lease.md:65-69",
+            "summary": "planned Spec 泄漏具体依赖、hoisted/vendor/inline 载荷实现细节；应移到 Task 或 ADR，Spec 保留可观察兼容合同。"
+        },
+        {
+            "id": "lockfile-churn-review",
+            "path": "bun.lock diff around lines 230, 367, 415, 3671-4529",
+            "summary": "除 patch 映射外包含 workspace 版本和 @types 解析漂移；需从 manifest 对齐的基线重生并说明或隔离非任务漂移，不能手工编辑。"
+        },
+        {
+            "id": "test-observability",
+            "path": "scripts/build/proper-lockfile-patch.test.ts:20-39,41-81,178-201,299-304",
+            "summary": "健康 heartbeat 场景只断言未收到 ECOMPROMISED，未观察至少三次实际 utimes/mtime 更新。"
+        }
+    ],
+    "scopeBoundary": {
+        "workIssueIdUnchanged": "i123",
+        "remoteWritesAfterIssue226": false,
+        "sourceCodeChangedByReview": false
+    }
+}

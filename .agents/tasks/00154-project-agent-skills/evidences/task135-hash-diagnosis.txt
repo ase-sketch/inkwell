@@ -1,0 +1,31 @@
+Task 135 governance baseline diagnosis
+
+Target file: packages/neuro-book/.agents/tasks/135-agent-asset-install-protocol/README.md
+
+Observed current SHA-256:
+- `sha256:f61030bd56975e50a69edd99414a8c62c204ba151840d6f9e4d8b376c53591a7`
+
+Expected values recorded by both governance sources:
+- `.agents/tasks/ownership.json` Task `135-agent-asset-install-protocol` file entry: `sha256:00caa493f58eb042276d7b8292d97ec744562f106d2d83c583e5c5fe23ab096a`.
+- `.agents/tasks/legacy-index.json` mapping `docs/tasks/135-agent-asset-install-protocol/README.md` -> `.agents/tasks/135-agent-asset-install-protocol/README.md`: `destinationSha256` is `sha256:00caa493f58eb042276d7b8292d97ec744562f106d2d83c583e5c5fe23ab096a`.
+
+Why two errors:
+1. `ownership 文件 hash 不一致` compares the physical application-root file against `ownership.json` `file.sha256`.
+2. `迁移目标 hash 不一致` compares the same physical file against migration mapping `destinationSha256`.
+
+Both checks therefore report the same underlying manifest/file drift; they are not two different Task 135 files. The governance implementation checks these at `scripts/ci/agent-governance-contract.ts` lines 899-900 and 973-974. This Task does not modify Task 135, ownership, migration manifests, or governance baseline data.
+
+完整的后续修复方向（本 Task 未执行）：若获授权以当前物理文件为准，需同时更新 `ownership.json` 对应 `file.sha256`、`legacy-index.json` 对应 mapping 的 `destinationSha256`，并按 contract lines 871-879 对完整 manifest 对象重新计算 `.agents/tasks/legacy-index.json` 顶层 `manifestSha256`。随后必须把 `.agents/tasks/.migration-complete` 的 `manifestSha256` 同步为同一新值，因为 contract line 862 要求 migration marker 与 index 一致。只改两个文件 hash 而不更新这两个 manifest 字段会新增 `迁移 manifest SHA-256 不一致` 或 marker/index 不一致失败；当前保留基线原状，未重算或覆盖任何 manifest。
+
+## Correction window 2026-08-24T11:27:04Z
+
+Developer-authorized local resynchronization retained the current Task 135 README and updated governance registrations:
+
+- `.agents/tasks/ownership.json` Task 135 `file.sha256` now equals `sha256:f61030bd56975e50a69edd99414a8c62c204ba151840d6f9e4d8b376c53591a7`.
+- `.agents/tasks/legacy-index.json` Task 135 `destinationSha256` now equals the same actual value.
+- `sourceSha256` remains unchanged because it describes the migration source snapshot.
+- Recomputing the complete manifest object required by contract lines 871-879 produced `sha256:bd0fe64ad664533a2826a1b31e1567f842cb3ca73c721338c667892cbe8be679`.
+- `.agents/tasks/legacy-index.json` and `.agents/tasks/.migration-complete` now carry that same `manifestSha256`.
+- `bun run governance:check` returned `failures: []` and `warnings: []`.
+
+The pre-existing dangling pointer `.omp/RULES.md:5` -> `AGENTS.md#汇报与提问` remains outside this Task's allowed files and was not changed.

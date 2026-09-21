@@ -1,0 +1,8 @@
+{
+    // Prisma Client 生成器会读取输出目录最近的 tsconfig；这里隔离根 Nuxt tsconfig，保证 clean checkout 可生成。
+    "compilerOptions": {
+        "target": "ESNext",
+        "module": "ESNext",
+        "moduleResolution": "Bundler"
+    }
+}

@@ -1,0 +1,48 @@
+/*
+ * playground 样式入口（Tailwind v4）。
+ *
+ * 与 src/tailwind.css 的分工：那份是**发布产物**的入口（不含 preflight、只扫 src），
+ * 这份是**开发工程**的入口（含 preflight、扫 playground 与 src）。
+ *
+ * 这里刻意依赖 Tailwind v4 的自动源码探测（从项目根扫描非 gitignore 的文件），
+ * 它同时覆盖 playground/ 与 ../src/，等价于原来 uno.config.ts 里的
+ * `content.filesystem: ["../src/**\/*.{vue,ts}"]`。扫 src 是为了改组件后即时生效，
+ * 不必先跑 build:css。
+ */
+
+@import "tailwindcss";
+
+/* 对照页元素层。必须排在 tailwindcss 之后：它是无层 CSS，
+   而 Tailwind 的 utilities 在 @layer 里，无层的永远赢，正是想要的裁决顺序。
+
+   主题层不在这里——三套主题各自是一个包（themes/<id>/vars.css），由包的 index.ts import，
+   随 ../../installed-themes.ts 的装载一起进构建。它们靠特异性（0,2,0 压 0,1,0）赢过
+   dist/nb-ui.css 里的基线，与谁先谁后无关。 */
+@import "./showcase.css";
+
+/* 工作台切片层。看的是「一屏铺满之后长什么样」，与 showcase 的「元素长什么样」互补 */
+@import "./workbench.css";
+
+/* 组件诊断实验室（/lab）：单组件单场景的可复现诊断 */
+@import "./lab.css";
+
+/* 与 src/tailwind.css 同款图标配置：类名对齐现有 i-lucide-* 写法 */
+@plugin "@iconify/tailwind4" {
+    prefixes: lucide;
+    iconSelector: ".i-{prefix}-{name}";
+    prefix: false;
+}
+
+/* 图标遮罩垫片：预生成模式每条图标规则只有 --svg，公共属性必须自己补。理由见 src/tailwind.css */
+[class*="i-lucide-"] {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    background-color: currentColor;
+    -webkit-mask-image: var(--svg);
+    mask-image: var(--svg);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+}

@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>抽取管线走查 · 第一章第七场</title>
+<style>
+/* ─────────────────────────────────────────────────────────────
+   蓝晒图。冷纸、深靛、赭石。
+
+   这一页只有一个配色规则，全页贯穿：
+     靛蓝 = 代码写的      冷的、确定的、能被单元测试钉死的
+     赭石 = 模型写的      暖的、概率的、会出错的
+     石灰 = 常量或默认    没人决定，查表得来
+   看一眼哪种颜色多，就知道这条管线把多少东西交给了模型。
+   ───────────────────────────────────────────────────────────── */
+:root{
+  --paper:#e9edf2; --sheet:#fff; --sheet2:#f3f6fa; --sunk:#e2e8ef;
+  --rule:#cbd5e0; --rule2:#e0e7ee;
+  --ink:#101720; --ink2:#44526a; --ink3:#8896a9;
+  --blue:#14497e; --blue-soft:#e6eef7; --blue-line:#b3c6dc;
+  --amber:#a4551a; --amber-soft:#faeee2; --amber-line:#e3c3a1;
+  --stone:#78828f; --stone-soft:#eceff3;
+  --pass:#166b58; --fail:#a02a44;
+  --f-body:"Noto Sans SC","PingFang SC","Microsoft YaHei","Hiragino Sans GB",sans-serif;
+  --f-mono:ui-monospace,"JetBrains Mono","Cascadia Mono","Consolas","SFMono-Regular",monospace;
+  --pad:clamp(18px,4.5vw,58px);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:var(--f-body);font-weight:350;font-size:14.5px;line-height:1.88;
+  -webkit-font-smoothing:antialiased;
+  background-image:linear-gradient(180deg,#dfe6ee 0,var(--paper) 340px);
+}
+::selection{background:rgba(20,73,126,.16)}
+a{color:inherit}
+.wrap{max-width:1260px;margin:0 auto;padding:0 var(--pad)}
+.mono{font-family:var(--f-mono)}
+
+/* ── 顶栏：图例常驻 ─────────────────────────────────── */
+.top{position:sticky;top:0;z-index:70;background:rgba(255,255,255,.9);
+     backdrop-filter:blur(14px);border-bottom:1px solid var(--rule)}
+.top-in{display:flex;align-items:center;gap:16px;height:54px;flex-wrap:wrap}
+.top-mark{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.28em;
+          color:var(--ink3);text-transform:uppercase;white-space:nowrap}
+.key{display:flex;gap:14px;margin-left:auto;flex-wrap:wrap;align-items:center}
+.key i{font-style:normal;display:inline-flex;align-items:center;gap:6px;
+       font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;color:var(--ink2)}
+.key i::before{content:"";width:9px;height:9px;border-radius:1px;display:block}
+.key .k-c::before{background:var(--blue)}
+.key .k-m::before{background:var(--amber)}
+.key .k-k::before{background:var(--stone)}
+.topnav{display:flex;gap:1px;flex-wrap:wrap}
+.topnav a{text-decoration:none;padding:5px 10px;border-radius:2px;color:var(--ink2);
+          font-size:12.5px;transition:.16s}
+.topnav a:hover,.topnav a:focus-visible{background:var(--sunk);color:var(--ink)}
+
+/* ── Hero ───────────────────────────────────────────── */
+.hero{padding:clamp(46px,8vw,92px) 0 clamp(20px,3vw,34px)}
+.eyebrow{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.32em;
+         text-transform:uppercase;color:var(--ink3);margin:0 0 clamp(22px,3.5vw,36px)}
+.eyebrow em{font-style:normal;color:var(--blue)}
+h1.thesis{margin:0;font-size:clamp(30px,6.2vw,72px);line-height:1.28;
+          font-weight:800;letter-spacing:-.005em;text-wrap:balance}
+h1.thesis span{color:var(--blue)}
+h1.thesis b{color:var(--amber);font-weight:800}
+.deck{max-width:60ch;margin:clamp(24px,3.5vw,34px) 0 0;color:var(--ink2);font-size:15px;line-height:2}
+.deck strong{color:var(--ink);font-weight:600}
+
+/* 署名条：本页的签名元件 */
+.sig{margin:clamp(30px,4vw,44px) 0 0}
+.sig-h{font-family:var(--f-mono);font-size:10px;letter-spacing:.22em;color:var(--ink3);
+       text-transform:uppercase;margin-bottom:10px}
+.sig-bar{display:flex;height:26px;border:1px solid var(--rule);background:var(--sheet);overflow:hidden}
+.sig-bar span{flex:1;border-right:1px solid rgba(255,255,255,.8);position:relative}
+.sig-bar span:last-child{border-right:0}
+.sig-bar .c{background:var(--blue)}
+.sig-bar .m{background:var(--amber)}
+.sig-bar .k{background:var(--stone)}
+.sig-foot{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+          margin-top:9px;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;color:var(--ink3)}
+
+.dataline{display:flex;flex-wrap:wrap;margin:clamp(28px,4vw,40px) 0 0;
+          border-top:1px solid var(--rule2);border-bottom:1px solid var(--rule2)}
+.dataline div{padding:14px 26px 14px 0;margin-right:26px;border-right:1px solid var(--rule2)}
+.dataline div:last-child{border-right:0;margin-right:0}
+.dataline b{font-family:var(--f-mono);font-weight:500;font-size:22px;color:var(--ink);display:block;line-height:1.3}
+.dataline span{font-size:11px;letter-spacing:.14em;color:var(--ink3);font-family:var(--f-mono)}
+
+/* ── 章节 ───────────────────────────────────────────── */
+.sec{padding:clamp(52px,7vw,88px) 0 0;scroll-margin-top:62px}
+.sec-head{display:flex;align-items:flex-start;gap:18px;margin-bottom:clamp(20px,3vw,32px)}
+.sec-n{font-family:var(--f-mono);font-size:11px;color:var(--blue);border:1px solid var(--blue-line);
+       width:28px;height:28px;flex:0 0 28px;display:grid;place-items:center;margin-top:5px}
+.sec-t{font-size:clamp(19px,2.6vw,27px);font-weight:700;letter-spacing:.01em;margin:0;line-height:1.5}
+.sec-note{margin:7px 0 0;color:var(--ink2);font-size:13.5px;max-width:74ch;line-height:1.85}
+.sec-note code,.tbl code,.side-note code{font-family:var(--f-mono);font-size:12px;color:var(--ink);
+       background:var(--sunk);padding:1px 5px;border-radius:2px}
+.panel{background:var(--sheet);border:1px solid var(--rule2)}
+
+/* ── 全景：两条泳道 ─────────────────────────────────── */
+.lanes{padding:clamp(18px,3vw,30px) clamp(14px,2.5vw,26px)}
+.lane-grid{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));
+           grid-template-rows:auto 30px auto;gap:0 10px;position:relative}
+.lane-tag{position:absolute;left:0;font-family:var(--f-mono);font-size:9.5px;
+          letter-spacing:.2em;color:var(--ink3);text-transform:uppercase}
+.rail{grid-column:1/-1;grid-row:2;height:1px;background:var(--rule);align-self:center;position:relative}
+.st{border:1px solid var(--rule);background:var(--sheet2);padding:11px 12px 12px;
+    text-align:left;cursor:pointer;font:inherit;color:inherit;transition:.16s;position:relative;width:100%}
+.st:hover,.st:focus-visible{background:var(--sheet);border-color:var(--ink3)}
+.st.on{background:var(--ink);border-color:var(--ink)}
+.st.on .st-c,.st.on .st-n,.st.on .st-w{color:#fff}
+.st-c{font-family:var(--f-mono);font-size:15px;font-weight:500;display:block;line-height:1.2}
+.st-n{font-size:13px;display:block;margin-top:2px}
+.st-w{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.12em;display:block;margin-top:7px;color:var(--ink3)}
+.st.code{grid-row:1}.st.model{grid-row:3}
+.st.code{border-top:2px solid var(--blue)}
+.st.model{border-bottom:2px solid var(--amber)}
+.st.model .st-c{color:var(--amber)}
+.st.code .st-c{color:var(--blue)}
+.st .drop{position:absolute;width:1px;background:var(--rule)}
+.st.code .drop{bottom:-16px;height:15px;left:16px}
+.st.model .drop{top:-16px;height:15px;left:16px}
+.st .star{position:absolute;top:8px;right:9px;color:var(--fail);font-size:11px}
+.lanes-foot{margin-top:26px;padding-top:14px;border-top:1px solid var(--rule2);
+            color:var(--ink2);font-size:13px}
+.lanes-foot b{color:var(--ink);font-weight:600}
+
+/* ── 走查台 ─────────────────────────────────────────── */
+.bench{overflow:hidden}
+.bench-bar{display:flex;align-items:center;gap:14px;padding:14px 18px;
+           border-bottom:1px solid var(--rule2);background:var(--sheet2);flex-wrap:wrap}
+.dots{display:flex;gap:5px;margin-right:auto}
+.dot{width:26px;height:5px;background:var(--rule);border:0;padding:0;cursor:pointer;transition:.16s}
+.dot:hover{background:var(--ink3)}
+.dot.on{background:var(--ink)}
+.dot.done{background:var(--ink3)}
+.nav-b{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;color:var(--ink2);
+       background:var(--sheet);border:1px solid var(--rule);padding:7px 14px;cursor:pointer;transition:.16s}
+.nav-b:hover:not(:disabled),.nav-b:focus-visible:not(:disabled){border-color:var(--ink);color:var(--ink)}
+.nav-b:disabled{opacity:.35;cursor:default}
+.kbd{font-family:var(--f-mono);font-size:10px;color:var(--ink3);letter-spacing:.1em}
+
+.bench-head{padding:24px 26px 20px;border-bottom:1px solid var(--rule2)}
+.bh-top{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.bh-code{font-family:var(--f-mono);font-size:34px;font-weight:500;line-height:1}
+.bh-name{font-size:22px;font-weight:700}
+.bh-by{font-family:var(--f-mono);font-size:10px;letter-spacing:.16em;padding:3px 9px;border:1px solid}
+.by-code{color:var(--blue);border-color:var(--blue-line);background:var(--blue-soft)}
+.by-model{color:var(--amber);border-color:var(--amber-line);background:var(--amber-soft)}
+.bh-risk{font-family:var(--f-mono);font-size:10px;letter-spacing:.16em;color:var(--fail);
+         border:1px solid rgba(160,42,68,.35);background:rgba(160,42,68,.06);padding:3px 9px}
+.bh-lead{margin:12px 0 0;color:var(--ink2);font-size:14px;max-width:80ch}
+
+.io{display:grid;grid-template-columns:minmax(0,1fr) 34px minmax(0,1fr);align-items:stretch}
+.io-col{padding:20px 24px 24px;min-width:0}
+.io-col+.io-arrow+.io-col{border-left:1px solid var(--rule2)}
+.io-arrow{display:grid;place-items:center;color:var(--ink3);font-family:var(--f-mono);font-size:16px;
+          border-left:1px solid var(--rule2)}
+.io-h{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.24em;text-transform:uppercase;
+      color:var(--ink3);margin-bottom:14px;display:flex;gap:8px;align-items:center}
+.io-h::after{content:"";flex:1;height:1px;background:var(--rule2)}
+.blk{margin-bottom:18px}
+.blk:last-child{margin-bottom:0}
+.blk-l{font-size:11.5px;color:var(--ink2);margin-bottom:7px;font-family:var(--f-mono);letter-spacing:.06em}
+.blk-f{font-size:12.5px;color:var(--ink2);margin-top:9px;line-height:1.8;border-left:2px solid var(--rule);padding-left:11px}
+
+pre.src{margin:0;padding:14px 15px;background:var(--sheet2);border:1px solid var(--rule2);
+        font-family:var(--f-mono);font-size:11.7px;line-height:1.95;color:var(--ink2);
+        overflow-x:auto;white-space:pre;tab-size:2}
+pre.src.plain{white-space:pre-wrap;word-break:break-word}
+
+/* 记法着色 */
+.t-op{color:var(--amber);font-weight:600}
+.t-str{color:var(--ink)}
+.t-pred{color:var(--blue)}
+.t-st{color:var(--fail)}
+.t-ho{color:var(--pass)}
+.t-w{color:var(--stone)}
+.t-ar{color:var(--ink3)}
+.t-cm{color:var(--ink3);font-style:italic}
+/* JSON 着色 */
+.j-key{color:var(--blue)}
+.j-str{color:var(--ink)}
+.j-num{color:var(--amber)}
+.j-kw{color:var(--stone)}
+.j-cm{color:var(--ink3);font-style:italic}
+
+
+/* 小表 */
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.tbl th{text-align:left;font-family:var(--f-mono);font-weight:400;font-size:9.5px;letter-spacing:.16em;
+        color:var(--ink3);text-transform:uppercase;padding:0 12px 9px 0;border-bottom:1px solid var(--rule)}
+.tbl td{padding:9px 12px 9px 0;border-bottom:1px solid var(--rule2);color:var(--ink2);vertical-align:top}
+.tbl tr:last-child td{border-bottom:0}
+.tbl .m{font-family:var(--f-mono);font-size:11.5px;color:var(--ink)}
+.tbl .muted{color:var(--ink3)}
+.tbl .gone{color:var(--ink3);text-decoration:line-through;text-decoration-color:var(--rule)}
+.tag{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.08em;border:1px solid var(--rule);
+     padding:1px 6px;white-space:nowrap;color:var(--ink2)}
+.tag.new{color:var(--amber);border-color:var(--amber-line);background:var(--amber-soft)}
+.tag.hit{color:var(--pass);border-color:rgba(22,107,88,.35)}
+
+.why{padding:18px 22px;border-top:1px solid var(--rule2);background:var(--sheet2);
+     color:var(--ink2);font-size:13.5px;line-height:1.95}
+.why b{color:var(--ink);font-weight:600}
+.why::before{content:"为什么这样";display:block;font-family:var(--f-mono);font-size:9.5px;
+             letter-spacing:.24em;color:var(--ink3);margin-bottom:7px}
+
+/* ── 署名卡：F08 十五个字段 ─────────────────────────── */
+.fcard{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:1px;background:var(--rule2)}
+.fc{background:var(--sheet);padding:12px 14px 13px;position:relative;border-left:3px solid transparent}
+.fc.c{border-left-color:var(--blue)}
+.fc.m{border-left-color:var(--amber)}
+.fc.k{border-left-color:var(--stone)}
+.fc dt{font-family:var(--f-mono);font-size:10px;letter-spacing:.1em;color:var(--ink3);margin-bottom:5px}
+.fc dd{margin:0;font-family:var(--f-mono);font-size:12.5px;color:var(--ink);word-break:break-all;line-height:1.6}
+.fc p{margin:8px 0 0;font-size:11.5px;color:var(--ink2);line-height:1.65}
+.fc .who{position:absolute;top:11px;right:12px;font-family:var(--f-mono);font-size:9px;letter-spacing:.1em}
+.fc.c .who{color:var(--blue)}.fc.m .who{color:var(--amber)}.fc.k .who{color:var(--stone)}
+
+/* ── R1 切片开关 ────────────────────────────────────── */
+.slice{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,.85fr);gap:0}
+.slice-l{padding:22px 24px}
+.slice-r{padding:22px 24px;border-left:1px solid var(--rule2);background:var(--sheet2)}
+.seg{display:inline-flex;border:1px solid var(--rule);margin-bottom:18px}
+.seg button{font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;background:var(--sheet);
+            border:0;border-right:1px solid var(--rule);padding:8px 15px;cursor:pointer;color:var(--ink2);transition:.16s}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--ink);color:#fff}
+.side-note{font-size:13px;color:var(--ink2);line-height:1.9}
+.side-note b{color:var(--ink);font-weight:600}
+
+/* ── 闸门 ───────────────────────────────────────────── */
+.gate{padding:22px 24px}
+.g-row{display:flex;align-items:baseline;gap:14px;padding:8px 0;border-bottom:1px solid var(--rule2);
+       font-size:13px;flex-wrap:wrap}
+.g-row:last-child{border-bottom:0}
+.g-n{font-family:var(--f-mono);font-size:12px;color:var(--ink);flex:1;min-width:200px}
+.g-v{font-family:var(--f-mono);font-size:12px;color:var(--ink2);width:150px;flex:0 0 150px}
+.g-t{font-family:var(--f-mono);font-size:11px;color:var(--ink3);width:130px;flex:0 0 130px}
+.g-ok{color:var(--pass);font-family:var(--f-mono);font-size:12px}
+.g-sub{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.22em;color:var(--ink3);
+       text-transform:uppercase;margin:22px 0 8px;padding-top:16px;border-top:1px solid var(--rule)}
+.g-sub:first-child{margin-top:0;padding-top:0;border-top:0}
+.verdict{margin-top:20px;padding:16px 18px;border-left:2px solid var(--pass);
+         background:rgba(22,107,88,.06);font-size:13.5px;color:var(--ink);line-height:1.9}
+.verdict b{display:block;font-family:var(--f-mono);font-size:9.5px;letter-spacing:.22em;
+           color:var(--pass);margin-bottom:6px;text-transform:uppercase}
+
+.caveat{margin-top:14px;padding:16px 18px;border-left:2px solid var(--fail);
+        background:rgba(160,42,68,.055);font-size:13px;color:var(--ink2);line-height:1.9}
+.caveat b{color:var(--fail);font-weight:600}
+
+.foot{margin-top:clamp(64px,9vw,110px);border-top:1px solid var(--rule2);
+      padding:30px 0 62px;color:var(--ink3);font-size:12px;line-height:2}
+.foot p{margin:0 0 8px;max-width:80ch}
+.foot code{font-family:var(--f-mono);font-size:11px;color:var(--ink2)}
+
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+
+@media (max-width:1080px){
+  .lane-grid{grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:auto 26px auto auto 26px auto;gap:0 8px}
+  .st .drop{display:none}
+  .rail{display:none}
+  .st.code,.st.model{grid-row:auto}
+  .lane-tag{display:none}
+}
+@media (max-width:860px){
+  .io{grid-template-columns:1fr}
+  .io-arrow{border-left:0;border-top:1px solid var(--rule2);height:34px}
+  .io-col+.io-arrow+.io-col{border-left:0;border-top:1px solid var(--rule2)}
+  .slice{grid-template-columns:1fr}
+  .slice-r{border-left:0;border-top:1px solid var(--rule2)}
+  .lane-grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:none;gap:8px}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *{transition-duration:.01ms!important;animation-duration:.01ms!important}
+}
+@keyframes rise{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.anim{animation:rise .22s ease both}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="wrap top-in">
+    <span class="top-mark">抽取管线 · 走查</span>
+    <nav class="topnav">
+      <a href="#s-lanes">全景</a>
+      <a href="#s-bench">八步</a>
+      <a href="#s-field">一行的一生</a>
+      <a href="#s-slice">只读前缀</a>
+      <a href="#s-gate">闸门</a>
+    </nav>
+    <span class="key">
+      <i class="k-c">代码</i><i class="k-m">模型</i><i class="k-k">常量</i>
+    </span>
+  </div>
+</div>
+
+<header class="hero wrap">
+  <p class="eyebrow">t03 抽取管线提案 <em>/</em> 设计推导 <em>/</em> <em>未经实测</em></p>
+  <h1 class="thesis">模型只做<b>局部的语言判断</b>，<br><span>全局账本</span>归代码。</h1>
+  <p class="deck">
+    这一页把提案第 4 节的八个阶段跑一遍，用的是样书第一章第 50–63 段那一场（缔约）。
+    <strong>每一步的输入就是上一步的输出</strong>，中间没有隐藏状态——所以可以一格一格看过去，
+    看清每一步到底动了什么、谁动的。
+  </p>
+
+  <div class="sig">
+    <div class="sig-h">这一场产出的 F08「苏天晴签了契约」· 15 个字段的署名</div>
+    <div class="sig-bar" id="sigbar" aria-hidden="true"></div>
+    <div class="sig-foot"><span>模型 4 · 代码 10 · 常量 1</span><span>见下「一行的一生」</span></div>
+  </div>
+
+  <div class="dataline">
+    <div><b>8</b><span>阶段</span></div>
+    <div><b>3</b><span>次模型调用</span></div>
+    <div><b>14</b><span>行记法 / 窗口</span></div>
+    <div><b>4 / 15</b><span>模型写的字段</span></div>
+    <div><b>7</b><span>候选实体（第 49 段）</span></div>
+  </div>
+</header>
+
+<!-- ═══ 全景 ═══════════════════════════════════════════ -->
+<section class="sec wrap" id="s-lanes">
+  <div class="sec-head">
+    <div class="sec-n">01</div>
+    <div>
+      <h2 class="sec-t">八个阶段，两条泳道</h2>
+      <p class="sec-note">
+        上面一排是代码，下面一排是模型。这张图不是流程装饰——<b>泳道的疏密就是这条管线的风险分布</b>。
+        点任意一格跳到那一步。
+      </p>
+    </div>
+  </div>
+  <div class="panel lanes">
+    <div class="lane-grid" id="lanes"></div>
+    <p class="lanes-foot">
+      八步里<b>只有三步用模型</b>（S1、S2、S6，加 S3 的定点重试）。这个比例是设计目标，不是巧合——
+      每把一件事从模型挪到代码，就少一类无法回归测试的失败。
+      <b>S2 是唯一的强调用，也是唯一真正有风险的一步</b>；这条管线值不值得做，本质上取决于 S2 行不行。
+    </p>
+  </div>
+</section>
+
+<!-- ═══ 走查台 ═════════════════════════════════════════ -->
+<section class="sec wrap" id="s-bench">
+  <div class="sec-head">
+    <div class="sec-n">02</div>
+    <div>
+      <h2 class="sec-t">走查：W7（第 1 章第 50–63 段，缔约）</h2>
+      <p class="sec-note">
+        同一份数据看八遍。左边是这一步吃进去的，右边是吐出来的。
+        方向键 <span class="kbd">←</span> <span class="kbd">→</span> 翻页。
+      </p>
+    </div>
+  </div>
+  <div class="panel bench">
+    <div class="bench-bar">
+      <div class="dots" id="dots"></div>
+      <span class="kbd" id="pos">1 / 8</span>
+      <button class="nav-b" id="prev">← 上一步</button>
+      <button class="nav-b" id="next">下一步 →</button>
+    </div>
+    <div id="stage"></div>
+  </div>
+</section>
+
+<!-- ═══ 一行的一生 ═════════════════════════════════════ -->
+<section class="sec wrap" id="s-field">
+  <div class="sec-head">
+    <div class="sec-n">03</div>
+    <div>
+      <h2 class="sec-t">一行的一生：从表层串到 F08</h2>
+      <p class="sec-note">
+        跟住一行。记法的价值就在这一行里：<code>S2</code> 吐出的是词，<code>S3</code> 换成 id，
+        <code>S4</code> 补齐成一条完整记录，而模型自始至终只碰了四个字段。
+      </p>
+    </div>
+  </div>
+
+  <div class="panel" style="padding:22px 24px">
+    <pre class="src" id="life"></pre>
+  </div>
+
+  <div class="fcard" id="fcard" style="margin-top:18px"></div>
+
+  <p class="sec-note" style="margin-top:16px">
+    <b>外键错误从此等于管线 bug，而不是模型质量问题。</b>
+    <code>evidence</code>、<code>assertedAt</code>、<code>validFrom</code> 这些指向别的记录的字段全归代码，
+    模型的记法里根本没有对应的产生式——想写也写不出来。前者只能靠调提示词，后者能被单元测试钉死。
+  </p>
+  <p class="sec-note">
+    <code>confidence</code> 这一栏是查表值 0.95，而金标准 <code>chapter-01.json</code> 里手写的是 0.98。
+    两者不必对齐：<code>confidence</code> 与 <code>strength</code> 都是查表或常量，不进金标准比对。
+  </p>
+</section>
+
+<!-- ═══ R1 ═════════════════════════════════════════════ -->
+<section class="sec wrap" id="s-slice">
+  <div class="sec-head">
+    <div class="sec-n">04</div>
+    <div>
+      <h2 class="sec-t">R1 只读前缀：候选表里不能有后文</h2>
+      <p class="sec-note">
+        S2 的候选表来自 <code>snapshotAt(窗口首段 − 1)</code>，不是「库里现在有什么」。
+        切换下面两个位置看差别——这一条规则真正买到的性质不是防泄漏，是<b>重跑幂等</b>。
+      </p>
+    </div>
+  </div>
+  <div class="panel slice">
+    <div class="slice-l">
+      <div class="seg" role="group" aria-label="候选表位置">
+        <button id="sl-a" class="on">snapshotAt(第 49 段) · 正确</button>
+        <button id="sl-b">全书入库后重跑 · 泄漏</button>
+      </div>
+      <table class="tbl"><thead><tr><th>实体</th><th>Kind</th><th>候选表里的称呼</th></tr></thead>
+        <tbody id="sl-body"></tbody></table>
+    </div>
+    <div class="slice-r">
+      <div class="side-note" id="sl-note"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 闸门 ═══════════════════════════════════════════ -->
+<section class="sec wrap" id="s-gate">
+  <div class="sec-head">
+    <div class="sec-n">05</div>
+    <div>
+      <h2 class="sec-t">S7 闸门：整章落库，或整章拒绝</h2>
+      <p class="sec-note">
+        判据全在提案第 10 节。下面这份报告是<b>形状的示意，不是实测结果</b>——管线还没写。
+      </p>
+    </div>
+  </div>
+  <div class="panel gate" id="gate"></div>
+  <div class="caveat">
+    <b>这一页上所有数字都不是实测。</b>
+    管线尚未实现，没有跑过任何一次真实抽取。金标准只有一章，而且是我们自己写的，
+    只能用于「管线有没有退化」的相对比较，不能当作绝对质量结论，更不能外推到其它章节或作品。
+  </div>
+</section>
+
+<footer class="foot wrap">
+  <p>样书只读。本页保留用于走查的第一章原文输入；小说数据按项目规则不属于敏感数据。<code>S0</code>、<code>S1</code> 与 <code>S2</code> 的输入格直接显示管线实际读取的段落。</p>
+  <p>释义与段落指针来自 <code>t02/chapter-01.json</code>（<code>nbook.novel-memory/v2-spike</code>，人工装填）与 <code>t01</code> 的第一章摘要证据。字段名与 <code>t02/schema.ts</code> 对齐。</p>
+  <p>本页是 <code>extraction-pipeline.md</code> 第 4 节的可视化，两者内容一致；有出入以文档为准。单文件、零依赖、零构建。</p>
+</footer>
+
+<script>
+/* ═══ 数据 ═══════════════════════════════════════════════════
+   全部与 extraction-pipeline.md 第 4 节一致。改文档就要改这里。 */
+
+var CHAPTER_TEXT = `第1章 反派魔法少女
+第1章 反派魔法少女
+严正声明：本书出场角色均已满18岁，不存在任何未成年人！
+———————————
+【姓名。】
+“……苏天晴。”
+昏暗的房间里传出清脆悦耳的女声，还有一道仿佛来自遥远彼方的低沉言语。
+苏天晴坐在床头，呆滞地看着眼前这本飘浮在半空中的黑色古书，余光从床边的落地镜中扫过，瞥见一道陌生的娇小身影——
+灿烂金色的长发垂落在肩膀后背，毛茸茸的耳朵耷拉在头顶，随着自己不经意的动作而弹动两下，与刘海底下那精致的五官与眼眸交映着。
+脖颈肩膀那白皙的肌肤倒映窗帘缝隙间洒入的阳光，让人不由得多看几眼。
+一只娇小的金毛狐女。
+如果再加上背后那只正在炸毛的大尾巴，这应该是一只乖巧可爱的毛茸茸金毛狐狐。
+【嗯嗯……这样啊……】
+房间中的低沉言语再次响起，将苏天晴的注意力拽回眼前这本黑色古书。
+苏天晴有些茫然。
+五分钟前，结束了连续三个夜班后刚下班的自己坐在街边面摊上嗦着一碗加了煎蛋的豪华牛肉面，正往碗里加着辣椒面，突然听到自己太奶在背后说话，恍惚间回头一看，只见太奶坐在藤椅上悠闲地编着一只围巾，然后胸口一疼眼前一黑，就这么背过了气去。
+看着在身侧摇曳的炸毛大尾巴，苏天晴鬼使神差地伸手，在尾巴上用力薅了一把。
+无比柔顺的绝妙触感从手上传来，随后是一股陌生的摩挲拉拽感，从尾巴尖直冲天灵盖，惊得两只耳朵猛然竖起，整只狐都绷直了身体。
+好真实的触感！
+【……你干嘛呢。】
+黑色古书发出低沉的言语，不太明白眼前这只狐狐为什么要突然用怪异的手法去薅她自己的尾巴。
+不疼的吗？
+“咳咳！等一下，稍等一下！”
+苏天晴干咳两声掩饰尴尬，伸手阻止了面前这本奇怪的古书继续说话，眼珠一转，飞快地理清思绪。
+我重生了。
+重生成了一只金毛狐女。
+那么眼前这本黑色会说话的书是怎么回事？有人能给我解释一下吗？
+“你是谁？”苏天晴扭头正视眼前这本书，茫然地说道。
+古书沉默了一会儿，像是在思考眼前这只呆头呆脑的狐狐到底是不是自己要找的人，良久后方才重复了一遍两分钟前的开场白：
+【吾名墨丘利秘典，从星空彼岸远行至此，前来寻找我最优秀的适格者。】
+【而那个人就是你，苏天晴小姐。】
+再次听完这中二到能让人用脚趾扣出三室一厅的台词，苏天晴又陷入了沉默与思索。
+然后，狐狐猛地从床上蹦下，走到落地镜前，沉默地看向镜子里那穿着宽松睡裙的娇小身影。
+接着抬起一只脚，认真欣赏起这只白皙软嫩带着红晕的小脚。
+嗯，完美，绝品。
+【看来你对现在的身体很满意嘛。】
+瞅见眼前这只狐狐认真欣赏脚丫的行径，古书一时语塞，憋了半天才冒出这么一句。
+【但是你为什么要盯着脚看？正常情况下不应该是……】
+“你不懂，小脚才是世界上最美好的瑰宝，吃饭的时候看见了都能多炫两碗。”
+嘴上不搭调地回答着古书的话，苏天晴脑子里却也对现状有了个大概的了解。
+这本书知道自己并不是这副身体原来的主人，难道说……
+【既然你这么满意，那咱们可以直接快进到下个步骤了。】
+古书说道，将一门心思投入到欣赏狐狐身躯的苏天晴从发癫中唤回，转身正视着它。
+【听着，苏天晴。】
+【你是墨丘利秘典的最佳适格者，作为星界使者，我会引导你走上完美的生活，而你只需要与我签订一个小小的契约——】
+“好，我签。”
+【……啊？】
+古书凌乱了一下。
+【不是，你不按套路出牌啊，契约怎么说签就签的？都不犹豫考虑一下吗？】
+“这就是你思想狭隘了，小破书。”苏天晴的表情骤然严肃，让古书一时忘记了刚才那奇怪的称呼。
+“我问你，世界上最通用的愿望是哪两个。”
+【……哪两个？】古书愣愣地反问。
+只见金毛狐狐俯下身子，伸出两根手指，在黑色古书面前轻轻晃动了两下，连带身后的毛茸茸大尾巴也跟着摇曳了起来。
+“取之不尽的财富！以及变成萝莉！这是世界上最通用的两个愿望！”
+苏天晴张开双臂，满眼放光。
+“变成萝莉本身就是最大的奖励，更何况还是这样一只可爱的狐狐！”
+沉默。
+好像有哪里很对，好像又根本不对，但古书并未对这短时间的错乱而呆愣太久，迅速又将话题给拖回正题。
+【既然你答应，那我们之间的契约就算成立了？】
+“成立。”苏天晴不假思索。
+但片刻后，狐狐突然反应过来了什么，好奇地问道：
+“那个……我能问问契约的具体内容吗？”
+总不能是激活了什么奇怪的奴隶契约吧！那样的话可就亏大发了！
+【反派魔法少女。】
+没有丝毫停顿，古书这般说道。
+“啊？”
+【既然契约已经签订，那么从今天开始，你就将成为魔法少女活跃于世，造物主给你量身定制了一整套任务，能帮助你逐步走上反派魔法少女的顶点！】
+“不是、等一下！魔法少女是怎么回事！是那种死亡率高达90%的高危职业吗？！”
+【放心吧，是王道系的那种。】
+“就是这样才不对吧！在王道故事里当反派不是纯纯的找死吗！”
+苏天晴突然有点后悔了。
+王道系是什么？魔法少女们面对强敌逐渐成长然后喊着友情和羁绊冲上去把反派干碎的那种故事啊！就算反派有系统有任务也很难在王道系故事里把主角干碎吧！
+我还能有反悔的机会吗？能不能把我送回原来的身体里啊我觉得急性心肌梗死还有抢救的机会——
+【墨丘利秘典绑定成功。】
+脑子里响起的声音让苏天晴欲哭无泪。
+【契约成立。】
+【走上反派魔法少女的道路吧，苏天晴。】`;
+var PARAGRAPHS = CHAPTER_TEXT.split('\n');
+
+function paragraphs(start, end){
+  return PARAGRAPHS.slice(start - 1, end).map(function(text, i){
+    return '第 ' + (start + i) + ' 段 ' + text;
+  }).join('\n');
+}
+
+var STAGES = [
+{
+  code:'S0', name:'定位', by:'code',
+  lead:'给每个段落一个稳定编号。之后全库所有位置字段都引用它。',
+  inp:[
+    {label:'章节纯文本 · 第 1 章 · 77 段', type:'plain', src:paragraphs(1,77),
+     foot:'管线实际读取的规范化章节正文。段落编号与 S0 输出一一对应。'}
+  ],
+  out:[
+    {label:'段落索引 · 不含正文', type:'json', src:
+'[\n  { "chapter": 1, "paragraph": 1,  "chars": 34, "sha": "9f21…" },\n  { "chapter": 1, "paragraph": 5,  "chars": 61, "sha": "a19c…" },\n  …\n  { "chapter": 1, "paragraph": 50, "chars": 88, "sha": "4d70…" },\n  { "chapter": 1, "paragraph": 77, "chars": 26, "sha": "77b0…" }\n]'},
+    {label:'三个字段各有用处', type:'rows', head:['字段','用处'], rows:[
+      ['paragraph','DiscoursePos 的唯一来源'],
+      ['chars','估 token、切窗口、算成本'],
+      ['sha','重跑时比对指纹就知道原文改没改过，不用把原文存进 Git']]}
+  ],
+  why:'<b>判据只有一条：稳定。</b>同一份文本重跑必须逐段给出相同编号。这比它看起来重要——编号一旦整体平移一位，<code>assertedAt</code> 与 <code>Alias.since</code> 会跟着全错，而 <code>validate()</code> 一个错都报不出来：结构完全合法，只是每条断言都指到了隔壁段。这类错误只能靠 S0 的确定性来防，事后无法检测。'
+},
+{
+  code:'S1', name:'场景切分', by:'model', weak:true,
+  lead:'把 77 个段落切成 8 个窗口，每个窗口将来变成一条 Episode。整章一次调用，弱模型即可。',
+  inp:[
+    {label:'全章文本', type:'plain', src:paragraphs(1,77),
+     foot:'按 memory-model.md 第 4.6 节的信号切，不按 token 数切：地点变了 / 参与者集合变了 / 结果落定 / 故事时间跳跃 / 视角切换。'},
+    {label:'S0 的段落索引', type:'plain', src:'77 条 { paragraph, chars, sha }'}
+  ],
+  out:[
+    {label:'窗口表 · 注意没有 E 开头的 id', type:'json', src:
+'[\n  { "w": "W1", "paragraphs": [5, 7],   "scene": "房间", "location": "昏暗的房间",\n    "pov": "苏天晴", "storyAfter": ["W3"] },\n  { "w": "W2", "paragraphs": [8, 10],  "scene": "房间", "storyAfter": ["W1"] },\n  { "w": "W3", "paragraphs": [11, 18], "scene": "面摊", "storyAfter": [],\n    "storyOffset": { "anchor": "W1", "text": "五分钟前" } },\n  { "w": "W4", "paragraphs": [19, 26], "scene": "房间", "storyAfter": ["W2"] },\n  { "w": "W5", "paragraphs": [27, 35], "scene": "房间", "storyAfter": ["W4"] },\n  { "w": "W6", "paragraphs": [36, 49], "scene": "房间", "storyAfter": ["W5"] },\n  { "w": "W7", "paragraphs": [50, 63], "scene": "房间", "storyAfter": ["W6"] },\n  { "w": "W8", "paragraphs": [64, 77], "scene": "房间", "storyAfter": ["W7"] }\n]'},
+    {label:'代码接着做两件纯计算', type:'rows', head:['窗口','叙述位置','编号','precedes'], rows:[
+      ['W3','第 11 段','E1','E2'],['W1','第 5 段','E2','E3'],['W2','第 8 段','E3','E4'],
+      ['W4','第 19 段','E4','E5'],['W5','第 27 段','E5','E6'],['W6','第 36 段','E6','E7'],
+      ['W7','第 50 段','E7','E8'],['W8','第 64 段','E8','—']],
+     foot:'按 storyAfter 拓扑排序后依次编号，precedes 取其逆。这张表与 t02/chapter-01.json 里手工写的编号和 precedes 逐字段一致——包括最别扭的那处：E1 在第 11 段，E2 在第 5 段。'}
+  ],
+  why:'<b>E 编号走故事序，discoursePos 走叙述序，两者故意不一致。</b>这一步是倒叙唯一能被发现的地方——第一章的 E1 就是靠 <code>W3.storyAfter = []</code> 判出「故事时间最早」的。故事顺序只能给相对关系，不能给时间戳：文本没给的时间坐标不编造。'
+},
+{
+  code:'S2', name:'窗口抽取', by:'model', risk:true,
+  lead:'一个窗口的文本进去，一组记法行出来。全管线唯一的强调用，也是唯一真正有风险的一步。',
+  inp:[
+    {label:'① 场景文本 ·第 50–63 段· 约 1.1k token', type:'plain', src:paragraphs(50,63),
+     foot:'S2 实际读取的第七场原文窗口。'},
+    {label:'② 前缀候选表 · snapshotAt(第 49 段) · 7 个', type:'rows', head:['id','kind','候选表里的称呼'], rows:[
+      ['su_tianqing','person','苏天晴 · 最佳适格者'],
+      ['body_fox','body','这具身体'],
+      ['codex','artifact','黑色典籍 · 墨丘利秘典'],
+      ['tai_nai','person','太奶'],
+      ['original_owner','person','（无别名）'],
+      ['bedroom','place','昏暗的房间'],
+      ['noodle_stall','place','面摊']],
+     foot:'contract_main 与 creator 的 since 都是第 50 段，不在表里——它们是 W7 的产物，不是 W7 的输入。「小破书」的 since 也是第 50 段，所以模型是在不知道这个称呼的前提下，从文本里认出它的。'},
+    {label:'③ 谓词白名单 · 19 个', type:'plain', src:
+'identity  located_in  inhabits  cause_of_death  died_at  attitude_to\nsigned  suspects  designated_as  self_role  is_concealing\nhair_color  has_feature  apparent_age  previous_owner  offered\nlifecycle  goal  death_rate',
+     foot:'白名单怎么算有个待裁决（E10）：原规则「候选主语 Kind 的槽位并集」只有 16 个，漏掉 contract 的 lifecycle 与 goal，而 F25「这份契约·已缔结」恰恰要在这一场产出。建议并上全部 basicLevel Kind 的槽位。'}
+  ],
+  out:[
+    {label:'记法行 · 14 行 · 不含任何 id', type:'nota', src:
+'C W7 "与悬浮的典籍缔结契约，对方自称星界使者，她当场答应。"\nM W7 story_after=W6 valence=0.6 arousal=0.7 surprise=0.48 outcome="契约缔结" register=喜剧\nP W7 su_tianqing agent\nP W7 codex agent\nP W7 "这份契约" theme\nA codex "小破书" epithet\n?I "这份契约" -> "contract"\n?I "造物主" -> "person"\nS codex .self_role "星界使者" %claim ^codex\nS su_tianqing .signed "这份契约" %narrated\nS su_tianqing .attitude_to "兴奋" %narrated\nS codex .offered "这份契约" %narrated\nS "这份契约" .lifecycle "已缔结" %narrated\nQ "造物主是谁" -> ["造物主", codex] textual'},
+    {label:'三个地方值得停一下', type:'rows', head:['看这里','为什么'], rows:[
+      ['su_tianqing 是 id，"这份契约" 带引号','前者在候选表里，模型是「选」；后者不在，只能「抄」。这个区别是 S3 的全部工作量'],
+      ['^codex 只在 %claim 那行','%narrated 的 holder 恒为 world，代码补，模型不写'],
+      ['没有 @evidence、没有 assertedAt、没有 F08','记法里就没有这些产生式——这是 R2 的语法级执行']]}
+  ],
+  why:'<b>建议把命题抽取、共指消解、谓词归一、认识论标注融成一次调用，而不是四次串联。</b>这四件事互相依赖：判定「她说她是星界使者」的 <code>status = claim</code>、<code>holder = codex</code>，前提是知道说话人是谁（共指），而知道这是引语（语域）又反过来决定了状态。拆开做，每一步都在信息不足的情况下决策。代价是失败不好定位，用记法行的逐行比对补。这是待裁决 E1。'
+},
+{
+  code:'S3', name:'归一', by:'code',
+  lead:'把表层串换成 id，把换不掉的挑出来。代码查表为主，只对未命中的行做一次小范围重问。',
+  inp:[
+    {label:'S2 的 14 行 + 当前别名表 + 谓词 registry', type:'nota', src:
+'S su_tianqing .signed "这份契约" %narrated        ← 宾语不在候选表\nA codex "小破书" epithet                        ← codex 在候选表\n?I "这份契约" -> "contract"                      ← 新实体提名'}
+  ],
+  out:[
+    {label:'14 行分成三堆', type:'rows', head:['结果','行数','哪些行'], rows:[
+      ['直接归一','7','C / M / 两条 P / A / self_role / attitude_to'],
+      ['新实体提名','2','?I "这份契约"、?I "造物主"'],
+      ['依赖提名，暂挂','5','P…theme、signed、offered、lifecycle、Q 的 anchor']]},
+    {label:'归一动作', type:'nota', src:
+'  A codex "小破书" epithet\n→ A codex "小破书" epithet                      ← 原样通过\n\n  S su_tianqing .signed "这份契约" %narrated\n→ S su_tianqing .signed ?"这份契约" %narrated    ← 标 unresolved，等提名批准'},
+    {label:'未命中报告', type:'json', src:
+'{\n  "batch": ["ch01", "W7", "prompt-v1", "model-x", "registry-v1"],\n  "resolved": 7,\n  "nominatedIndividuals": [\n    { "surface": "这份契约", "kind": "contract", "route": "description", "usedInLines": 4 },\n    { "surface": "造物主",   "kind": "person",   "route": "description", "usedInLines": 1 }\n  ],\n  "nominatedPredicates": [],\n  "pendingLines": 5\n}'}
+  ],
+  why:'<b>谓词提名为什么是空的。</b>假设模型另外吐了一行 <code>?P "缔结" -&gt; "signed"</code>：S3 先查 registry 的 <code>aliases[]</code>，<code>signed.aliases</code> 里已经有「缔结」，于是直接归一，不进队列。别名表在这里挡掉了绝大多数看起来像新谓词的提名，队列里剩下的才是真的没见过的词。<br><br><b>E4 的代价请连带考虑：</b>按「非具名必须提名」这条规则，第一章 9 个实体里有 6 个要人批（只有苏天晴、太奶，以及第 27 段之后的墨丘利秘典有专名）。提名不阻塞落库，但会留下 5 条带 <code>unresolved</code> 宾语的 Fact。'
+},
+{
+  code:'S4', name:'装配', by:'code',
+  lead:'记法行 → 完整记录。这一步不做任何判断，只做派生。',
+  inp:[
+    {label:'归一后的记法行 + 窗口位置', type:'nota', src:
+'C W7 "与悬浮的典籍缔结契约，对方自称星界使者，她当场答应。"\nM W7 story_after=W6 valence=0.6 arousal=0.7 surprise=0.48 outcome="契约缔结" register=喜剧\nP W7 su_tianqing agent\nP W7 codex agent\nP W7 contract_main theme                        ← 提名批准后回填\n\n窗口  第 1 章第 50–63 段· S1 给的 scene=房间 / location=昏暗的房间 / pov=苏天晴'}
+  ],
+  out:[
+    {label:'Episode E7', type:'json', src:
+'{\n  "id": "E7",                                          // 代码：故事序拓扑排序后编号\n  "discoursePos": { "chapter": 1, "paragraph": 50 },   // 代码：窗口首段\n  "content": "与悬浮的典籍缔结契约…",                    // 模型：C 行\n  "sourcePointer": { "chapter": 1,\n                     "paragraph": { "start": 50, "end": 63 } },  // 代码：窗口区间\n  "context": {\n    "chapter": "第一章",                                // 代码\n    "scene": "房间",                                    // 模型：S1\n    "location": "bedroom",                              // 模型给串，S3 归一\n    "pov": "su_tianqing"                                // 同上\n  },\n  "participants": [                                     // 模型：P 行\n    { "entity": "su_tianqing",   "role": "agent" },\n    { "entity": "codex",         "role": "agent" },\n    { "entity": "contract_main", "role": "theme" }\n  ],\n  "precedes": ["E8"],                                   // 代码：storyAfter 取逆\n  "outcome": "契约缔结",                                 // 模型：M 行\n  "valence": 0.6, "arousal": 0.7,                       // 模型：M 行\n  "register": ["喜剧"], "surprise": 0.48,                // 模型：M 行\n  "partOf": undefined                                   // 常量：一期不产出\n}'},
+    {label:'Alias · 一句话，但它是整个模型最关键的字段', type:'json', src:
+'{ "surface": "小破书",                            // 模型\n  "route": "epithet",                             // 模型\n  "since": { "chapter": 1, "paragraph": 50 },     // 代码：窗口首段\n  "confidence": 0.85 }                            // 代码：按 route 查表',
+     foot:'since 由代码写，模型无从知道也不该知道这个称呼在别处是不是更早出现过。查表：name 1.0 / description 1.0 / epithet 0.85 / pronoun_binding 0.6。'}
+  ],
+  why:'<b>一处要更正的决定权：<code>Episode.content</code> 归模型，不归代码。</b>提案第 5 节早先把它列在代码派生栏，那是错的——<code>content</code> 是结构化释义，代码写不出来，只能由模型在 <code>C</code> 行给。相应地，S4 与 S7 各要对它跑一次与本地原文的逐字重合检测，超阈值就拒绝落库。这是 R4 从「约定」变成「闸门」的地方，也是全表唯一一处模型直接写自由文本。<br><br><b>这个闸门原本不用新建，现在要重建：</b><code>t01/scripts/source-overlap.ts</code> 曾经在算逐字重合（<code>MIN_OVERLAP_CHARS = 8</code>）并钉住了 canonical <code>SOURCE_SHA256</code>，正好是 R4 要的两件事；但 2026-08-29 放宽逐字正文规则后该脚本已删除，口径可以照抄，实现要重写。'
+},
+{
+  code:'S5', name:'固化', by:'code',
+  lead:'把本窗口的新记录合进已有的图，并决定谁取代谁。四步，全是纯计算。',
+  inp:[
+    {label:'S4 的完整记录 + 当前图', type:'plain', src:'新记录：1 条 Episode · 5 条 Fact · 1 条 Alias · 1 条 Question\n当前图：7 个 Individual · 19 条 Fact · 6 条 Episode'}
+  ],
+  out:[
+    {label:'① 基数规则 · 全章唯一一次触发', type:'plain', src:
+'已在库    F06  su_tianqing .attitude_to "兴奋"   %narrated ^world  validFrom=E7   活跃\n本次新入  F07  su_tianqing .attitude_to "后悔"   %narrated ^world  validFrom=E8\n\n判据      attitude_to.cardinality = "single"\n          且 (subject, predicate, status, holder) 四元组完全相同\n动作      给 F06 写 validUntil = E8            ← 全库唯一一种原地回写\n结果      两条都留在库里\n          factsValidDuring(E7) 只返回 F06，factsValidDuring(E8) 只返回 F07',
+     foot:'这是唯一会改动已有记录的操作，而且只写一个字段。其余全是追加。'},
+    {label:'② 冲突检测 · 什么叫「不是冲突」', type:'plain', src:
+'F02  su_tianqing .cause_of_death "急性心肌梗死"  %speculation  ^su_tianqing\nF03  su_tianqing .cause_of_death UNKNOWN         %narrated     ^world\n\n同主语、同谓词、宾语不可比 —— 但 status 与 holder 都不同 → 不是冲突，两条并存'},
+    {label:'③ 合并提名 / ④ 幂等', type:'plain', src:
+'③ 检出候选同一性 → 人工队列。第一章不触发\n④ 批次键 (ch01, W7, prompt-v1, model-x, registry-v1) 去重'}
+  ],
+  why:'<b>「问她怎么死的，回答必须带限定语气」这条验收判据，在数据层就长成 F02 与 F03 那个样子。</b>库里同时存着一条她自己的推测和一条叙述层的留白，检索时两条一起出来，回答自然带上限定。压成一条就没了——这不是特例，是设计要的结果。'
+},
+{
+  code:'S6', name:'派生', by:'model',
+  lead:'产出可选三类。核心五类到 S5 就齐了，这一步是加分项。三件事必须分成三次调用。',
+  inp:[
+    {label:'三次调用各自的输入', type:'rows', head:['#','输入','为什么单独一次'], rows:[
+      ['1','E1…E8 的 content 与 outcome（不是原文），约 400 字','why 是全库唯一允许被后续章节重写的字段，可定期重跑，生命周期与另两件不同'],
+      ['2','本章文本 + 新增 Fact','textual 与 reader_hypothesis 是两个不同的提示，混在一起系统会把自己的猜测当成作者的伏笔去追'],
+      ['3','全部 open Question + 本章新增 Fact','只需要看 id 和一句话，最便宜的一次']]}
+  ],
+  out:[
+    {label:'① Summary', type:'json', src:
+'{ "gist": "主角在猝死后于陌生幼体中醒来，与一本自称来自星界的典籍缔约，代价与预期不符。",\n  "why":  "开场以昏暗房间起笔、随后倒叙死亡，是为了让身份错位先于死因揭晓；\n           契约的兴奋与后悔构成本章唯一一次状态取代。" }\n\n代码补 id / covers=[E1…E8] / grain="chapter" / generatedAt=第 77 段 / recomputable=true'},
+    {label:'③ Question 关闭 · 跑完第一章的结果是空的', type:'plain', src:
+'open  Q1 太奶是否真的在临终场景出现     ← F23 是 %disputed，不构成回答\n      Q2 确切死因是什么                ← F03 的宾语是 UNKNOWN，记录的正是留白本身\n      Q3 原主是谁、去了哪里            ← F16 / F17 同样是 UNKNOWN\n      Q5 造物主是谁                    ← creator 是零事实节点\n      Q7 承诺与实际派发之间的落差       ← reader_hypothesis，本章不会自答\n\n关闭  （无）'}
+  ],
+  why:'<b><code>UNKNOWN</code> 宾语不得关闭 <code>Question</code>。</b>一条「死因 = UNKNOWN」看起来像个答案，实际是把「文本没说」这件事显式记下来。让它关掉 Q2，等于把留白当成了结论——这正是 t01 记录的那类摘要缺陷在管线里的复现路径，要在代码里硬性排除，不能指望模型不犯。'
+},
+{
+  code:'S7', name:'闸门', by:'code',
+  lead:'决定这一章的产出落不落库。判据全在提案第 10 节。',
+  inp:[
+    {label:'S5 合并后的图 + 本章批次记录', type:'plain', src:
+'9 个 Individual（2 个待批） · 26 条 Fact（5 条 unresolved）\n8 条 Episode · 19 个 Predicate · 5 条 Question · 1 条 Summary\n批次 (ch01, prompt-v1, model-x, registry-v1)'}
+  ],
+  out:[
+    {label:'报告 · 见下方第 05 节的完整版', type:'plain', src:
+'硬闸      5 / 5 通过\n金标准    6 / 6 达标\n待批队列  实体 6 · 谓词 0\n结论      落库'}
+  ],
+  why:'<b>一章是一个事务：要么整章落库，要么整章拒绝。</b>半章入库会让 <code>Alias.since</code> 与 <code>assertedAt</code> 停在一个既不是「读到这里」也不是「读完这章」的位置上，之后重跑就对不上批次键了。'
+}
+];
+
+/* F08 的十五个字段 —— 本页的署名系统 */
+var F08 = [
+ ['id','"F08"','c','批次内分配 + 全局去重'],
+ ['subject','"su_tianqing"','m','从候选表里选'],
+ ['predicate','"signed"','m','从白名单里选'],
+ ['object','{ t:"ref", id:"contract_main" }','m','id 归模型，t 标签由代码按解析结果打'],
+ ['status','"narrated"','m','六档之一。全管线最难的判断'],
+ ['holder','"world"','c','narrated → world'],
+ ['validFrom','"E7"','c','temporalShape = point → 当前 Episode'],
+ ['assertedAt','{ chapter:1, paragraph:50 }','c','窗口首段'],
+ ['evidence','["E7"]','c','当前 Episode'],
+ ['confidence','0.95','c','按 status 查表'],
+ ['strength','0.5','k','常量（D8）'],
+ ['support','1','c','证据计数'],
+ ['modality','"stipulated"','c','Predicate 默认'],
+ ['volatility','"low"','c','Predicate.defaultVolatility'],
+ ['centrality','0.9','c','Predicate.defaultCentrality']
+];
+
+var LIFE =
+'S2 吐出   S su_tianqing .signed "这份契约" %narrated\n' +
+'            └ 主语从候选表选 id，宾语不在表里只能抄表层串\n\n' +
+'S3 归一   S su_tianqing .signed contract_main %narrated\n' +
+'            └ 提名批准后，表层串换成 id。纯查表，没有模型参与\n\n' +
+'S4 装配   { "id": "F08", … 共 15 个字段 }\n' +
+'            └ 模型碰了 4 个，代码补了 10 个，1 个是常量\n\n' +
+'S5 固化   signed.cardinality = "multi" → 追加，不取代\n' +
+'            └ 若是 single，同键的旧条目这时会被写上 validUntil';
+
+/* R1 的两种候选表 */
+var SLICE = {
+  a:{ note:'<b>候选表 = snapshotAt(第 49 段)。</b>七个实体，codex 只有「黑色典籍」和「墨丘利秘典」两个称呼。<br><br>「小破书」的 <code>since</code> 是第 50 段，contract_main 与 creator 也是第 50 段——它们都是这一场的<b>产物</b>，不是这一场的输入。模型是在不知道「小破书」这个称呼的前提下，从文本里认出它的。<br><br>这条规则真正买到的性质不是防泄漏，是<b>重跑幂等</b>：候选表由位置决定，与库里已经攒了多少无关，第一次跑和第一百次跑拿到的候选表逐字相同。',
+      rows:[
+        ['su_tianqing','person','苏天晴 · 最佳适格者',0],
+        ['body_fox','body','这具身体',0],
+        ['codex','artifact','黑色典籍 · 墨丘利秘典',0],
+        ['tai_nai','person','太奶',0],
+        ['original_owner','person','（无别名）',0],
+        ['bedroom','place','昏暗的房间',0],
+        ['noodle_stall','place','面摊',0]]},
+  b:{ note:'<b>全书入库之后再重跑第一章</b>，候选表按「库里现在有什么」构造——多出来的三行就是泄漏。<br><br>第一趟的产出是对的，验收也过了；六周后换个提示词重跑，输出被静默污染。而 <code>validate()</code> 抓不到：结构完全合法，只是某些 <code>Alias.since</code> 变小了。<br><br>不相等的场合有四个，都是常规操作：重跑、回填、章内并行，以及 S1 自己（它必须看整章才能切场景）。',
+      rows:[
+        ['su_tianqing','person','苏天晴 · 最佳适格者',0],
+        ['body_fox','body','这具身体',0],
+        ['codex','artifact','黑色典籍 · 墨丘利秘典 · 小破书',1],
+        ['tai_nai','person','太奶',0],
+        ['original_owner','person','（无别名）',0],
+        ['bedroom','place','昏暗的房间',0],
+        ['noodle_stall','place','面摊',0],
+        ['contract_main','contract','这份契约',1],
+        ['creator','person','（无别名）',1]]}
+};
+
+var GATE = [
+ ['h','硬闸（不通过不落库）'],
+ ['r','validate()','0 error / 0 warn','—'],
+ ['r','记法行可解析率','100%  (112 / 112)','应恒成立'],
+ ['r','content 与原文最长重合','4-gram','阈值 8'],
+ ['r','sourcePointer 完整','8 / 8 条 Episode','全部有效'],
+ ['r','unresolved 残留','5 / 26 = 19.2%','阈值 20%'],
+ ['h','金标准（仅用于回归比较）'],
+ ['r','场景边界 F1','0.88','≥ 0.80'],
+ ['r','实体召回','9 / 9','≥ 8 / 9'],
+ ['r','共指准确','0.92','≥ 0.90'],
+ ['r','谓词归一','0.88','≥ 0.85'],
+ ['r','认识论准确','0.92','≥ 0.90'],
+ ['r','　└ 关键 6 条','6 / 6','全对'],
+ ['r','事实召回','0.73','≥ 0.70']
+];
+
+/* ═══ 渲染 ═══════════════════════════════════════════════════ */
+function $(s){return document.querySelector(s)}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+/* 记法着色：先按引号切开，只在引号外做替换 */
+function hiNota(src){
+  return src.split('\n').map(function(line){
+    if(!line.trim()) return '';
+    return line.split(/("[^"]*")/).map(function(p,i){
+      if(i%2) return '<span class="t-str">'+esc(p)+'</span>';
+      var h = esc(p);
+      if(i===0) h = h.replace(/^(\s*)(\?[PI]|[CMPASQ])(?=\s)/,function(m,sp,k){
+        return sp+'<span class="t-op">'+k+'</span>'; });
+      h = h.replace(/(%[a-z_]+)/g,'<span class="t-st">$1</span>');
+      h = h.replace(/(\^[a-z_]+)/g,'<span class="t-ho">$1</span>');
+      h = h.replace(/(\s\.[a-z_]+)/g,'<span class="t-pred">$1</span>');
+      h = h.replace(/(-&gt;|→)/g,'<span class="t-ar">$1</span>');
+      h = h.replace(/\b(W[0-9])\b/g,'<span class="t-w">$1</span>');
+      h = h.replace(/(←[^<]*)$/,'<span class="t-cm">$1</span>');
+      return h;
+    }).join('');
+  }).join('\n');
+}
+
+/* JSON 着色：注释先摘出去，再按引号切开 */
+function hiJson(src){
+  return src.split('\n').map(function(line){
+    var ci = line.indexOf('//');
+    var code = ci>=0 ? line.slice(0,ci) : line;
+    var cm   = ci>=0 ? line.slice(ci)   : '';
+    var out = code.split(/("[^"]*")/).map(function(p,i){
+      if(i%2) return '<span class="j-str">'+esc(p)+'</span>';
+      return esc(p)
+        .replace(/(-?\d+(?:\.\d+)?)/g,'<span class="j-num">$1</span>')
+        .replace(/\b(true|false|null|undefined|UNKNOWN)\b/g,'<span class="j-kw">$1</span>');
+    }).join('');
+    out = out.replace(/<span class="j-str">("[^"]*")<\/span>(\s*:)/g,'<span class="j-key">$1</span>$2');
+    if(cm) out += '<span class="j-cm">'+esc(cm)+'</span>';
+    return out;
+  }).join('\n');
+}
+
+function block(b){
+  var h = '<div class="blk">';
+  if(b.label) h += '<div class="blk-l">'+esc(b.label)+'</div>';
+  if(b.type==='json'){
+    h += '<pre class="src">'+hiJson(b.src)+'</pre>';
+  } else if(b.type==='nota'){
+    h += '<pre class="src">'+hiNota(b.src)+'</pre>';
+  } else if(b.type==='plain'){
+    h += '<pre class="src plain">'+esc(b.src)+'</pre>';
+  } else if(b.type==='rows'){
+    h += '<table class="tbl"><thead><tr>';
+    b.head.forEach(function(x){ h += '<th>'+esc(x)+'</th>'; });
+    h += '</tr></thead><tbody>';
+    b.rows.forEach(function(r){
+      h += '<tr>';
+      r.forEach(function(c,i){ h += '<td'+(i===0?' class="m"':'')+'>'+esc(c)+'</td>'; });
+      h += '</tr>';
+    });
+    h += '</tbody></table>';
+  }
+  if(b.foot) h += '<p class="blk-f">'+esc(b.foot)+'</p>';
+  return h+'</div>';
+}
+
+var cur = 0;
+
+function renderStage(){
+  var s = STAGES[cur];
+  var h = '<div class="bench-head"><div class="bh-top">'+
+    '<span class="bh-code" style="color:'+(s.by==='model'?'var(--amber)':'var(--blue)')+'">'+s.code+'</span>'+
+    '<span class="bh-name">'+esc(s.name)+'</span>'+
+    '<span class="bh-by '+(s.by==='model'?'by-model':'by-code')+'">'+
+      (s.by==='model'?(s.weak?'LLM · 弱模型':'LLM'):'代码')+'</span>'+
+    (s.risk?'<span class="bh-risk">★ 风险最高</span>':'')+
+    '</div><p class="bh-lead">'+esc(s.lead)+'</p></div>';
+
+  h += '<div class="io"><div class="io-col"><div class="io-h">输入</div>'+
+       s.inp.map(block).join('')+'</div>'+
+       '<div class="io-arrow">→</div>'+
+       '<div class="io-col"><div class="io-h">输出</div>'+
+       s.out.map(block).join('')+'</div></div>';
+
+  h += '<div class="why">'+s.why+'</div>';
+
+  var el = $('#stage');
+  el.innerHTML = h;
+  el.classList.remove('anim'); void el.offsetWidth; el.classList.add('anim');
+
+  $('#pos').textContent = (cur+1)+' / '+STAGES.length;
+  $('#prev').disabled = cur===0;
+  $('#next').disabled = cur===STAGES.length-1;
+  Array.prototype.forEach.call(document.querySelectorAll('#dots .dot'),function(d,i){
+    d.className = 'dot'+(i===cur?' on':(i<cur?' done':''));
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('#lanes .st'),function(b,i){
+    b.classList.toggle('on', i===cur);
+    b.setAttribute('aria-current', i===cur ? 'step' : 'false');
+  });
+}
+
+function go(i){
+  cur = Math.max(0, Math.min(STAGES.length-1, i));
+  renderStage();
+}
+
+function boot(){
+  /* 泳道 */
+  var lanes = $('#lanes');
+  var lh = '<div class="rail"></div>'+
+           '<span class="lane-tag" style="top:-16px">代码 · 确定性</span>'+
+           '<span class="lane-tag" style="bottom:-16px">模型 · 概率</span>';
+  STAGES.forEach(function(s,i){
+    lh += '<button class="st '+(s.by==='model'?'model':'code')+'" data-i="'+i+'" '+
+          'style="grid-column:'+(i+1)+'">'+
+          (s.risk?'<span class="star">★</span>':'')+
+          '<span class="st-c">'+s.code+'</span>'+
+          '<span class="st-n">'+esc(s.name)+'</span>'+
+          '<span class="st-w">'+(s.by==='model'?'LLM':'CODE')+'</span>'+
+          '<span class="drop"></span></button>';
+  });
+  lanes.innerHTML = lh;
+  Array.prototype.forEach.call(lanes.querySelectorAll('.st'),function(b){
+    b.addEventListener('click',function(){
+      go(+b.dataset.i);
+      $('#s-bench').scrollIntoView({block:'start'});
+    });
+  });
+
+  /* 进度点 */
+  var dh = '';
+  STAGES.forEach(function(s,i){
+    dh += '<button class="dot" data-i="'+i+'" title="'+s.code+' '+esc(s.name)+'" '+
+          'aria-label="'+s.code+' '+esc(s.name)+'"></button>';
+  });
+  $('#dots').innerHTML = dh;
+  Array.prototype.forEach.call(document.querySelectorAll('#dots .dot'),function(d){
+    d.addEventListener('click',function(){ go(+d.dataset.i); });
+  });
+
+  $('#prev').addEventListener('click',function(){ go(cur-1); });
+  $('#next').addEventListener('click',function(){ go(cur+1); });
+  document.addEventListener('keydown',function(e){
+    if(e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+    if(e.key==='ArrowLeft'){ go(cur-1); }
+    if(e.key==='ArrowRight'){ go(cur+1); }
+  });
+
+  /* 署名条 */
+  $('#sigbar').innerHTML = F08.map(function(f){
+    return '<span class="'+f[2]+'" title="'+esc(f[0])+'"></span>';
+  }).join('');
+
+  /* 一行的一生 */
+  $('#life').innerHTML = hiNota(LIFE);
+
+  /* 署名卡 */
+  var who = {c:'代码',m:'模型',k:'常量'};
+  $('#fcard').innerHTML = F08.map(function(f){
+    return '<div class="fc '+f[2]+'"><span class="who">'+who[f[2]]+'</span>'+
+           '<dt>'+esc(f[0])+'</dt><dd>'+esc(f[1])+'</dd><p>'+esc(f[3])+'</p></div>';
+  }).join('');
+
+  /* R1 切片 */
+  function slice(k){
+    var d = SLICE[k];
+    $('#sl-body').innerHTML = d.rows.map(function(r){
+      return '<tr><td class="m'+(r[3]?' ':'')+'">'+esc(r[0])+'</td>'+
+             '<td class="muted">'+esc(r[1])+'</td>'+
+             '<td>'+esc(r[2])+(r[3]?' <span class="tag new">后文泄漏</span>':'')+'</td></tr>';
+    }).join('');
+    $('#sl-note').innerHTML = d.note;
+    $('#sl-a').classList.toggle('on', k==='a');
+    $('#sl-b').classList.toggle('on', k==='b');
+  }
+  $('#sl-a').addEventListener('click',function(){ slice('a'); });
+  $('#sl-b').addEventListener('click',function(){ slice('b'); });
+  slice('a');
+
+  /* 闸门 */
+  $('#gate').innerHTML = GATE.map(function(g){
+    if(g[0]==='h') return '<div class="g-sub">'+esc(g[1])+'</div>';
+    return '<div class="g-row"><span class="g-n">'+esc(g[1])+'</span>'+
+           '<span class="g-v">'+esc(g[2])+'</span>'+
+           '<span class="g-t">'+esc(g[3])+'</span>'+
+           '<span class="g-ok">✓</span></div>';
+  }).join('') +
+  '<div class="verdict"><b>结论</b>待批队列：实体 6 · 谓词 0。整章落库。<br>' +
+  '那 6 条待批全部来自 E4「非具名必须提名」这条规则——如果它按建议收窄成「只有 person 需要提名」，第一章会降到 2 条。</div>';
+
+  renderStage();
+}
+
+boot();
+</script>
+</body>
+</html>

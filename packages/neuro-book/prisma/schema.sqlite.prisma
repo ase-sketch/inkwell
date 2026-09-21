@@ -1,0 +1,56 @@
+// App SQLite schema. This database lives at Workspace Root .nbook and stores
+// only application-level data such as users and global locks.
+generator client {
+  provider = "prisma-client"
+  output   = "../server/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum UserRole {
+  admin
+  user
+}
+
+enum UserStatus {
+  active
+  disabled
+}
+
+model User {
+  id             Int        @id @default(autoincrement())
+  username       String     @unique
+  displayName    String     @default("")
+  passwordHash   String
+  role           UserRole   @default(user)
+  status         UserStatus @default(active)
+  sessionVersion Int        @default(1)
+  lastLoginAt    DateTime?
+  lastSeenAt     DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @default(now()) @updatedAt
+
+  @@index([role, status])
+  @@index([lastSeenAt])
+  @@index([updatedAt])
+}
+
+model DatabaseLock {
+  key       Int      @id
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+// Passport 凭据：一个账号槽位持有一份官方站授权（Task 112 spec §11；v1 只有 default 槽位）
+model PassportCredential {
+  id                 Int      @id @default(autoincrement())
+  slotId             String   @unique @default("default") // 账号槽位，v1 恒为 default，预留多槽位切换
+  accountId          Int // 官方站账号 id（展示用）
+  accountUsername    String
+  accountDisplayName String
+  scopesJson         String // JSON string[]，已授权 scope
+  refreshToken       String // 官方站 refresh token；存 State Root 内 App SQLite，与 .env 同级安全边界
+  linkedAt           DateTime @default(now())
+  updatedAt          DateTime @default(now()) @updatedAt
+}

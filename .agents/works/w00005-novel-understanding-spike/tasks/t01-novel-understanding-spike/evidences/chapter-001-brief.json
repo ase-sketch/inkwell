@@ -1,0 +1,589 @@
+{
+  "schema": "nbook.novel-brief.spike/v1",
+  "source": {
+    "workTitle": "转生反派萝莉，找茬魔法少女",
+    "chapterNumber": 1,
+    "chapterTitle": "反派魔法少女",
+    "sourceRef": "OEBPS/chapter_00001.xhtml",
+    "coverage": "entire-chapter"
+  },
+  "overview": {
+    "neutralSummary": "苏天晴在昏暗房间中醒来，发现自己变成金毛狐女，面前有一本自称墨丘利秘典的黑色古书。她回忆前世死亡，确认身体真实后与古书对话。古书提出签订契约，苏天晴立即同意；古书告知契约内容为成为反派魔法少女，并称有造物主定制任务。随后墨丘利秘典绑定成功，契约成立。",
+    "chapterFunction": "开篇章节，建立主角重生设定、核心道具墨丘利秘典、契约与反派魔法少女身份，并埋下造物主与前世死亡相关悬念。",
+    "openingState": "苏天晴在昏暗房间中醒来，处于金毛狐女身体内，面前漂浮黑色古书；尚未与古书建立契约。",
+    "closingState": "墨丘利秘典已绑定苏天晴，契约成立；苏天晴被要求走上反派魔法少女的道路。"
+  },
+  "scenes": [
+    {
+      "id": "ch001-scene-01",
+      "order": 1,
+      "title": "重生与契约",
+      "summary": "苏天晴在昏暗房间醒来，发现自己变成金毛狐女，面前有自称墨丘利秘典的黑色古书。她回忆前世死亡，确认身体真实，与古书对话并同意签订契约。古书告知契约内容为反派魔法少女，随后绑定成功，契约成立。",
+      "pov": "苏天晴（第三人称限知）",
+      "location": "昏暗的房间（床边/落地镜前）",
+      "time": "白天（窗帘缝隙洒入阳光）",
+      "participants": [
+        "ch001-entity-01",
+        "ch001-entity-02"
+      ],
+      "eventIds": [
+        "ch001-event-01",
+        "ch001-event-02",
+        "ch001-event-03",
+        "ch001-event-04",
+        "ch001-event-05",
+        "ch001-event-06",
+        "ch001-event-07"
+      ],
+      "evidenceIds": [
+        "ch001-evidence-01",
+        "ch001-evidence-02",
+        "ch001-evidence-03",
+        "ch001-evidence-04",
+        "ch001-evidence-05",
+        "ch001-evidence-06",
+        "ch001-evidence-07",
+        "ch001-evidence-08",
+        "ch001-evidence-09",
+        "ch001-evidence-10",
+        "ch001-evidence-11",
+        "ch001-evidence-12",
+        "ch001-evidence-13",
+        "ch001-evidence-14",
+        "ch001-evidence-15",
+        "ch001-evidence-16",
+        "ch001-evidence-17",
+        "ch001-evidence-18",
+        "ch001-evidence-19",
+        "ch001-evidence-20",
+        "ch001-evidence-21",
+        "ch001-evidence-22",
+        "ch001-evidence-23",
+        "ch001-evidence-24",
+        "ch001-evidence-25",
+        "ch001-evidence-26"
+      ]
+    }
+  ],
+  "entities": [
+    {
+      "id": "ch001-entity-01",
+      "name": "苏天晴",
+      "type": "character",
+      "aliases": [
+        "狐狐",
+        "金毛狐女"
+      ],
+      "description": "前世刚下夜班的人类，重生为金毛狐女；性格跳脱，喜欢脚和萝莉。",
+      "importance": "primary",
+      "evidenceIds": [
+        "ch001-evidence-05",
+        "ch001-evidence-06",
+        "ch001-evidence-13",
+        "ch001-evidence-14",
+        "ch001-evidence-15",
+        "ch001-evidence-25"
+      ]
+    },
+    {
+      "id": "ch001-entity-02",
+      "name": "墨丘利秘典",
+      "type": "item",
+      "aliases": [
+        "黑色古书",
+        "小破书"
+      ],
+      "description": "会说话的黑色古书，自称墨丘利秘典，来自星空彼岸，寻找适格者并引导其成为反派魔法少女。",
+      "importance": "primary",
+      "evidenceIds": [
+        "ch001-evidence-02",
+        "ch001-evidence-11",
+        "ch001-evidence-18",
+        "ch001-evidence-22",
+        "ch001-evidence-23"
+      ]
+    },
+    {
+      "id": "ch001-entity-03",
+      "name": "太奶",
+      "type": "character",
+      "aliases": [],
+      "description": "苏天晴前世死亡前在背后说话的人，坐在藤椅上编围巾。",
+      "importance": "minor",
+      "evidenceIds": [
+        "ch001-evidence-07",
+        "ch001-evidence-26"
+      ]
+    },
+    {
+      "id": "ch001-entity-04",
+      "name": "造物主",
+      "type": "character",
+      "aliases": [],
+      "description": "被墨丘利秘典提及，为苏天晴量身定制任务，身份未详。",
+      "importance": "minor",
+      "evidenceIds": [
+        "ch001-evidence-19"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "id": "ch001-event-01",
+      "sceneId": "ch001-scene-01",
+      "order": 1,
+      "summary": "苏天晴在昏暗房间中醒来，看到漂浮的黑色古书，并从落地镜中发现自己变成金毛狐女。",
+      "participants": [
+        "ch001-entity-01"
+      ],
+      "causes": [
+        "开篇状态：苏天晴已处于重生后的房间"
+      ],
+      "effects": [
+        "苏天晴开始确认自身处境"
+      ],
+      "stateChanges": [
+        "苏天晴处于金毛狐女身体中"
+      ],
+      "relationshipChanges": [],
+      "knowledgeChanges": [
+        "苏天晴发现自己重生为金毛狐女"
+      ],
+      "certainty": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-01",
+        "ch001-evidence-02",
+        "ch001-evidence-03",
+        "ch001-evidence-04",
+        "ch001-evidence-05",
+        "ch001-evidence-06"
+      ]
+    },
+    {
+      "id": "ch001-event-02",
+      "sceneId": "ch001-scene-01",
+      "order": 2,
+      "summary": "苏天晴回忆起五分钟前自己刚下夜班在面摊吃面，听到太奶在背后说话，随后胸口疼痛、眼前一黑失去意识。",
+      "participants": [
+        "ch001-entity-01",
+        "ch001-entity-03"
+      ],
+      "causes": [
+        "记忆触发"
+      ],
+      "effects": [
+        "苏天晴意识到自己已经死亡并重生"
+      ],
+      "stateChanges": [],
+      "relationshipChanges": [],
+      "knowledgeChanges": [
+        "苏天晴得知自己前世已死亡"
+      ],
+      "certainty": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-07",
+        "ch001-evidence-08",
+        "ch001-evidence-26"
+      ]
+    },
+    {
+      "id": "ch001-event-03",
+      "sceneId": "ch001-scene-01",
+      "order": 3,
+      "summary": "苏天晴伸手用力薅自己的尾巴，感受到真实触感，耳朵和尾巴随之反应。",
+      "participants": [
+        "ch001-entity-01"
+      ],
+      "causes": [
+        "对新身体的好奇"
+      ],
+      "effects": [
+        "确认新身体触感真实"
+      ],
+      "stateChanges": [],
+      "relationshipChanges": [],
+      "knowledgeChanges": [
+        "苏天晴确认身体真实"
+      ],
+      "certainty": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-09",
+        "ch001-evidence-10"
+      ]
+    },
+    {
+      "id": "ch001-event-04",
+      "sceneId": "ch001-scene-01",
+      "order": 4,
+      "summary": "苏天晴询问古书身份，古书自称墨丘利秘典，来自星空彼岸，前来寻找最优秀的适格者，并指认苏天晴。",
+      "participants": [
+        "ch001-entity-01",
+        "ch001-entity-02"
+      ],
+      "causes": [
+        "苏天晴提问"
+      ],
+      "effects": [
+        "苏天晴得知古书身份与来意"
+      ],
+      "stateChanges": [],
+      "relationshipChanges": [],
+      "knowledgeChanges": [
+        "苏天晴得知墨丘利秘典的身份与目的"
+      ],
+      "certainty": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-11",
+        "ch001-evidence-12"
+      ]
+    },
+    {
+      "id": "ch001-event-05",
+      "sceneId": "ch001-scene-01",
+      "order": 5,
+      "summary": "苏天晴下床走到落地镜前欣赏新身体，尤其欣赏脚，并说小脚是瑰宝；古书对此语塞。",
+      "participants": [
+        "ch001-entity-01",
+        "ch001-entity-02"
+      ],
+      "causes": [
+        "对新身体满意"
+      ],
+      "effects": [
+        "展现苏天晴跳脱的性格"
+      ],
+      "stateChanges": [],
+      "relationshipChanges": [],
+      "knowledgeChanges": [],
+      "certainty": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-13",
+        "ch001-evidence-14"
+      ]
+    },
+    {
+      "id": "ch001-event-06",
+      "sceneId": "ch001-scene-01",
+      "order": 6,
+      "summary": "古书提出签订契约，苏天晴不假思索答应，古书惊讶于她不按套路出牌，并确认契约成立意向。",
+      "participants": [
+        "ch001-entity-01",
+        "ch001-entity-02"
+      ],
+      "causes": [
+        "古书需要适格者签订契约"
+      ],
+      "effects": [
+        "双方达成口头契约意向"
+      ],
+      "stateChanges": [
+        "契约进入确认阶段"
+      ],
+      "relationshipChanges": [
+        "苏天晴与墨丘利秘典从陌生对话者变为契约意向方"
+      ],
+      "knowledgeChanges": [],
+      "certainty": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-15",
+        "ch001-evidence-16",
+        "ch001-evidence-17"
+      ]
+    },
+    {
+      "id": "ch001-event-07",
+      "sceneId": "ch001-scene-01",
+      "order": 7,
+      "summary": "苏天晴询问契约内容，古书告知为“反派魔法少女”，并说有造物主定制任务；苏天晴吐槽魔法少女高危，古书称是王道系；随后墨丘利秘典绑定成功，契约成立。",
+      "participants": [
+        "ch001-entity-01",
+        "ch001-entity-02"
+      ],
+      "causes": [
+        "苏天晴已口头同意契约"
+      ],
+      "effects": [
+        "墨丘利秘典绑定成功，契约成立，苏天晴成为反派魔法少女"
+      ],
+      "stateChanges": [
+        "墨丘利秘典绑定成功",
+        "契约成立"
+      ],
+      "relationshipChanges": [
+        "墨丘利秘典成为苏天晴的绑定契约书/引导者"
+      ],
+      "knowledgeChanges": [
+        "苏天晴得知契约内容为反派魔法少女",
+        "苏天晴得知造物主定制任务",
+        "苏天晴得知绑定成功"
+      ],
+      "certainty": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-18",
+        "ch001-evidence-19",
+        "ch001-evidence-20",
+        "ch001-evidence-21",
+        "ch001-evidence-22",
+        "ch001-evidence-23",
+        "ch001-evidence-24"
+      ]
+    }
+  ],
+  "knowledgeReveals": [
+    {
+      "id": "ch001-knowledge-01",
+      "knower": "ch001-entity-01",
+      "content": "自己已死亡并重生为金毛狐女",
+      "certainty": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-05",
+        "ch001-evidence-06",
+        "ch001-evidence-08"
+      ]
+    },
+    {
+      "id": "ch001-knowledge-02",
+      "knower": "ch001-entity-01",
+      "content": "黑色古书名墨丘利秘典，来自星空彼岸，寻找适格者",
+      "certainty": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-11",
+        "ch001-evidence-12"
+      ]
+    },
+    {
+      "id": "ch001-knowledge-03",
+      "knower": "ch001-entity-01",
+      "content": "契约内容为成为反派魔法少女，造物主定制任务",
+      "certainty": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-18",
+        "ch001-evidence-19"
+      ]
+    },
+    {
+      "id": "ch001-knowledge-04",
+      "knower": "ch001-entity-01",
+      "content": "墨丘利秘典已绑定，契约成立",
+      "certainty": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-22",
+        "ch001-evidence-23"
+      ]
+    }
+  ],
+  "worldCandidates": [
+    {
+      "subjectId": "ch001-world-01",
+      "name": "墨丘利秘典契约",
+      "type": "concept",
+      "reasonToTrack": "契约已成立，后续将引导主角成为反派魔法少女，任务与身份状态需持续追踪",
+      "initialState": "古书提出契约，苏天晴口头同意",
+      "keyChanges": "墨丘利秘典绑定成功，契约成立",
+      "certainty": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-15",
+        "ch001-evidence-17",
+        "ch001-evidence-22",
+        "ch001-evidence-23"
+      ]
+    },
+    {
+      "subjectId": "ch001-world-02",
+      "name": "造物主",
+      "type": "character",
+      "reasonToTrack": "被古书称为任务定制者，身份与目的未知，可能影响后续剧情",
+      "initialState": "仅被墨丘利秘典提及，未登场",
+      "keyChanges": "暂无",
+      "certainty": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-19"
+      ]
+    }
+  ],
+  "plot": {
+    "chapterGoal": "让主角重生为金毛狐女并与墨丘利秘典签订契约，确立反派魔法少女身份",
+    "pov": "苏天晴（第三人称限知）",
+    "tone": "轻松、吐槽、搞笑",
+    "pacing": "快节奏，以对话和内心吐槽推进",
+    "openingHook": "主角在昏暗房间醒来，面对漂浮的黑色古书和陌生的金毛狐女身体",
+    "endingHook": "墨丘利秘典绑定成功，契约成立，主角被要求走上反派魔法少女的道路",
+    "threadCandidates": [
+      "墨丘利秘典与造物主的真实目的",
+      "反派魔法少女的具体任务",
+      "前世死亡与太奶出现的关联"
+    ],
+    "sceneOrder": [
+      "ch001-scene-01"
+    ]
+  },
+  "evidence": [
+    {
+      "id": "ch001-evidence-01",
+      "quote": "昏暗的房间里传出清脆悦耳的女声，还有一道仿佛来自遥远彼方的低沉言语。",
+      "note": "开场场景，苏天晴与古书声音同处一室"
+    },
+    {
+      "id": "ch001-evidence-02",
+      "quote": "苏天晴坐在床头，呆滞地看着眼前这本飘浮在半空中的黑色古书",
+      "note": "确认古书存在"
+    },
+    {
+      "id": "ch001-evidence-03",
+      "quote": "灿烂金色的长发垂落在肩膀后背，毛茸茸的耳朵耷拉在头顶",
+      "note": "新身体外貌"
+    },
+    {
+      "id": "ch001-evidence-04",
+      "quote": "一只娇小的金毛狐女。",
+      "note": "身份确认"
+    },
+    {
+      "id": "ch001-evidence-05",
+      "quote": "我重生了。",
+      "note": "主角内心确认重生"
+    },
+    {
+      "id": "ch001-evidence-06",
+      "quote": "重生成了一只金毛狐女。",
+      "note": "重生后的形态"
+    },
+    {
+      "id": "ch001-evidence-07",
+      "quote": "突然听到自己太奶在背后说话",
+      "note": "前世死亡前听到太奶"
+    },
+    {
+      "id": "ch001-evidence-08",
+      "quote": "然后胸口一疼眼前一黑，就这么背过了气去。",
+      "note": "前世死亡经过"
+    },
+    {
+      "id": "ch001-evidence-09",
+      "quote": "鬼使神差地伸手，在尾巴上用力薅了一把",
+      "note": "测试尾巴触感"
+    },
+    {
+      "id": "ch001-evidence-10",
+      "quote": "好真实的触感！",
+      "note": "确认身体真实"
+    },
+    {
+      "id": "ch001-evidence-11",
+      "quote": "吾名墨丘利秘典，从星空彼岸远行至此，前来寻找我最优秀的适格者。",
+      "note": "古书自我介绍"
+    },
+    {
+      "id": "ch001-evidence-12",
+      "quote": "而那个人就是你，苏天晴小姐。",
+      "note": "指定适格者"
+    },
+    {
+      "id": "ch001-evidence-13",
+      "quote": "小脚才是世界上最美好的瑰宝，吃饭的时候看见了都能多炫两碗。",
+      "note": "主角对脚的偏好"
+    },
+    {
+      "id": "ch001-evidence-14",
+      "quote": "抬起一只脚，认真欣赏起这只白皙软嫩带着红晕的小脚。",
+      "note": "照镜欣赏身体"
+    },
+    {
+      "id": "ch001-evidence-15",
+      "quote": "好，我签。",
+      "note": "立即同意契约"
+    },
+    {
+      "id": "ch001-evidence-16",
+      "quote": "不是，你不按套路出牌啊，契约怎么说签就签的？",
+      "note": "古书惊讶"
+    },
+    {
+      "id": "ch001-evidence-17",
+      "quote": "既然你答应，那我们之间的契约就算成立了？",
+      "note": "古书确认契约"
+    },
+    {
+      "id": "ch001-evidence-18",
+      "quote": "反派魔法少女。",
+      "note": "契约内容"
+    },
+    {
+      "id": "ch001-evidence-19",
+      "quote": "造物主给你量身定制了一整套任务",
+      "note": "任务来源"
+    },
+    {
+      "id": "ch001-evidence-20",
+      "quote": "是那种死亡率高达90%的高危职业吗？！",
+      "note": "主角对魔法少女的认知"
+    },
+    {
+      "id": "ch001-evidence-21",
+      "quote": "放心吧，是王道系的那种。",
+      "note": "古书说明类型"
+    },
+    {
+      "id": "ch001-evidence-22",
+      "quote": "墨丘利秘典绑定成功。",
+      "note": "绑定完成"
+    },
+    {
+      "id": "ch001-evidence-23",
+      "quote": "契约成立。",
+      "note": "契约成立"
+    },
+    {
+      "id": "ch001-evidence-24",
+      "quote": "走上反派魔法少女的道路吧，苏天晴。",
+      "note": "结尾指令"
+    },
+    {
+      "id": "ch001-evidence-25",
+      "quote": "我还能有反悔的机会吗？能不能把我送回原来的身体里啊我觉得急性心肌梗死还有抢救的机会",
+      "note": "主角对前世死因的猜测与后悔"
+    },
+    {
+      "id": "ch001-evidence-26",
+      "quote": "只见太奶坐在藤椅上悠闲地编着一只围巾",
+      "note": "太奶在记忆中的形象"
+    }
+  ],
+  "uncertainties": [
+    {
+      "id": "ch001-uncertainty-01",
+      "question": "苏天晴前世死亡的具体原因是什么？",
+      "reason": "文本只描述胸口疼眼前一黑，未说明病因；她自嘲急性心肌梗死但未证实",
+      "evidenceIds": [
+        "ch001-evidence-08",
+        "ch001-evidence-25"
+      ]
+    },
+    {
+      "id": "ch001-uncertainty-02",
+      "question": "太奶在苏天晴死亡前出现是否与重生有关？",
+      "reason": "文本仅描述太奶在背后说话，未说明关联",
+      "evidenceIds": [
+        "ch001-evidence-07",
+        "ch001-evidence-26"
+      ]
+    },
+    {
+      "id": "ch001-uncertainty-03",
+      "question": "墨丘利秘典为何选择苏天晴？",
+      "reason": "古书自称寻找最优秀适格者，但未解释具体原因",
+      "evidenceIds": [
+        "ch001-evidence-11",
+        "ch001-evidence-12"
+      ]
+    },
+    {
+      "id": "ch001-uncertainty-04",
+      "question": "反派魔法少女的具体任务内容是什么？",
+      "reason": "古书只提到造物主定制任务，未列出任务细节",
+      "evidenceIds": [
+        "ch001-evidence-19"
+      ]
+    }
+  ]
+}

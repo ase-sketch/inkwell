@@ -1,0 +1,23 @@
+{
+    "compilerOptions": {
+        "target": "ESNext",
+        "module": "ESNext",
+        "moduleResolution": "Bundler",
+        "strict": true,
+        "skipLibCheck": true,
+        "types": [
+            "node",
+            "bun"
+        ],
+        "baseUrl": "../..",
+        "paths": {
+            "nbook/*": [
+                "./*"
+            ]
+        }
+    },
+    "include": [
+        "./**/*.ts",
+        "../agent/tools/web-extraction-modules.d.ts"
+    ]
+}

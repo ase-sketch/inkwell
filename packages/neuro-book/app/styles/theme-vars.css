@@ -1,0 +1,83 @@
+/*
+ * IDE/SSR fallback only.
+ *
+ * 主题真实来源仍然是 app/utils/theme/theme-tokens.ts。
+ * useIdeTheme 会在运行时把当前主题变量写入 .novel-ide-theme。
+ */
+:root,
+.novel-ide-theme {
+    --bg-main: #f7f2e8;
+    --bg-panel: #fdfaf3;
+    --bg-sidebar: #ede5d3;
+    --bg-subtle: color-mix(in srgb, #ede5d3 78%, #fdfaf3);
+    --bg-input: #ede5d3;
+    --bg-hover: #e6dcc6;
+    --text-main: #433422;
+    --text-secondary: #786450;
+    --text-muted: #b8a896;
+    --text-inverse: #ffffff;
+    --border-color: #d9cdb2;
+    --border-strong: #cebf9c;
+    --border-accent: color-mix(in srgb, #d97743 46%, #d9cdb2);
+    --accent-main: #d97743;
+    --accent-bg: rgba(217, 119, 67, 0.15);
+    --accent-text: #b85a2a;
+    --status-info: #4f6f73;
+    --status-info-bg: rgba(79, 111, 115, 0.14);
+    --status-info-border: rgba(79, 111, 115, 0.35);
+    --status-success: #6f7f35;
+    --status-success-bg: rgba(111, 127, 53, 0.16);
+    --status-success-border: rgba(111, 127, 53, 0.38);
+    --status-warning: #b86b00;
+    --status-warning-bg: rgba(184, 107, 0, 0.15);
+    --status-warning-border: rgba(184, 107, 0, 0.34);
+    --status-danger: #a34d3f;
+    --status-danger-bg: rgba(163, 77, 63, 0.13);
+    --status-danger-border: rgba(163, 77, 63, 0.34);
+    --editor-bg: #fcf8ef;
+    --source-bg: #fdfaf3;
+    --source-text: #586e75;
+    --source-muted: #93a1a1;
+    --shadow-color: #0f172a;
+    --selection-bg: rgba(217, 119, 67, 0.28);
+    --toolbar-bg: rgba(253, 250, 243, 0.92);
+    --chat-ai-bg: #f9f4e8;
+}
+
+.novel-ide-theme ::selection {
+    background: var(--selection-bg);
+}
+
+.world-engine-workbench-theme {
+    /* World Engine 语义色从 IDE 当前主题派生，保留 --we-* 作为局部别名层。 */
+    --we-bg-canvas: var(--bg-main);
+    --we-bg-panel: var(--bg-panel);
+    --we-bg-subtle: var(--bg-sidebar);
+    --we-bg-muted: var(--bg-subtle);
+    --we-bg-hover: var(--bg-hover);
+    --we-bg-active: var(--bg-hover);
+    --we-bg-data: var(--bg-subtle);
+    --we-border: var(--border-color);
+    --we-border-strong: var(--border-strong);
+    --we-text-main: var(--text-main);
+    --we-text-secondary: var(--text-secondary);
+    --we-text-muted: var(--text-muted);
+    --we-accent: var(--accent-main);
+    --we-accent-strong: var(--accent-text);
+    --we-accent-soft: var(--accent-bg);
+    --we-accent-border: var(--border-accent);
+    --we-info: var(--status-info);
+    --we-info-border: var(--status-info-border);
+    --we-info-soft: var(--status-info-bg);
+    --we-success: var(--status-success);
+    --we-success-border: var(--status-success-border);
+    --we-success-soft: var(--status-success-bg);
+    --we-warning: var(--status-warning);
+    --we-warning-border: var(--status-warning-border);
+    --we-warning-soft: var(--status-warning-bg);
+    --we-danger: var(--status-danger);
+    --we-danger-border: var(--status-danger-border);
+    --we-danger-soft: var(--status-danger-bg);
+    --we-code-bg: var(--source-bg);
+    --we-code-text: var(--source-text);
+}

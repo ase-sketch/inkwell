@@ -1,0 +1,41 @@
+{
+  "schema": "nbook.monorepo-boundary-docs-site-evidence/v1",
+  "recordedAt": "2026-08-19T10:25:57Z",
+  "locales": {
+    "zh-Hans": {"source": "vitepress/locales/zh-Hans", "publicBase": "/", "markdownFiles": 51},
+    "en-US": {"source": "vitepress/locales/en-US", "publicBase": "/en/", "markdownFiles": 51}
+  },
+  "sharedImages": 22,
+  "staging": {
+    "root": "vitepress/.vitepress/staged",
+    "tracked": false,
+    "fixtureTests": "passed",
+    "watcherSmoke": {
+      "checkoutVerified": true,
+      "diagnosticServerPid": 46464,
+      "verifiedServerPid": 33300,
+      "createPropagated": true,
+      "deletePropagated": true,
+      "intermediateResolveErrors": 0,
+      "deletedPageTitle": "404 | NeuroBook",
+      "deletedPageContainedMarker": false
+    }
+  },
+  "verification": {
+    "docsCheck": {"failures": 0, "checkedFiles": 5073},
+    "docsBuild": {"status": "passed", "vitepress": "2.0.0-alpha.18", "seconds": 7.18},
+    "scriptTests": {"files": 4, "tests": 29, "status": "passed"},
+    "applicationTests": {"files": 2, "tests": 8, "status": "passed"},
+    "communityValidation": {"labels": 31, "issueForms": 5, "yamlFiles": 16, "status": "passed"},
+    "officialPages": ["vitepress/.vitepress/dist/official/index.html", "vitepress/.vitepress/dist/official/en/index.html"]
+  },
+  "notRun": [
+    "manual browser acceptance",
+    "deployment or publication",
+    "Docker",
+    "Windows runner or portable packaging",
+    "real Provider or Model",
+    "database migration",
+    "final tag"
+  ]
+}

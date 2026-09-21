@@ -1,0 +1,67 @@
+{
+  "schema": "nbook.evidence/v1",
+  "taskId": "00150-monorepo-boundary-convergence",
+  "stage": "application-task-ownership",
+  "status": "verified",
+  "createdAt": "2026-08-19T21:00:00Z",
+  "ownership": {
+    "schema": "nbook.task-ownership/v1",
+    "ownerRoot": "packages/neuro-book/.agents/tasks",
+    "taskCount": 91,
+    "fileCount": 855,
+    "legacyLedgerPreserved": true,
+    "approvedRootTaskDirectoryCount": 33,
+    "postBaselineRootTasksPreserved": [
+      "00150-monorepo-boundary-convergence",
+      "00150-ui-spec-verification"
+    ]
+  },
+  "checks": [
+    {
+      "command": "bun run governance:migrate-task-ownership",
+      "result": "passed dry-run: 91 Task, 855 files, 0 blockers, 0 moves"
+    },
+    {
+      "command": "bun run governance:check",
+      "result": "passed: failures=[], warnings=[]"
+    },
+    {
+      "command": "bun x vitest run --config scripts/vitest.config.ts scripts/ci/agent-governance.test.ts scripts/ci/check-documentation.test.ts --reporter=dot",
+      "result": "passed: 2 files, 33 tests"
+    },
+    {
+      "command": "bun x tsc --noEmit -p scripts/tsconfig.json",
+      "result": "passed: 0 errors"
+    },
+    {
+      "command": "bun run governance:context -- --role tasker --task 01-agent-roleplay-mode",
+      "result": "passed: exact application Task README and checked root"
+    },
+    {
+      "command": "bun run governance:context -- --role tasker --task 00149-monorepo-workspace-consolidation",
+      "result": "passed: exact root Task README and checked root"
+    },
+    {
+      "command": "bun run governance:context -- --role tasker --task 99999-does-not-exist",
+      "result": "passed negative case: exit code 1 and no fallback"
+    }
+  ],
+  "warnings": [
+    {
+      "path": "packages/neuro-book/docs/research/memory-engines-mem0-graphiti.md",
+      "reason": "active research document still contains a historical docs/tasks link"
+    }
+  ],
+  "unexecuted": [
+    "Reference 归位",
+    "Desktop 收口",
+    "最终全局验证",
+    "真实 Docker",
+    "Windows runner/portable",
+    "浏览器人工验收",
+    "真实 Provider/Model",
+    "发布部署/tag",
+    "旧 worktree 删除",
+    "真实数据库 migration"
+  ]
+}

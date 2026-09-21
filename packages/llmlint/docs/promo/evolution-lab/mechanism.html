@@ -1,0 +1,818 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="进化实验室赛制细则：Author 的五个零件、一道命题的完整旅程、六道进化工序、AI 裁判考证流程与人类的四个座位。">
+<title>llmlint 进化实验室 · 赛制细则手册</title>
+<style>
+    /* ── 与 packages/llmlint/web/app/utils/theme/theme-tokens.ts 同源的漫画印刷体系 ── */
+    :root {
+        --paper: #fbfcfd;
+        --bg-main: #eef2f5;
+        --ink: #172126;
+        --teal: #0f9f92;
+        --teal-deep: #08766d;
+        --coral: #e85d75;
+        --coral-deep: #c24058;
+        --gold: #e8aa23;
+        --muted: #4a5960;
+        --dot: rgba(23, 33, 38, 0.10);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+        color: var(--ink);
+        background-color: var(--bg-main);
+        background-image: radial-gradient(var(--dot) 1.2px, transparent 1.2px);
+        background-size: 14px 14px;
+        line-height: 1.65;
+    }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 28px; }
+    section { padding: 60px 0; }
+
+    .card {
+        background: var(--paper);
+        border: 3px solid var(--ink);
+        box-shadow: 8px 8px 0 var(--ink);
+        padding: 28px;
+    }
+    .kicker {
+        display: inline-block;
+        background: var(--ink);
+        color: var(--paper);
+        font-weight: 800;
+        font-size: 14px;
+        letter-spacing: .35em;
+        padding: 4px 14px 4px 17px;
+        margin-bottom: 18px;
+    }
+    h2 { font-size: 32px; font-weight: 900; line-height: 1.25; margin-bottom: 10px; }
+    h2 .hl { color: var(--coral-deep); }
+    .sub { color: var(--muted); font-size: 16px; margin-bottom: 34px; }
+
+    /* ── HERO ── */
+    .hero { position: relative; padding: 84px 0 66px; overflow: hidden; }
+    .hero-badge {
+        display: inline-block;
+        border: 3px solid var(--ink);
+        background: var(--gold);
+        font-weight: 900;
+        padding: 6px 18px;
+        transform: rotate(-2deg);
+        box-shadow: 5px 5px 0 var(--ink);
+        margin-bottom: 24px;
+        letter-spacing: .12em;
+    }
+    .hero h1 {
+        font-size: clamp(46px, 7.5vw, 80px);
+        font-weight: 900;
+        line-height: 1.12;
+    }
+    .hero h1 .vs {
+        color: var(--paper);
+        background: var(--coral);
+        border: 3px solid var(--ink);
+        box-shadow: 6px 6px 0 var(--ink);
+        display: inline-block;
+        padding: 0 18px;
+        transform: rotate(-3deg);
+        margin: 0 6px;
+    }
+    .hero p.lead { font-size: 20px; margin-top: 20px; max-width: 640px; font-weight: 600; }
+    .hero p.lead b { color: var(--teal-deep); }
+    .stamp {
+        position: absolute;
+        right: 40px; top: 80px;
+        border: 4px double var(--coral-deep);
+        color: var(--coral-deep);
+        font-weight: 900;
+        font-size: 21px;
+        letter-spacing: .3em;
+        padding: 14px 20px 14px 26px;
+        transform: rotate(9deg);
+        opacity: .92;
+        background: rgba(251, 252, 253, .72);
+        writing-mode: vertical-rl;
+    }
+
+    /* ── 名册 / 座位：双列卡 ── */
+    .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+    .roster { position: relative; padding-top: 36px; }
+    .roster .tag {
+        position: absolute; top: -16px; left: 20px;
+        background: var(--ink); color: var(--paper);
+        font-weight: 900; letter-spacing: .22em;
+        padding: 4px 14px 4px 17px; font-size: 13px;
+    }
+    .roster:nth-child(2) .tag { background: rgba(232, 93, 117, .16); color: var(--coral-deep); }
+    .roster:nth-child(3) .tag { background: rgba(15, 159, 146, .16); color: var(--teal-deep); }
+    .roster:nth-child(4) .tag { background: var(--gold); color: var(--ink); }
+    .roster h3 { font-size: 21px; font-weight: 900; margin-bottom: 8px; }
+    .roster p { font-size: 14.5px; color: var(--muted); }
+    .roster p b { color: var(--ink); }
+
+    /* ── Author 解剖图 ── */
+    .lab {
+        background: var(--paper);
+        border: 3px solid var(--ink);
+        box-shadow: 8px 8px 0 var(--ink);
+        padding: 34px 24px 30px;
+    }
+    .anatomy-base { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+    .part {
+        background: var(--paper);
+        border: 3px solid var(--ink);
+        box-shadow: 5px 5px 0 var(--ink);
+        padding: 10px 18px;
+        font-weight: 900;
+        font-size: 15px;
+        text-align: center;
+    }
+    .part small {
+        display: block;
+        font-size: 11px;
+        color: var(--muted);
+        letter-spacing: .18em;
+        font-weight: 700;
+    }
+    .part.base { background: rgba(232, 170, 35, .18); }
+    .part.writer { background: var(--teal-deep); color: #fff; }
+    .part.writer small { color: rgba(255, 255, 255, .82); }
+    .part.critic { background: var(--coral-deep); color: #fff; }
+    .part.critic small { color: rgba(255, 255, 255, .82); }
+    .part.out { background: var(--ink); color: #fff; }
+    .part.out small { color: rgba(255, 255, 255, .7); }
+    .merge { width: fit-content; margin: 8px auto; padding: 0 12px; text-align: center; font-size: 26px; font-weight: 900; line-height: 1; }
+    .flow { display: flex; align-items: stretch; justify-content: center; gap: 12px; flex-wrap: wrap; }
+    .flow .part { display: flex; flex-direction: column; justify-content: center; }
+    .arrow { font-size: 28px; font-weight: 900; align-self: center; display: flex; flex-direction: column; align-items: center; line-height: 1; }
+    .arrow small { font-size: 11px; font-weight: 800; color: var(--muted); letter-spacing: .12em; margin-top: 2px; }
+    .parts-list { margin-top: 26px; }
+    .parts-list li {
+        list-style: none;
+        background: var(--paper);
+        border: 3px solid var(--ink);
+        box-shadow: 5px 5px 0 var(--ink);
+        padding: 12px 20px;
+        font-weight: 700;
+        font-size: 15px;
+        margin-bottom: 14px;
+    }
+    .parts-list li b { color: var(--teal-deep); }
+    .punch {
+        margin-top: 26px;
+        border-left: 10px solid var(--teal);
+        background: var(--paper);
+        border-top: 3px solid var(--ink);
+        border-right: 3px solid var(--ink);
+        border-bottom: 3px solid var(--ink);
+        padding: 18px 24px;
+        font-size: 17px;
+        font-weight: 800;
+    }
+    .punch b { color: var(--teal-deep); }
+
+    /* ── 进化循环 ── */
+    .loopgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+    .step { position: relative; padding-top: 32px; }
+    .step .no {
+        position: absolute; top: -16px; left: 20px;
+        width: 36px; height: 36px;
+        border: 3px solid var(--ink);
+        background: var(--gold);
+        font-weight: 900; font-size: 17px;
+        display: flex; align-items: center; justify-content: center;
+        transform: rotate(-3deg);
+        box-shadow: 3px 3px 0 var(--ink);
+    }
+    .step h3 { font-size: 18px; font-weight: 900; margin-bottom: 6px; }
+    .step p { font-size: 14px; color: var(--muted); }
+    .step p b { color: var(--ink); }
+    .recycle {
+        margin-top: 28px;
+        border: 3px dashed var(--ink);
+        background: rgba(251, 252, 253, .72);
+        padding: 14px 22px;
+        font-weight: 800;
+        text-align: center;
+        font-size: 16px;
+    }
+    .example {
+        margin-bottom: 34px;
+        border-left: 10px solid var(--coral-deep);
+        background: var(--paper);
+        border-top: 3px solid var(--ink);
+        border-right: 3px solid var(--ink);
+        border-bottom: 3px solid var(--ink);
+        padding: 18px 24px;
+        font-size: 15.5px;
+        font-weight: 600;
+    }
+    .example b { color: var(--coral-deep); }
+    .example small { display: block; margin-top: 6px; font-weight: 600; color: var(--muted); }
+    .origin {
+        margin-bottom: 34px;
+        border-left: 10px solid var(--teal);
+        background: var(--paper);
+        border-top: 3px solid var(--ink);
+        border-right: 3px solid var(--ink);
+        border-bottom: 3px solid var(--ink);
+        padding: 18px 24px;
+        font-size: 15.5px;
+        font-weight: 600;
+    }
+    .origin b { color: var(--teal-deep); }
+
+    /* ── 裁判考证：竖向流程 ── */
+    .track { position: relative; margin-left: 14px; border-left: 4px solid var(--ink); padding-left: 34px; }
+    .station { position: relative; padding-bottom: 28px; }
+    .station::before {
+        content: "";
+        position: absolute; left: -46px; top: 4px;
+        width: 18px; height: 18px;
+        background: var(--paper);
+        border: 3px solid var(--ink);
+    }
+    .station.end::before { background: var(--teal); }
+    .station h3 { font-size: 19px; font-weight: 900; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .station p { font-size: 14.5px; color: var(--muted); max-width: 720px; }
+    .station p b { color: var(--ink); }
+    .chip {
+        background: var(--gold); color: var(--ink); font-size: 12.5px; font-weight: 900;
+        padding: 2px 10px; border: 2px solid var(--ink); transform: rotate(2deg); letter-spacing: .12em;
+    }
+    .honor {
+        margin-top: 30px;
+        border: 3px dashed var(--ink);
+        background: rgba(232, 170, 35, .16);
+        padding: 18px 24px;
+        font-weight: 800;
+        font-size: 16px;
+    }
+    .honor b { color: var(--teal-deep); }
+    .edges li {
+        list-style: none;
+        background: var(--paper);
+        border: 3px solid var(--ink);
+        box-shadow: 5px 5px 0 var(--ink);
+        padding: 12px 20px;
+        font-weight: 700;
+        font-size: 15.5px;
+        margin-bottom: 14px;
+    }
+    .edges li b { color: var(--coral-deep); }
+
+    /* ── CTA ── */
+    .btn-row { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; }
+    .btn {
+        display: inline-block;
+        border: 3px solid var(--ink);
+        box-shadow: 6px 6px 0 var(--ink);
+        font-weight: 900;
+        font-size: 17px;
+        padding: 13px 30px;
+        text-decoration: none;
+        color: var(--ink);
+        background: var(--paper);
+        transition: transform .06s ease;
+    }
+    .btn:hover { transform: translate(-2px, -2px); box-shadow: 8px 8px 0 var(--ink); }
+    .btn-primary { background: var(--teal-deep); color: #fff; }
+    .btn-note { font-size: 13px; color: var(--muted); }
+
+    footer { padding: 34px 0 60px; }
+    .disclaim { font-size: 12.5px; color: var(--muted); border-top: 3px solid var(--ink); padding-top: 18px; }
+    .disclaim li { margin-bottom: 4px; list-style: none; }
+    .disclaim li::before { content: "※ "; font-weight: 900; }
+
+    /* ── 动画演示 ── */
+    .reveal { opacity: 0; transform: translateY(22px); transition: opacity .55s ease, transform .55s ease; }
+    .reveal.in { opacity: 1; transform: none; }
+    .lab .part, .flow .arrow, .merge, .loopgrid .step, .recycle { transition: box-shadow .35s ease, transform .35s ease, background-color .35s ease; }
+    .part.on, .arrow.on, .merge.on { transform: translate(-3px, -3px); box-shadow: 5px 5px 0 var(--coral-deep), 0 0 0 4px rgba(232, 170, 35, .4); }
+    .step.on { transform: translate(-2px, -2px); box-shadow: 8px 8px 0 var(--coral-deep); background: #fff6da; }
+    .recycle.on { background: rgba(232, 170, 35, .28); box-shadow: inset 0 0 0 2px var(--coral-deep); }
+    .demo-hint { margin-top: 14px; font-size: 13px; color: var(--muted); text-align: center; }
+    .demo-hint b { color: var(--teal-deep); }
+    /* ── 名册聚光灯 ── */
+    .roster { transition: box-shadow .35s ease, transform .35s ease; }
+    .roster.on { transform: translate(-2px, -2px); box-shadow: 8px 8px 0 var(--coral-deep); }
+
+    /* ── 进化沙盘 ── */
+    .sandbox { margin-top: 30px; background: var(--paper); border: 3px solid var(--ink); box-shadow: 8px 8px 0 var(--ink); padding: 22px; }
+    .sb-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    .sb-round { background: var(--ink); color: #fff; font-weight: 900; padding: 3px 14px; letter-spacing: .15em; }
+    .sb-round b { color: var(--gold); font-size: 1.2em; }
+    .sb-phase { font-weight: 900; font-size: 20px; color: var(--coral-deep); }
+    .sb-note { margin-left: auto; font-size: 12.5px; color: var(--muted); }
+    .sb-arena { display: flex; gap: 20px; align-items: stretch; }
+    .sb-lanes { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .sb-lane { position: relative; border: 3px solid var(--ink); background: var(--bg-main); padding: 14px 10px 16px; display: flex; flex-direction: column; align-items: center; gap: 10px; min-height: 158px; transition: box-shadow .45s ease, filter .45s ease; }
+    .sb-cricket { background: var(--ink); color: #fff; font-weight: 900; padding: 3px 12px; letter-spacing: .1em; transition: opacity .45s ease; }
+    .sb-paper { border: 2px dashed var(--muted); background: #fff; width: 100%; text-align: center; padding: 14px 6px; font-weight: 800; font-size: 13px; }
+    .sb-score { min-height: 24px; font-weight: 900; color: var(--teal-deep); opacity: 0; transition: opacity .45s ease; }
+    .sb-mark { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; font-size: 32px; font-weight: 900; color: var(--coral-deep); background: rgba(238, 242, 245, .85); letter-spacing: .08em; }
+    .sb-lane.sb-dead .sb-paper, .sb-lane.sb-dead .sb-cricket { filter: grayscale(1); opacity: .55; }
+    .sb-lane.sb-dead .sb-mark { display: flex; }
+    .sb-lane.sb-alive { box-shadow: 0 0 0 3px var(--gold); }
+    .sb-lane.sb-alive::after { content: "存活"; position: absolute; top: -12px; right: -8px; background: var(--teal); color: #fff; font-size: 12px; font-weight: 900; padding: 2px 8px; transform: rotate(6deg); border: 2px solid var(--ink); }
+    .sandbox.sb-blind .sb-cricket { opacity: .25; }
+    .sb-score { opacity: 1; }
+    .sandbox:not(.sb-blind) .sb-score:empty { opacity: 0; }
+    .sb-side { width: 190px; display: flex; flex-direction: column; gap: 14px; justify-content: center; }
+    .sb-official { border: 3px solid var(--ink); background: var(--paper); padding: 12px 14px; opacity: .35; transition: all .45s ease; }
+    .sb-official b { display: block; font-size: 15px; }
+    .sb-official small { color: var(--muted); font-size: 12px; }
+    .sb-official.on { opacity: 1; box-shadow: 5px 5px 0 var(--gold); transform: translate(-2px, -2px); }
+    @media (max-width: 860px) {
+        .sb-arena { flex-direction: column; }
+        .sb-side { width: auto; flex-direction: row; }
+        .sb-side .sb-official { flex: 1; }
+    }
+    @media (max-width: 520px) {
+        .sb-lanes { grid-template-columns: 1fr; }
+    }
+
+    a:focus-visible { outline: 3px dashed var(--teal-deep); outline-offset: 3px; }
+
+    @media (prefers-reduced-motion: reduce) {
+        * { transition: none !important; }
+        .part.on, .arrow.on, .merge.on, .step.on, .recycle.on { transition: none; }
+        .btn:hover { transform: none; }
+    }
+
+    @media (max-width: 860px) {
+        .duo, .loopgrid { grid-template-columns: 1fr; }
+        .stamp { display: none; }
+        .flow { gap: 8px; }
+        .arrow { font-size: 20px; }
+    }
+
+    @media (max-width: 480px) {
+        section { padding: 44px 0; }
+        .hero { padding: 60px 0 48px; }
+        .wrap { padding: 0 16px; }
+        .hero h1 { font-size: 34px; }
+        .hero h1 .vs { font-size: .62em; padding: 0 10px; margin: 0 2px; box-shadow: 4px 4px 0 var(--ink); }
+        .card { padding: 20px; box-shadow: 5px 5px 0 var(--ink); }
+        h2 { font-size: 26px; }
+    }
+</style>
+</head>
+<body>
+
+<!-- 第一幕 · HERO -->
+<header class="hero">
+    <div class="wrap" style="position:relative;">
+        <div class="hero-badge">进化实验室 · 第二章 · 赛制细则手册</div>
+        <h1>一只蛐蛐，<br>是怎么<span class="vs">炼成</span>的？</h1>
+        <p class="lead">这页不画大饼，只讲机制：<b>Author 由什么零件组成、进化一圈经过哪几道工序、人类坐在哪些位置上。</b>所有设计只对着一个目标——够残酷，但别把「真人口味」这个唯一标准弄丢。</p>
+        <div class="stamp">机制透明 · 拒绝黑箱</div>
+    </div>
+    <div class="wrap" style="margin-top:18px;">
+        <p class="btn-note">阅读顺序：<a href="../eval-lab/index.html" style="color:var(--teal-deep);font-weight:800;">第一章 · 评测实验室</a> → <a href="./index.html" style="color:var(--teal-deep);font-weight:800;">第二章 · 开赛预热</a> → 本页（细则手册）。第一次接触这个领域？先读前两页，回来这里看门道。</p>
+    </div>
+</header>
+
+<main>
+
+<!-- 第二幕 · 全场名册 -->
+<section id="roster">
+    <div class="wrap">
+        <span class="kicker">全场名册</span>
+        <h2>四个位置，<span class="hl">各就各位</span></h2>
+        <p class="sub">先把最容易混淆的角色钉死——尤其 Critic，它不当裁判。四张卡会轮流点亮帮你认人：</p>
+        <div class="duo">
+            <div class="card roster">
+                <span class="tag">人类</span>
+                <h3>裁判的裁判</h3>
+                <p>核心职责有三类：<b>盲评打分、当 AI 裁判的教材和考卷、复核 AI 拿不准的题</b>；手痒也可以亲自下场参赛（见下方座位四）。人类打的分是全场唯一算数的真值，其他一切分数都是参考。</p>
+            </div>
+            <div class="card roster">
+                <span class="tag">Author · 选手</span>
+                <h3>蛐蛐本尊</h3>
+                <p>不是一个裸模型，而是<b>一整条写作管线</b>：主笔、修订助手、文风预设、下笔规矩、参数打包上场。下一幕当场解剖。</p>
+            </div>
+            <div class="card roster">
+                <span class="tag">Reviewer · 裁判</span>
+                <h3>AI 评分器</h3>
+                <p>模仿某一类真人口味的独立评分器。<b>只有预测权，没有判决权</b>：它打的分永远单独记一本账，一分都不许混进人类评分。</p>
+            </div>
+            <div class="card roster">
+                <span class="tag">Critic · 队内教练</span>
+                <h3>修订助手</h3>
+                <p>划重点：它在 <b>Author 队伍里</b>当教练，不坐裁判席。改完稿自己觉得妙没用，活命与否真人说了算。（旧文档曾把 Critic 当「评分员」，本手册起一律算修订助手——免得一个名字又当运动员又当裁判。）</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 第三幕 · Author 解剖 -->
+<section id="anatomy">
+    <div class="wrap">
+        <span class="kicker">选手解剖</span>
+        <h2>一只 Author = <span class="hl">五个零件</span></h2>
+        <p class="sub">文风预设和剧情细纲喂给主笔，主笔出初稿，队内教练批注：给建议就打回重写，放行了才挂牌出场。先看图，再逐个拆：</p>
+        <div class="lab">
+            <div class="anatomy-base">
+                <div class="part base">文风预设<small>STYLE</small></div>
+                <div class="part base">剧情细纲<small>BRIEF</small></div>
+            </div>
+            <div class="merge" aria-hidden="true">↓</div>
+            <div class="flow">
+                <div class="part writer">主笔<small>WRITER</small></div>
+                <span class="arrow" aria-hidden="true">→<small>写出</small></span>
+                <div class="part">初稿 v1<small>DRAFT_V1</small></div>
+                <span class="arrow" aria-hidden="true">→<small>送审</small></span>
+                <div class="part critic">修订助手<small>CRITIC</small></div>
+                <span class="arrow" aria-hidden="true">↩<small>建议</small></span>
+                <div class="part writer">修订稿 v2<small>DRAFT_V2</small></div>
+                <span class="arrow" aria-hidden="true">→<small>放行</small></span>
+                <div class="part out">终稿<small>FINAL</small></div>
+            </div>
+            <div class="recycle">教练放行才出场；给了建议就回炉再写一版，循环到合格为止。</div>
+        </div>
+        <p class="demo-hint">▲ 上图会自动循环演示一条<b>生成管线</b>：预设＋细纲喂进主笔，产出初稿 v1；修订助手按自带的规则审稿——给建议就打回，主笔据此改出 v2，再审、再改，直到放行交出终稿。</p>
+        <ul class="parts-list">
+            <li><b>零件① 主笔（writer）</b>　队伍里的大语言模型本尊，拿到剧情细纲（brief）先写出初稿 v1；教练给的修订建议，也由它消化后改出新版。选哪个模型当主笔，等于战队选核心选手——第一章说过，同一个模型换身装备就是另一种命。</li>
+            <li><b>零件② 修订助手（critic）</b>　队内教练，肚子里自带一套审稿规则。初稿到手只做两件事：<b>给修订建议打回去</b>，或者<b>检查合格直接放行</b>。给建议的路数有两种：<b>列出修改计划让主笔照单执行</b>，或者<b>圈住关键段让主笔当场重写</b>——开局第一轮就让这两种教练同台比武。</li>
+            <li><b>零件③ 文风预设（style）</b>　这只蛐蛐的「人设卡」：学谁的口吻、短句还是长句、爽点多密、对白多辣，全写在这里面。社区预设作者的看家本领就在这一栏。</li>
+            <li><b>零件④ 下笔规矩（guide）</b>　一本自动生成的负面清单：「这些 AI 常犯的错不许犯」。由第一章那套规则库按需投影生成，不用手写。</li>
+            <li><b>零件⑤ 参数</b>　一组旋钮：比如「温度」（控制 AI 下笔随机程度的档位）、「篇幅预算」（最多允许写多长）。同样的人设加同样的模型，旋钮拧得不同，写出来也是两只不同的蛐蛐。</li>
+        </ul>
+        <div class="punch">换掉任何一个零件，就是另一只蛐蛐。<b>开局第一轮就放两种打法同台：单枪匹马没有教练 / 教练坐镇开方子</b>——开方子还分两种路数：列修改计划照单执行、圈住关键段定向重写。哪种教练值这个工资，数据说话。</div>
+    </div>
+</section>
+
+<!-- 第四幕 · 进化循环 -->
+<section id="loop">
+    <div class="wrap">
+        <span class="kicker">引擎室</span>
+        <h2>进化一圈，<span class="hl">六道工序</span></h2>
+        <p class="sub">整个引擎就是一个不断回炉的圈：生成 → 盲评 → 考裁判 → 预筛 → 复核 → 筛选。</p>
+        <div class="origin">
+            <b>这套玩法的祖师爷是遗传算法</b>：像大自然「优胜劣汰」那样，让现有的解法互相组合、变异、淘汰较差的，自动「繁殖」出越来越好的解法。放进 AI 写作里——一只蛐蛐就是一个个体：以主笔＋修订助手为核心，连同文风预设、下笔规矩、参数打包上场（正是上一幕解剖的五件套），每件零件都是它的基因。整个进化实验室就是生态圈，生杀大权握在真人读者手里：<b>人类打分越高，越容易活下来</b>。活下来的蛐蛐也不躺平——按设计，由 agent 复盘、抽取它们身上的「有利基因」，组合变异出下一代。
+        </div>
+        <div class="example">
+            先用一道<b>虚构示例命题</b>帮你代入全程：
+            「女主在订婚宴上识破闺蜜与未婚夫的背叛，当场反击。」
+            三只参赛蛐蛐各自交出一篇两千字；五位真人读者匿名读完，给「AI 味」和「想继续读」打分，并回答「更想追读哪一篇」。此后——分数计入各蛐蛐的成绩册；这几篇文章连同人类评分，成为下一批 AI 裁判学员的新教材。
+            <small>下面的六道工序，走的就是这个例子的一生。</small>
+        </div>
+        <p class="demo-hint">▼ 下面的工序卡会按顺序点亮，演示一轮完整的进化循环。</p>
+        <div class="loopgrid">
+            <div class="card step">
+                <span class="no">1</span>
+                <h3>生成</h3>
+                <p>各只 Author 对<b>同一命题</b>各自成稿：初稿加修订稿；按设计，每一轮的花费与耗时都会记入台账。</p>
+            </div>
+            <div class="card step">
+                <span class="no">2</span>
+                <h3>盲评</h3>
+                <p>真人匿名上阵：给<b>「AI 味」和「想继续读」</b>打分；同一命题的几篇再捉对站队——你更想追读哪篇。评分者不知道文章出自谁手，防止偏心。</p>
+            </div>
+            <div class="card step">
+                <span class="no">3</span>
+                <h3>考裁判</h3>
+                <p>拿封存的真人评分当标准答案，测每位 AI 裁判<b>模仿得到不到位</b>。考卷定期换新，防止背题。</p>
+            </div>
+            <div class="card step">
+                <span class="no">4</span>
+                <h3>预筛</h3>
+                <p>拿到资格的 AI 裁判先替真人海选：给新一代候选打<b>廉价初筛分</b>，把真人的子弹留给关键局——真人时间是最贵的资源。</p>
+            </div>
+            <div class="card step">
+                <span class="no">5</span>
+                <h3>复核</h3>
+                <p>AI 最拿不准、跟人类分歧最大的样本，<b>优先塞回真人手里终审</b>——不确定的地方，恰恰是最值钱的数据。</p>
+            </div>
+            <div class="card step">
+                <span class="no">6</span>
+                <h3>筛选</h3>
+                <p>生死簿以真人想读分落笔：<b>总分前排、各赛道前排、抽签野卡</b>三种活法，其余淘汰。</p>
+            </div>
+        </div>
+        <div class="recycle">↺ 幸存者变异出新候选、场外新鲜血液报名进场——回到第 1 步，下一轮开卷。</div>
+        <div class="honor"><b>为什么不让作者和裁判互相喂着进化？</b>因为会闭环：作者学会讨好裁判 → 裁判在讨好稿上显得越来越准 → 双方一起飘离真人口味。所以两池交替更新——裁判的资格只由封存的真人考卷决定，作者的生死只由真人评分决定，谁也别想绕过人类发奖。</div>
+        <!-- 动画演示 · 一轮进化沙盘 -->
+        <div class="sandbox" id="evoStage">
+            <div class="sb-head">
+                <span class="sb-round">第 <b id="sbGen">1</b> 轮</span>
+                <span class="sb-phase" id="sbPhase">生成</span>
+                <span class="sb-note">自动演示 · 循环播放 · 数据为虚构示例</span>
+            </div>
+            <div class="sb-arena">
+                <div class="sb-lanes">
+                    <div class="sb-lane">
+                        <span class="sb-cricket">蛐蛐甲</span>
+                        <span class="sb-paper">蛐蛐甲的文稿</span>
+                        <span class="sb-score"></span>
+                        <span class="sb-mark">✕ 淘汰</span>
+                    </div>
+                    <div class="sb-lane">
+                        <span class="sb-cricket">蛐蛐乙</span>
+                        <span class="sb-paper">蛐蛐乙的文稿</span>
+                        <span class="sb-score"></span>
+                        <span class="sb-mark">✕ 淘汰</span>
+                    </div>
+                    <div class="sb-lane">
+                        <span class="sb-cricket">蛐蛐丙</span>
+                        <span class="sb-paper">蛐蛐丙的文稿</span>
+                        <span class="sb-score"></span>
+                        <span class="sb-mark">✕ 淘汰</span>
+                    </div>
+                </div>
+                <div class="sb-side">
+                    <div class="sb-official sb-human"><b>真人评委团</b><small>匿名盲评 · 唯一真值</small></div>
+                    <div class="sb-official sb-reviewer"><b>AI 裁判</b><small>影子记账 · 不判生死</small></div>
+                </div>
+            </div>
+            <p class="demo-hint">沙盘自动循环：<b>每轮淘汰一名最低分，幸存者变异并迎来新选手</b>；真人打分永远发生在 AI 记账之前——这就是「有武德的残酷」。</p>
+        </div>
+    </div>
+</section>
+
+<!-- 第五幕 · 裁判考证 -->
+<section id="referee">
+    <div class="wrap">
+        <span class="kicker">裁判考证</span>
+        <h2>AI 裁判上岗，<span class="hl">比考编还严</span></h2>
+        <p class="sub">把 Reviewer 想成「AI 队伍里考出来的阅卷老师」——上岗前也得考编，流程如下：</p>
+        <div class="track">
+            <div class="station">
+                <h3>报名建档</h3>
+                <p>用什么模型、什么提示词、什么评分尺，全部登记在案，一个版本一个号。以后它出的任何分数都能倒查回这一版——出了问题知道该抓谁。</p>
+            </div>
+            <div class="station">
+                <h3>学习模仿</h3>
+                <p>教材只有一种：<b>带真人标准答案的盲评记录</b>。它不许拿机器分数练级——那只会学出一身歪毛病。</p>
+            </div>
+            <div class="station">
+                <h3>封存大考</h3>
+                <p>换一批考前锁进的卷子正式开考：<b>误差要小、捉对指认要准、最差的题材赛道也不能崩。</b>三项全过硬，才发上岗证。</p>
+            </div>
+            <div class="station end">
+                <h3>影子待岗 <span class="chip">发证 ≠ 执法</span></h3>
+                <p>先跟着真人答案对账打工：它打的分单独记一本账，和人类评分逐条核对。对得上，才有资格进下一站。</p>
+            </div>
+            <div class="station end">
+                <h3>执法与回炉 <span class="chip">随时打回</span></h3>
+                <p>正式拿到海选资格。但只要大考成绩跌破线、某个赛道明显变歪、或者偷换了模型没报备——<b>立即打回影子待岗</b>，回去重修。</p>
+            </div>
+        </div>
+        <div class="honor"><b>一条保底条款：</b>人工复核的比例可以随着裁判成熟慢慢降，但<b>不允许降到零</b>——总得有人盯着裁判有没有悄悄脱离群众。</div>
+    </div>
+</section>
+
+<!-- 第六幕 · 人类的座位 -->
+<section id="seats">
+    <div class="wrap">
+        <span class="kicker">你的座位</span>
+        <h2>人类不是观众，<span class="hl">是地基</span></h2>
+        <p class="sub">这套系统里人类有四个座位，从轻量到硬核任选：</p>
+        <div class="duo">
+            <div class="card roster">
+                <span class="tag">座位一 · 最轻量</span>
+                <h3>盲评评委</h3>
+                <p>匿名读一篇，打「AI 味」「想继续读」两项分，顺手捉对站个队。不需要任何技术背景，能读中文、有口味就够了。门槛最低，也<b>最缺人</b>——整个系统的电全靠这里供。</p>
+            </div>
+            <div class="card roster">
+                <span class="tag">座位二 · 攒功德</span>
+                <h3>标准答案供应商</h3>
+                <p>你打过的每一分都会沉淀成 AI 裁判的<b>教材和考卷</b>，而且每条评分都有版本档案，将来能追溯它教出了哪一版裁判。评得越多，裁判越像人；你不评，裁判永远是照妖镜里的瞎子。</p>
+            </div>
+            <div class="card roster">
+                <span class="tag">座位三 · 硬核</span>
+                <h3>终审仲裁</h3>
+                <p>专接疑难案件：AI 拿不准的、两位裁判意见打架的，<b>优先送到你面前一锤定音</b>。这是整个系统最烧钱也最值钱的环节，你的每一票都在教整个系统做人。</p>
+            </div>
+            <div class="card roster">
+                <span class="tag">座位四 · 下场玩</span>
+                <h3>选手经纪人</h3>
+                <p>带上你调教的 Author 配置亲自参赛，或把压箱底的预设送来当种子选手。<b>赢了封神；首轮开放后打完，还能拿逐模型诊断报告回家改（规划中）。</b></p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 第七幕 · 底线 -->
+<section id="edges">
+    <div class="wrap">
+        <span class="kicker">底线四条</span>
+        <h2>整本手册，其实就这几句</h2>
+        <p class="sub">前面所有设计，都是这四条的展开：</p>
+        <ul class="edges">
+            <li><b>一</b>　AI 评分永远单独记账，永不写入人类真值——裁判不能替读者鼓掌。</li>
+            <li><b>二</b>　AI 裁判的上岗资格只由封存的真人考卷决定——考官只能是出题的人。</li>
+            <li><b>三</b>　平均分不是唯一的生存标准——小众口味赛道有保送名额，偏科大神不算失败者。</li>
+            <li><b>四</b>　排行榜停在路线图终点站——审计、隐私、防作弊压测全过才开门，首版不承诺。</li>
+        </ul>
+        <div class="btn-row" style="margin-top:30px;">
+            <a class="btn btn-primary" href="./index.html">← 回第二章主页 · 报名入口</a>
+            <a class="btn" href="../eval-lab/index.html">← 回第一章 · 评测实验室</a>
+            <span class="btn-note">完整提案会随项目进展更新，欢迎逐条拍砖。</span>
+        </div>
+    </div>
+</section>
+
+</main>
+
+<footer>
+    <div class="wrap">
+        <ul class="disclaim">
+            <li>本手册描述的是已定稿的边界规范与提案中的机制设计，实现尚未开始；具体参数以未来的研究协议版本为准。</li>
+            <li>用语统一约定：Critic = Author 队内修订助手，Reviewer = 独立 AI 评分器；旧文档中「评分员」含义自本手册起作废。</li>
+            <li>「引擎室」一节的示例命题为虚构演示，用于解释流程，不代表已收录题库。</li>
+            <li>AI 评分在任何阶段都不会写入人类判定；排行榜为路线图终点目标，开放前需通过审计、隐私与对抗性测试。</li>
+            <li>文中涉及的实验数字口径见第一章（评测实验室）页脚说明。</li>
+        </ul>
+    </div>
+</footer>
+
+<script>
+(function () {
+    "use strict";
+    var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var targets = document.querySelectorAll("main .card, main .punch, main .honor, main .example, main .recycle, main .edges li, main .parts-list li");
+    targets.forEach(function (el) { el.classList.add("reveal"); });
+    if (reduced || !("IntersectionObserver" in window)) {
+        targets.forEach(function (el) { el.classList.add("in"); });
+        return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+            if (en.isIntersecting) { en.target.classList.add("in"); io.unobserve(en.target); }
+        });
+    }, { threshold: 0.12 });
+    targets.forEach(function (el) { io.observe(el); });
+
+    // 兜底：IO 异常时用节流 scroll/resize 完成同样的入场（可见即显示，与 IO 幂等）
+    function fallbackCheck() {
+        targets.forEach(function (el) {
+            if (el.classList.contains("in")) return;
+            var r = el.getBoundingClientRect();
+            if (r.top < window.innerHeight + 60 && r.bottom > -60) el.classList.add("in");
+        });
+    }
+    var fbPending = false;
+    function onFallback() {
+        if (fbPending) return;
+        fbPending = true;
+        window.setTimeout(function () { fbPending = false; fallbackCheck(); }, 160);
+    }
+    window.addEventListener("scroll", onFallback, { passive: true });
+    window.addEventListener("resize", onFallback);
+    fallbackCheck();
+    if (reduced) return;
+
+    function watch(el, onVisible) {
+        if (!el || !("IntersectionObserver" in window)) return;
+        new IntersectionObserver(function (es) {
+            es.forEach(function (en) { onVisible(en.isIntersecting); });
+        }, { threshold: 0.25 }).observe(el);
+    }
+
+    var lab = document.querySelector(".lab");
+    if (lab) {
+        var bases = [].slice.call(document.querySelectorAll(".anatomy-base .part"));
+        var merge = document.querySelector(".merge");
+        var parts = [].slice.call(document.querySelectorAll(".flow .part"));
+        var arrows = [].slice.call(document.querySelectorAll(".flow .arrow"));
+        var groups = [bases.slice(), [merge]]; parts.forEach(function (el, i) { groups.push([el], [arrows[i]]); });
+        var all = [].concat.apply([], groups).filter(Boolean);
+        var labVisible = false, pstep = -3;
+        watch(lab, function (v) { labVisible = v; });
+        setInterval(function () {
+            if (!labVisible) return;
+            pstep += 1;
+            if (pstep >= groups.length) { all.forEach(function (el) { el.classList.remove("on"); }); pstep = -2; return; }
+            if (pstep < 0) return;
+            all.forEach(function (el) { el.classList.remove("on"); });
+            groups[pstep].filter(Boolean).forEach(function (el) { el.classList.add("on"); });
+        }, 900);
+    }
+
+    var grid = document.querySelector(".loopgrid");
+    if (grid) {
+        var steps = [].slice.call(grid.querySelectorAll(".step"));
+        var recycle = document.querySelector("#loop .recycle");
+        var nodes = steps.concat(recycle ? [recycle] : []);
+        var loopVisible = false, cur = -3;
+        watch(grid, function (v) { loopVisible = v; });
+        setInterval(function () {
+            if (!loopVisible) return;
+            cur += 1;
+            if (cur >= nodes.length) { nodes.forEach(function (el) { el.classList.remove("on"); }); cur = -2; return; }
+            if (cur < 0) return;
+            nodes.forEach(function (el) { el.classList.remove("on"); });
+            if (nodes[cur]) nodes[cur].classList.add("on");
+        }, 1150);
+    }
+})();
+</script>
+<script>
+(function () {
+    "use strict";
+    var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    // 演示一：全场名册轮流点亮
+    var cards = [].slice.call(document.querySelectorAll("#roster .roster"));
+    if (cards.length && !reduced && ("IntersectionObserver" in window)) {
+        var rVisible = false, ri = -1;
+        new IntersectionObserver(function (es) {
+            es.forEach(function (en) { rVisible = en.isIntersecting; });
+        }, { threshold: 0.2 }).observe(cards[0]);
+        setInterval(function () {
+            if (!rVisible) return;
+            if (ri >= 0) cards[ri].classList.remove("on");
+            ri = (ri + 1) % cards.length;
+            cards[ri].classList.add("on");
+        }, 1500);
+    }
+
+    // 演示二：一轮进化沙盘
+    var stage = document.getElementById("evoStage");
+    if (!stage) return;
+    var genEl = document.getElementById("sbGen");
+    var phaseEl = document.getElementById("sbPhase");
+    var lanes = [].slice.call(stage.querySelectorAll(".sb-lane"));
+    var human = stage.querySelector(".sb-human");
+    var reviewer = stage.querySelector(".sb-reviewer");
+    var names = ["蛐蛐甲", "蛐蛐乙", "蛐蛐丙"];
+    var pool = ["蛐蛐丁", "蛐蛐戊", "蛐蛐己", "蛐蛐庚"];
+    var scoreSets = [["想读 4.6", "想读 3.9", "想读 2.8"], ["想读 4.1", "想读 2.9", "想读 4.4"], ["想读 3.3", "想读 4.2", "想读 3.8"]];
+
+    function applyScores() {
+        var set = scoreSets[(gen - 1) % scoreSets.length];
+        lanes.forEach(function (l, i) { l.querySelector(".sb-score").textContent = set[i]; });
+        return set;
+    }
+    function clearMarks() {
+        lanes.forEach(function (l) { l.classList.remove("sb-dead"); l.classList.remove("sb-alive"); });
+    }
+
+    if (reduced) {
+        // 静态海报：定格在「匿名盲评」
+        stage.classList.add("sb-blind");
+        lanes.forEach(function (l, i) {
+            l.querySelector(".sb-paper").textContent = "匿名稿 " + "ABC"[i];
+            l.querySelector(".sb-score").textContent = scoreSets[0][i];
+        });
+        human.classList.add("on");
+        phaseEl.textContent = "匿名盲评";
+        return;
+    }
+
+    var gen = 1, poolIdx = 0, visible = false, pi = -1;
+    new IntersectionObserver(function (es) {
+        es.forEach(function (en) { visible = en.isIntersecting; });
+    }, { threshold: 0.2 }).observe(stage);
+
+    var phases = [
+        { label: "生成", ms: 1700, enter: function () {
+            stage.classList.remove("sb-blind");
+            clearMarks();
+            lanes.forEach(function (l, i) {
+                l.querySelector(".sb-cricket").textContent = names[i];
+                l.querySelector(".sb-paper").textContent = names[i] + "的文稿";
+                l.querySelector(".sb-score").textContent = "";
+            });
+            human.classList.remove("on"); reviewer.classList.remove("on");
+            genEl.textContent = gen;
+        } },
+        { label: "匿名盲评", ms: 2200, enter: function () {
+            stage.classList.add("sb-blind");
+            lanes.forEach(function (l, i) { l.querySelector(".sb-paper").textContent = "匿名稿 " + "ABC"[i]; });
+            applyScores();
+            human.classList.add("on");
+        } },
+        { label: "筛选", ms: 2200, enter: function () {
+            var set = applyScores();
+            var dead = set.indexOf(Math.min.apply(null, set));
+            lanes.forEach(function (l, i) { l.classList.add(i === dead ? "sb-dead" : "sb-alive"); });
+        } },
+        { label: "变异 · 新人入场", ms: 1900, enter: function () {
+            var set = scoreSets[(gen - 1) % scoreSets.length];
+            var dead = set.indexOf(Math.min.apply(null, set));
+            names[dead] = pool[poolIdx++ % pool.length];
+            gen += 1;
+            clearMarks();
+        } },
+        { label: "AI 裁判影子记账", ms: 1900, enter: function () {
+            reviewer.classList.add("on");
+        } }
+    ];
+
+    setTimeout(function next() {
+        if (!visible) { setTimeout(next, 500); return; }
+        pi = (pi + 1) % phases.length;
+        var p = phases[pi];
+        p.enter();
+        phaseEl.textContent = p.label;
+        setTimeout(next, p.ms);
+    }, 600);
+})();
+</script>
+</body>
+</html>

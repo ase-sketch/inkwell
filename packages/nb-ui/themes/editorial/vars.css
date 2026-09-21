@@ -1,0 +1,50 @@
+/*
+ * editorial —— 编辑室：纸感、克制，靠边框和底色分层，不靠阴影。
+ *
+ * 本主题是**最小主题**的证据：不新增任何变量、不带配色、不带资源、不覆盖组件，
+ * 只给 token 一组取值。第一档主题的下限就是这样一个文件加十几行 manifest。
+ *
+ * 纪律：这里**不许出现任何字面颜色**，只许引用配色变量或用 color-mix 从配色派生——
+ * 否则换一套配色就会露出与配色无关的死色。
+ */
+
+:root[data-nb-theme="editorial"] {
+    --font-ui: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --font-display: Georgia, "Songti SC", "Source Han Serif SC", "Noto Serif CJK SC", serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+    --text-2xs: 11px;
+    --text-xs: 12px;
+    --text-sm: 13px;
+    --text-md: 14px;
+    --text-lg: 16px;
+    --text-xl: 20px;
+    --leading-tight: 1.3;
+    --leading-ui: 1.45;
+    --tracking-ui: 0;
+
+    --control-h-sm: 28px;
+    --control-h-md: 32px;
+    --control-h-lg: 38px;
+    --control-px: 10px;
+    --panel-p: 16px;
+    --stack-gap: 16px;
+
+    --radius-control: 4px;
+    --radius-panel: 8px;
+    --radius-pill: 999px;
+    --border-w: 1px;
+
+    --surface-raise: none;
+    --inset-shadow: none;
+    --elevation-raised: none;
+    --elevation-popover: 0 4px 12px color-mix(in srgb, var(--shadow-color) 10%, transparent);
+    --elevation-dialog: 0 16px 40px color-mix(in srgb, var(--shadow-color) 16%, transparent);
+
+    --focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent-main) 18%, transparent);
+
+    --motion-fast: 120ms;
+    --motion-base: 180ms;
+    --motion-enter: 220ms;
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+}

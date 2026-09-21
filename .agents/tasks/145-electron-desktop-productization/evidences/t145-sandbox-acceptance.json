@@ -1,0 +1,107 @@
+﻿{
+    "schema":  "nbook.task-145-sandbox-acceptance/v1",
+    "ok":  true,
+    "checks":  {
+                   "programRootRemoved":  true,
+                   "stateRootRemoved":  true,
+                   "cacheRootRemoved":  true,
+                   "desktopRootRemoved":  true,
+                   "hklmUninstallRemoved":  true,
+                   "protocolRemoved":  true,
+                   "startMenuShortcutsRemoved":  true,
+                   "publicShortcutRemoved":  true,
+                   "launcherRootRemoved":  true,
+                   "processTreeRemoved":  true,
+                   "externalWorkspacePreserved":  true
+               },
+    "events":  [
+                   {
+                       "at":  "2026-08-13T10:23:01.1650059+08:00",
+                       "payload":  {
+                                       "evidenceRoot":  "C:\\NeuroBook\\evidence",
+                                       "inputRoot":  "C:\\NeuroBook\\input"
+                                   },
+                       "kind":  "started"
+                   },
+                   {
+                       "at":  "2026-08-13T10:23:02.0814810+08:00",
+                       "payload":  {
+                                       "sha256":  "cf7f2b2c156e744c395fa4418c339d906bc7f55817cbf792361ed4e0aa59eab3"
+                                   },
+                       "kind":  "input-verified"
+                   },
+                   {
+                       "at":  "2026-08-13T10:23:05.5085710+08:00",
+                       "payload":  {
+                                       "root":  "C:\\NeuroBook\\work\\depot"
+                                   },
+                       "kind":  "depot-extracted"
+                   },
+                   {
+                       "at":  "2026-08-13T10:23:05.5662704+08:00",
+                       "payload":  {
+                                       "path":  "C:\\NeuroBook\\evidence\\ExternalProject"
+                                   },
+                       "kind":  "external-workspace-created"
+                   },
+                   {
+                       "at":  "2026-08-13T10:24:11.3124507+08:00",
+                       "payload":  {
+                                       "wrapper":  true,
+                                       "installationManifest":  true,
+                                       "programRoot":  "C:\\Program Files\\NeuroBook",
+                                       "desktopManifest":  true
+                                   },
+                       "kind":  "machine-installed"
+                   },
+                   {
+                       "at":  "2026-08-13T10:24:15.8908390+08:00",
+                       "payload":  {
+                                       "result":  "{\"kind\":\"provider-test\",\"ok\":true,\"status\":200,\"warning\":null,\"discoverySupported\":true,\"models\":[\"sandbox-fake-a\",\"sandbox-fake-b\"]}",
+                                       "secretLeaked":  false
+                                   },
+                       "kind":  "provider-test"
+                   },
+                   {
+                       "at":  "2026-08-13T10:24:17.7979434+08:00",
+                       "payload":  {
+                                       "secretLeaked":  false,
+                                       "stateConfigWritten":  true,
+                                       "providerIdPresent":  true
+                                   },
+                       "kind":  "provider-configured"
+                   },
+                   {
+                       "at":  "2026-08-13T10:24:20.7412630+08:00",
+                       "payload":  {
+                                       "outputTail":  "",
+                                       "exitCode":  0
+                                   },
+                       "kind":  "start-product"
+                   },
+                   {
+                       "at":  "2026-08-13T10:24:49.4339483+08:00",
+                       "payload":  {
+                                       "programRootRemoved":  true
+                                   },
+                       "kind":  "uninstalled-delete-data"
+                   },
+                   {
+                       "at":  "2026-08-13T10:24:49.9023749+08:00",
+                       "payload":  {
+                                       "programRootRemoved":  true,
+                                       "stateRootRemoved":  true,
+                                       "cacheRootRemoved":  true,
+                                       "desktopRootRemoved":  true,
+                                       "hklmUninstallRemoved":  true,
+                                       "protocolRemoved":  true,
+                                       "startMenuShortcutsRemoved":  true,
+                                       "publicShortcutRemoved":  true,
+                                       "launcherRootRemoved":  true,
+                                       "processTreeRemoved":  true,
+                                       "externalWorkspacePreserved":  true
+                                   },
+                       "kind":  "verified"
+                   }
+               ]
+}

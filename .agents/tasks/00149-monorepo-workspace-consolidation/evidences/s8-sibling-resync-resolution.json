@@ -1,0 +1,298 @@
+{
+  "schema": "nbook.sibling-resync-resolution/v1",
+  "taskId": "00149-monorepo-workspace-consolidation",
+  "capturedAt": "2026-08-19T08:40:00Z",
+  "status": "resolved-no-copy",
+  "policy": {
+    "canonicalSourceAfterMigration": "monorepo packages/*",
+    "admissibleInput": "selected worktree includedFiles from sibling-import-manifest only",
+    "excludedFilesNeverCopied": true,
+    "taskRelocation": "docs/tasks/** -> .agents/tasks/**",
+    "sourceCheckoutsReadOnly": true,
+    "copyActions": 0
+  },
+  "inputs": {
+    "sibling-import-manifest.json": "sha256:56a995fc67795985d887bfaf4086eb9c22c08adf8dd0b0a9c899d2219e3f0023",
+    "manifest-allowlist-audit-v1.json": "sha256:158d5143fb4311671335793d17a1452ae4ff2c437774eb600bf5ad29d57af201",
+    "source-immutability-comparison-v3.json": "sha256:a49151152a9c09fc4816468ea5cb5c94d3445af6ca04e167bc9899b833b3c3b4",
+    "invalidated-reports.json": "sha256:699c488b3a4b2fcbed23a52d6860b33ddc6d1190646dca10184e934535a30e61"
+  },
+  "workflowAuthority": {
+    "decision": "T02/0.2.0 line plus current monorepo params evolution",
+    "rejected": "dirty default checkout 0.1.x spike as a rollback source",
+    "localOriginMasterObservation": {
+      "revision": "b3271564366a7f2b6be319eb7d22f400ef6a39ff",
+      "aheadOfDefaultCheckout": 19,
+      "containsApprovedCommit": "0fdec90bac0456b67045185c99cb8b829e75bd6c"
+    }
+  },
+  "projects": {
+    "nb-history": {
+      "allowlist": 28,
+      "exact": 25,
+      "missing": [],
+      "deletionCandidates": [],
+      "targetOwned": [
+        ".agents/tasks/AGENTS.md",
+        ".agents/tasks/README.md",
+        "AGENTS.md",
+        "PROJECT-STATUS.md",
+        "docs/README.md"
+      ],
+      "decisions": [
+        {
+          "kind": "controlled-import-or-target-evolution",
+          "paths": [
+            "NOTES.md",
+            "README.md",
+            "package.json"
+          ],
+          "action": "keep-target"
+        }
+      ],
+      "unclassifiedAllowlistDifferences": 0
+    },
+    "nb-workflow": {
+      "allowlist": 78,
+      "exact": 17,
+      "missing": [],
+      "deletionCandidates": [],
+      "targetOwned": [
+        ".agents/tasks/AGENTS.md",
+        ".agents/tasks/README.md",
+        "AGENTS.md",
+        "PROJECT-STATUS.md",
+        "docs/README.md"
+      ],
+      "decisions": [
+        {
+          "kind": "target-evolution",
+          "paths": [
+            "demo/guide.mjs",
+            "docs/.vitepress/config.mjs",
+            "docs/api.md",
+            "docs/concepts/activity.md",
+            "docs/concepts/backend.md",
+            "docs/concepts/capability.md",
+            "docs/concepts/extension.md",
+            "docs/concepts/journal.md",
+            "docs/concepts/ports.md",
+            "docs/concepts/replay.md",
+            "docs/features/cancel.md",
+            "docs/features/concurrency.md",
+            "docs/features/types.md",
+            "docs/features/values.md",
+            "docs/features/visualization.md",
+            "docs/features/waits.md",
+            "docs/guide/index.md",
+            "docs/guide/story.md",
+            "docs/index.md",
+            "docs/tasks/01-kernel-stabilization/README.md",
+            "docs/tasks/01-kernel-stabilization/walkthrough.md",
+            "scripts/check-publish-ready.mjs",
+            "scripts/isolated-package-smoke.mjs",
+            "src/activities.ts",
+            "src/agent-extension.ts",
+            "src/conformance.ts",
+            "src/events.ts",
+            "src/run-record.ts",
+            "src/runner-execution.ts",
+            "src/runner-run-store.ts",
+            "src/runner-support.ts",
+            "src/runtime-events.ts",
+            "src/runtime.ts",
+            "src/workflow-activities.ts",
+            "test/fingerprint.test.ts",
+            "test/port-contracts.test.ts",
+            "test/public-api.test.ts",
+            "test/runner-backend.test.ts",
+            "test/wait-runtime.test.ts"
+          ],
+          "action": "keep-target"
+        },
+        {
+          "kind": "normalized-eol-equivalent",
+          "paths": [
+            "demo/index.html",
+            "test/helpers.ts",
+            "tsconfig.json"
+          ],
+          "action": "keep-target"
+        },
+        {
+          "kind": "selected-t02-0.2.0",
+          "paths": [
+            "demo/generate.ts",
+            "test/kernel.test.ts",
+            "test/projection.test.ts",
+            "test/scenario-rp.test.ts",
+            "test/scenario-sidecar.test.ts",
+            "test/scenario-split-book.test.ts",
+            "test/scenario-write-pipeline.test.ts"
+          ],
+          "action": "keep-target"
+        },
+        {
+          "kind": "target-params-evolution",
+          "paths": [
+            "README.md",
+            "package.json",
+            "src/types.ts",
+            "src/agents.ts",
+            "src/fingerprint.ts",
+            "src/index.ts",
+            "src/ports.ts",
+            "src/projection/cfg.ts",
+            "src/projection/skeleton.ts",
+            "src/projection/trace.ts",
+            "src/runner.ts",
+            "src/session-store.ts"
+          ],
+          "action": "keep-target"
+        }
+      ],
+      "unclassifiedAllowlistDifferences": 0
+    },
+    "nb-ui": {
+      "allowlist": 156,
+      "exact": 153,
+      "missing": [],
+      "deletionCandidates": [],
+      "targetOwned": [
+        ".agents/tasks/AGENTS.md",
+        ".agents/tasks/README.md",
+        "LICENSE",
+        "PROJECT-STATUS.md",
+        "docs/README.md"
+      ],
+      "decisions": [
+        {
+          "kind": "controlled-import-or-target-evolution",
+          "paths": [
+            "AGENTS.md",
+            "README.md",
+            "package.json"
+          ],
+          "action": "keep-target"
+        }
+      ],
+      "unclassifiedAllowlistDifferences": 0
+    },
+    "llmlint": {
+      "allowlist": 739,
+      "exact": 720,
+      "missing": [],
+      "deletionCandidates": [],
+      "targetOwned": [
+        "docs/specs/web/revision-reader.md",
+        "skill/test-api.ts"
+      ],
+      "decisions": [
+        {
+          "kind": "source-dirty-governance-or-target-evolution",
+          "paths": [
+            "AGENTS.md",
+            "CONTEXT.md",
+            "PROJECT-STATUS.md",
+            "README.en.md",
+            "README.md",
+            "docs/tasks/05-web-frontend/README.md",
+            "docs/tasks/06-web-data-collection/README.md",
+            "docs/tasks/07-web-review-editor/README.md",
+            "docs/tasks/08-eval-pipeline-hardening/README.md",
+            "docs/tasks/13-web-five-step-flow/README.md",
+            "docs/tasks/20-agpl-license-migration/README.md",
+            "docs/tasks/23-skill-loop-and-service/README.md",
+            "docs/tasks/24-revision-rounds-and-contribute/README.md",
+            "docs/tasks/25-architecture-specs/README.md",
+            "docs/tasks/README.md",
+            "docs/tasks/TEMPLATE.md",
+            "evals/METHODOLOGY.md",
+            "package.json",
+            "web/scripts/style-review-report.ts"
+          ],
+          "action": "keep-target"
+        },
+        {
+          "kind": "workspace-island-lockfile",
+          "paths": [
+            "skill/bun.lock",
+            "web/bun.lock"
+          ],
+          "action": "keep-target"
+        }
+      ],
+      "unclassifiedAllowlistDifferences": 0
+    },
+    "neuro-agent-harness": {
+      "allowlist": 296,
+      "exact": 292,
+      "missing": [],
+      "deletionCandidates": [],
+      "targetOwned": [
+        "PROJECT-STATUS.md"
+      ],
+      "decisions": [
+        {
+          "kind": "controlled-import-or-target-evolution",
+          "paths": [
+            "AGENTS.md",
+            "docs/README.md",
+            "docs/tasks/README.md",
+            "package.json"
+          ],
+          "action": "keep-target"
+        }
+      ],
+      "unclassifiedAllowlistDifferences": 0
+    },
+    "nb-memory": {
+      "allowlist": 35,
+      "exact": 32,
+      "missing": [],
+      "deletionCandidates": [],
+      "targetOwned": [
+        ".agents/tasks/AGENTS.md",
+        ".agents/tasks/README.md",
+        "AGENTS.md",
+        "PROJECT-STATUS.md",
+        "docs/README.md"
+      ],
+      "decisions": [
+        {
+          "kind": "controlled-import-or-target-evolution",
+          "paths": [
+            "docs/architecture.html",
+            "docs/reports/2026-08-01-round1-regression.md",
+            "package.json"
+          ],
+          "action": "keep-target"
+        }
+      ],
+      "unclassifiedAllowlistDifferences": 0
+    }
+  },
+  "totals": {
+    "allowlist": 1332,
+    "exact": 1239,
+    "classifiedAllowlistDifferences": 93,
+    "unclassifiedAllowlistDifferences": 0,
+    "missing": 0,
+    "deletionCandidates": 0,
+    "copyActions": 0
+  },
+  "verificationContract": {
+    "requiredProjects": ["nb-history", "nb-workflow", "nb-ui", "llmlint", "neuro-agent-harness", "nb-memory"],
+    "fixedProjectCounts": {
+      "nb-history": {"allowlist": 28, "exact": 25, "classified": 3},
+      "nb-workflow": {"allowlist": 78, "exact": 17, "classified": 61},
+      "nb-ui": {"allowlist": 156, "exact": 153, "classified": 3},
+      "llmlint": {"allowlist": 739, "exact": 720, "classified": 19},
+      "neuro-agent-harness": {"allowlist": 296, "exact": 292, "classified": 4},
+      "nb-memory": {"allowlist": 35, "exact": 32, "classified": 3}
+    },
+    "fixedTotals": {"allowlist": 1332, "exact": 1239, "classified": 93, "unclassified": 0, "missing": 0, "deletionCandidates": 0, "copyActions": 0},
+    "negativeCoverage": ["empty-project-set", "single-project-count-drift", "input-hash-drift"]
+  },
+  "result": "All admissible B paths are present. Non-exact paths are classified as controlled import changes, selected T02/0.2.0 content, normalized EOL equivalence, target evolution, or target-owned island lockfiles. No source file is copied or deleted."
+}

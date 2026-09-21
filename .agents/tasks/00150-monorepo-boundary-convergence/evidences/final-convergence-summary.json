@@ -1,0 +1,114 @@
+{
+  "schema": "nbook.task-evidence/v1",
+  "taskId": "00150-monorepo-boundary-convergence",
+  "timestamp": "2026-08-20T08:41:47+08:00",
+  "status": "completed",
+  "stages": {
+    "stage0_baseline": {
+      "status": "completed",
+      "commit": "db424f6a",
+      "trackedFilesBaseline": ".agents/tasks/00150-monorepo-boundary-convergence/evidences/baseline-tracked-files.txt"
+    },
+    "stage1_docs_vitepress": {
+      "status": "completed",
+      "summary": ".agents/tasks/00150-monorepo-boundary-convergence/evidences/s2-docs-site-summary.json",
+      "locales": ["zh-Hans", "en-US"],
+      "docsCheck": "0 failures, 5123 checked files",
+      "docsBuild": "passed"
+    },
+    "stage2_scripts_ownership": {
+      "status": "completed",
+      "relocatedScripts": [
+        "packages/neuro-book/scripts/smoke/agent.ts",
+        "packages/neuro-book/scripts/smoke/agent-http.ts",
+        "packages/neuro-book/scripts/smoke/sqlite-vec.ts",
+        "packages/neuro-book/scripts/smoke/subject-rag.ts",
+        "packages/neuro-book/scripts/smoke/writing-workflow.ts",
+        "packages/neuro-book/scripts/cli/warmup-dev-server.mjs",
+        "packages/neuro-book/scripts/seed/world-engine-demo.ts",
+        "packages/neuro-book/scripts/seed/heroes-story.ts",
+        "packages/neuro-book/scripts/seed/chapter-01-slices.ts"
+      ],
+      "scriptsTypecheck": "passed",
+      "smokeAndSqliteContracts": "2 files, 5 tests passed"
+    },
+    "stage3_tasks_dual_root": {
+      "status": "completed",
+      "rootTasksCount": 33,
+      "appTasksCount": 91,
+      "migratedFiles": 855,
+      "governanceDualRootCheck": "passed"
+    },
+    "stage4_references_and_specs": {
+      "status": "completed",
+      "relocatedRuntimeReferences": "packages/neuro-book/assets/reference/",
+      "promotedSpecs": [
+        "docs/specs/theme/system.md",
+        "docs/specs/media/image-variants.md"
+      ],
+      "referenceContracts": "4 files, 42 tests passed",
+      "productRuntimeImage": {
+        "status": "passed",
+        "imageId": "sha256:20e3627cea58bc9d8dbf7bc64116cc6dccc3994d83edbaa6e3b3d55d25a172b",
+        "files": 3371,
+        "bytes": 137585252
+      }
+    },
+    "stage5_desktop_and_manager": {
+      "status": "completed",
+      "desktopContract": "16 files, 61 tests passed",
+      "desktopSecurityAudit": "21 checks true",
+      "desktopElectronTypecheck": "passed",
+      "desktopElectronAudit": "passed",
+      "desktopTauriFmt": "passed",
+      "desktopTauriCargoCheck": "passed",
+      "managerTypecheck": "passed",
+      "managerTests": "41 files, 336 tests passed, 3 skipped",
+      "managerPackCheck": "passed"
+    },
+    "stage6_global_verification": {
+      "status": "completed",
+      "governanceCheck": "0 failures, 0 warnings",
+      "docsCheck": "0 failures, 5126 files",
+      "docsBuild": "passed",
+      "scriptsTypecheck": "passed",
+      "mainAppTypecheck": "passed",
+      "lockfileFrozenInstall": "passed",
+      "diffCheck": "passed",
+      "productContractTests": "6 files, 39 tests passed"
+    },
+    "stage7_application_delivery_boundary": {
+      "status": "completed",
+      "timestamp": "2026-08-20T08:41:47+08:00",
+      "movedFiles": [
+        "packages/neuro-book/Dockerfile",
+        "packages/neuro-book/Dockerfile.runner",
+        "packages/neuro-book/docker-compose.yml",
+        "packages/neuro-book/.env.docker.example",
+        "packages/neuro-book/.gitignore"
+      ],
+      "rootApplicationDeliveryFilesAbsent": true,
+      "rootDockerIgnoreRetained": "Docker build context remains monorepo root",
+      "releaseWorkflowFile": "packages/neuro-book/Dockerfile",
+      "sourceDevWorkspace": "platform user State Root/workspace; Windows default is %LOCALAPPDATA%/NeuroBook/data/workspace",
+      "rootAssetsAndWorkspace": "preserved as local historical/user data; not copied, overwritten, or deleted",
+      "dockerAndWorkflowContracts": "3 files, 11 tests passed",
+      "sourceDevAndAssetsContracts": "3 files, 11 tests passed",
+      "scriptsTypecheck": "passed",
+      "nuxtTypecheck": "passed",
+      "docsCheck": "0 failures, 5126 files",
+      "docsBuild": "passed",
+      "governanceCheck": "0 failures, 0 warnings",
+      "lockfileFrozenInstall": "passed",
+      "diffCheck": "passed"
+    }
+  },
+  "notExecuted": [
+    "真实 Provider/Model",
+    "真实 Docker build、Windows runner/portable、真实安装",
+    "浏览器人工验收",
+    "远端发布、部署、tag",
+    "真实数据库 migration",
+    "旧 worktree 删除"
+  ]
+}

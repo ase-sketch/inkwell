@@ -1,0 +1,513 @@
+/*
+ * nbook —— NeuroBook 的产品主题。macOS Liquid Glass 的衍生，不是复刻。
+ *
+ * 三处相对 macos 的实质差异，其余原样继承：
+ *
+ * ① **纸**。Apple 的硬规矩是玻璃只属导航 / 控件层、内容层不许套玻璃。写作工具把这条推到底：
+ *    内容层不只实心，还是纸——全屏唯一不透明、唯一浮起、唯一用衬线的面（见文件末尾的稿面段）。
+ * ② **中文排版**。字距归零、正文加一档、行高放松。macOS 的 -0.006em 是给 SF 的拉丁字形调的，
+ *    查不到任何依据说汉字该用负字距（反而查到「请勿据此直接套用到汉字」的明确提醒），
+ *    所以这里不抄。字体栈保持**拉丁在前、CJK 在后**：中文字体自带的拉丁字形质量普遍较差，
+ *    放在前面会把西文一起接管。（有中文技术文章主张相反顺序，来源是二手转述，本主题不采纳。）
+ * ③ **浮层薄糊**。浮层角色 `--overlay-blur` 用 8px 纯 blur；大容器的完整折射强档仍为 14px。
+ *    这不是省成本，是观感判断：半径越大，背后的形状与明暗掉得越快，最后只剩「有一层东西挡着」，
+ *    读起来是塑料板不是玻璃。详见下面 --glass-blur 那一段。
+ *
+ * 纪律与 macos 相同：这里不许出现任何字面颜色，只许引用配色变量或用 color-mix 从配色派生。
+ * 唯一例外是纯白 / 纯黑的低透明度叠层——镜面高光和内阴影表达的是**光**不是颜色，
+ * 配色契约里没有对应的角色。
+ *
+ * 边界与 macos 相同，不重复解释，只列出来：边缘折射只有 Chromium 支持（WebKit 245510 长期未解）；
+ * backdrop-filter 糊不到操作系统桌面，要糊真桌面得由桌面壳开窗体级 vibrancy；
+ * Apple 没有公开 blur 半径与折射率，下面的取值是视觉近似。
+ */
+
+:root[data-nb-theme="nbook"] {
+    /* ---- 排版：中文优先 -------------------------------------------------- */
+    /*
+     * 拉丁在前、CJK 在后。PingFang SC 覆盖 macOS/iOS，Microsoft YaHei 覆盖 Windows 7+，
+     * Noto Sans CJK SC 覆盖 Linux 与装了 Noto 的环境——三条合起来才算兜住三大平台。
+     */
+    --font-ui: -apple-system, "SF Pro Text", "Segoe UI", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", system-ui, sans-serif;
+    /* 稿面用宋。界面用黑体、正文用宋体是中文出版的默认分工，也是「器械 / 稿面」两种材质的字面证据 */
+    --font-display: "Source Han Serif SC", "Noto Serif SC", "Songti SC", "SimSun", Georgia, serif;
+    --font-mono: "SF Mono", ui-monospace, Menlo, Consolas, "Noto Sans Mono CJK SC", monospace;
+    /* 中文没有斜体：italic 是把字形剪切变形，看起来像渲染故障，所以强调换字面不换字形 */
+    --font-emphasis: KaiTi, STKaiti, "楷体", "Kaiti SC", "Noto Serif SC", serif;
+
+    /*
+     * 比 macOS 整体加一档（macOS 界面正文是 13px）。判断依据是字面高度而不是字号：
+     * 同一 px 下汉字的字面几乎占满 em 框，拉丁小写只占 x-height，所以 13px 的 SF 换成汉字
+     * 会明显更挤。加一档是**目测决定，没有可引的规范**——Apple HIG 的中文排版页需要 JS 才能读，
+     * Ant Design / Arco / TDesign 三家的排版规范页本轮也都没取到正文。
+     */
+    --text-2xs: 11px;
+    --text-xs: 12px;
+    --text-sm: 14px;
+    --text-md: 14px;
+    --text-lg: 16px;
+    --text-xl: 20px;
+    --leading-tight: 1.3;
+    /* 汉字没有升降部来制造行间空隙，同样的 1.35 在中文里会贴得多 */
+    --leading-ui: 1.5;
+    --tracking-ui: 0;
+
+    /* ---- 几何 ------------------------------------------------------------ */
+    /* 字号加了一档，控件也得跟着长高，否则 14px 的汉字会顶到 32px 控件的上下边 */
+    --control-h-sm: 28px;
+    --control-h-md: 34px;
+    --control-h-lg: 42px;
+    --control-px: 14px;
+    --panel-p: 16px;
+    --stack-gap: 16px;
+
+    /*
+     * 20px 是有出处的：Chromium 的提交记录写明 macOS 12–15 窗口圆角用 9pt，
+     * macOS 26 Tahoe 用 20pt（Electron 为对齐 Tahoe 取 24pt）。Apple 自己没公布这个数。
+     * macos 主题里的 18px 是更早的目测近似，本轮不动它——那是用户已经认可的观感。
+     *
+     * 内嵌形状按同心律取值。Apple 的官方落点是 UIKit 的 containerConcentricRadius 与
+     * SwiftUI 的 ConcentricRectangle（半径随嵌套层次自动递减），但**「子半径 = 父半径 − padding」
+     * 这个具体公式不是 HIG 原文**，只是一个够用的近似，别当官方规范引用。
+     */
+    --radius-control: 10px;
+    --radius-control-lg: var(--radius-pill);
+    --radius-panel: 20px;
+    --radius-menu: 12px;
+    --radius-pill: 999px;
+    /*
+     * 对话框比菜单大一个数量级，圆角单列一档。26px 是 Apple 官方 macOS 27 UI Kit 里
+     * Save Dialog 的实测值（该文件把这一层记作 Radius 26 / Smooth / Apple 60%）。
+     * 不并进 --radius-panel：26px 画在 170px 宽的下拉上会把首尾两项吃掉。
+     */
+    --radius-dialog: 26px;
+    /*
+     * 这里曾经有 `--corner-shape: squircle`（Apple 的角是超椭圆，同一份官方文件把它记作
+     * 「Smooth / Apple (60%)」）。撤掉了：Chromium 的 backdrop-filter 不跟随 corner-shape
+     * 裁切，玻璃面开这一档会在四角露出一牙没被模糊的背景。判据与复查条件见 `src/styles.css`。
+     */
+    --border-w: 1px;
+
+    /* ---- Liquid Glass 材料 ----------------------------------------------- */
+    /*
+     * **模糊半径要克制。** 这一档试过 48px，实测下来是错的：半径一大，背后的形状、色块、
+     * 明暗全被抹平成一片均匀的灰，浮层读起来就是一块半透明塑料板。用户的原话是
+     * 「模糊有点过头了，没有那种 liquid 玻璃质感」。
+     *
+     * 原因不玄：**玻璃的质感来自背后还认得出东西**——色块的位置、明暗的走向、边缘被挤压的
+     * 那一下形变。半径越大，这些信息掉得越快，最后只剩「有一层东西」。Apple 的 Liquid Glass
+     * 本来也不是重磨砂，模糊只负责让背后的字读不出来。
+     *
+     * 18px 试过一轮，仍然偏厚；8px 是浮层纯 blur 基线：背后的字仍然读不出，而形状、明暗、
+     * 色块还在。大容器保留 14px 的纯 blur fallback 与完整折射档；小浮层不消费这两个强档，
+     * 改由下方的 --overlay-blur 明确取 8px，避免 SVG 位移采样把背景纹理推移。
+     */
+    --glass-blur: blur(8px) saturate(190%) brightness(1.12);
+    --glass-blur-strong: blur(14px) saturate(190%) brightness(1.14);
+    /*
+     * 折射滤镜的 id 带主题前缀。两套主题共用 id 会在文档里撞车且不报错，见 assets/lens.ts。
+     *
+     * **url() 必须排在 blur() 后面。** 反过来写（`url(#lens) blur(10px)`）在 Chromium 里
+     * 会让后面的模糊几乎不生效——声明本身合法、`CSS.supports` 返 true、计算样式也读得到
+     * 完整的一条链，但画出来的背景是**清晰**的。实测四组，同一块浮层、同一处背景：
+     *
+     *   blur(50px)                  → 完全糊掉
+     *   url(#nbook-lens) blur(50px) → 背后文字一个字都不糊，只剩 tint 压暗
+     *   url(#nbook-lens) blur(20px) → 半糊，能看出字形
+     *   blur(50px) url(#nbook-lens) → 完全糊掉 ✓
+     *
+     * 用户能看见的表现就是「上下文菜单、下拉、时间选择器都没有高斯模糊」。这正是
+     * `docs/design-language.md` 坑 #2 说的那件事：`@supports` 只测声明被不被接受，
+     * 测不出渲染对不对——那一条当初写的时候，还不知道它会以这种形式再咬一次。
+     */
+    --glass-lens: blur(8px) saturate(190%) brightness(1.12) url("#nbook-lens-sm");
+    --glass-lens-strong: blur(14px) saturate(190%) brightness(1.14) url("#nbook-lens");
+    /* 大容器对照面消费上面的完整折射强档；浮层角色在下方单独映射到纯 blur 基线。 */
+
+    /* 镜面高光只画**整块玻璃的轮廓**（窗口、菜单、对话框），不画贴在里面的分区：
+       分区自身圆角是 0，而宿主是大圆角 + overflow: hidden，方角高光会在圆角处被斜切成一段 */
+    --glass-rim:
+        radial-gradient(120% 80% at 16% -10%, rgb(255 255 255 / 0.6), transparent 42%),
+        linear-gradient(118deg, rgb(255 255 255 / 0.42) 0%, transparent 22%, transparent 74%, rgb(255 255 255 / 0.22) 100%);
+    --glass-rim-inset:
+        inset 0 1px 0 rgb(255 255 255 / 0.55),
+        inset 1px 0 0 rgb(255 255 255 / 0.2),
+        inset 0 -1px 0 rgb(0 0 0 / 0.12);
+    /*
+     * 这里**曾经**有一个 --glass-sheen：浮层专用的镜面层，一条 `at 12% -20%` 的径向白
+     * 加一条从顶上铺下来的线性白，接在 --overlay-sheen 上。已经删掉，连同 manifest 里的声明。
+     *
+     * 它没有做到「让浮层读起来是一块材料」，反而是用户一眼看出来的毛病：**面上有一道渐变**。
+     * 原话是「模糊有点浅，好像你做了个渐变，效果不是很好」。
+     *
+     * 判据（可复现，本轮就是这么定的）：在下拉后面铺一张 12px 一档的四色斜条纹，打开下拉截图。
+     * 带 sheen 时，面板**上半部分的条纹被洗成一片平灰、下半部分才看得见颜色**——一块玻璃不会
+     * 上半截糊下半截透，所以它读起来只能是「盖了一层渐变」。去掉之后，条纹在整块面上强度一致。
+     *
+     * 为什么窗口那档（--glass-rim）可以留：渐变的几何是百分比的。同一条径向画在 900px 宽的
+     * 窗口上是左上角一小片提亮，画在 240px 宽的下拉上就糊住半块面。上一轮已经为此把两档拆开、
+     * 把浮层这档的 alpha 收了一半——**收一半不够，方向本身就是错的**：小面板上根本没有位置
+     * 容纳一条渐变，玻璃的高光只能待在边上。
+     *
+     * 高光现在由 --elevation-popover 里的 `inset 0 2px 0.25px -1.5px` 那条顶线承担，
+     * 那也是 Apple 官方 UI Kit 里唯一一条表示入射光的图层。面上不画东西。
+     *
+     * 什么时候该重新考虑：出现了尺寸稳定在 400px 以上的浮层（比如带预览的大面板），
+     * 那时可以给那一类单开一档，而不是把这条塞回所有菜单。
+     */
+    --glass-lift: translateY(-1px) scale(1.015);
+
+    /* 窗体底纹＝这套主题自带的「桌面壁纸」。全部由配色变量派生，任意配色下自动跟着变。
+       没有它，折射和磨砂作用在一片纯色上，等于零效果。
+       冷暖各占两角：暖底是身份，冷斑是强调色的回声，玻璃移过去才有色相变化可看。 */
+    --window-backdrop:
+        radial-gradient(58% 46% at 12% 2%, color-mix(in srgb, var(--accent-main) 30%, transparent) 0%, transparent 72%),
+        radial-gradient(48% 40% at 88% 0%, color-mix(in srgb, var(--status-warning) 26%, transparent) 0%, transparent 70%),
+        radial-gradient(62% 52% at 76% 98%, color-mix(in srgb, var(--status-info) 22%, transparent) 0%, transparent 74%),
+        radial-gradient(52% 42% at 20% 92%, color-mix(in srgb, var(--status-warning) 18%, transparent) 0%, transparent 72%);
+
+    /* 窗口左上角那一格判给侧栏：侧栏是玻璃，被一条标题栏横切一刀就不是一整块了。
+       换的是同一份 DOM 的归属，不是另一套 DOM。 */
+    --chrome-surface: var(--sidebar-surface);
+    --chrome-seam: 1px 0 0 var(--divider);
+
+    /* ---- 角色映射：冷暖分家就在这一层落地 -------------------------------- */
+    /*
+     * 一条规矩管住整层：**器械一律从 --bg-sidebar 派生（冷），只有内容面板从 --bg-panel 派生（暖）**。
+     *
+     * 这是「玻璃是器械、纸不是玻璃」从论点变成取值的地方，也是与 macos 唯一一处结构性差异——
+     * macos 的工具栏 / 浮层 / 按钮都从 --bg-panel 取，因为它整套通体冷中性，取哪个都一样。
+     * nbook 的 --bg-panel 是暖的，再让 chrome 从它取，暖色就会糊满全屏，冷暖对比归零。
+     * （第一版正是这么写的，实测出来和 macOS 看不出区别。）
+     */
+    --sidebar-surface: color-mix(in srgb, var(--bg-sidebar) 26%, transparent);
+    --toolbar-surface: color-mix(in srgb, var(--bg-sidebar) 30%, transparent);
+    /* tint 只负责压住对比、保证浮层里的字读得清，层级交给模糊 + 外阴影。
+       38% → 28% → 20% → 14%，四轮都是同一个方向。前三轮的理由是「模糊每收薄一档，tint 就得跟着薄」；
+       这一轮反过来——模糊放厚了，tint 还得再薄一次。因为**这两样东西补的从来不是同一件事**：
+       模糊管背后的字读不读得出，tint 管这块面有多不透明。真正让浮层像塑料板的是后者。 */
+    --overlay-surface: color-mix(in srgb, var(--bg-sidebar) 14%, transparent);
+    /* 库的浮层基座（.nb-ui-popover-surface）从这里取磨砂。
+       小浮层明确消费 8px 纯 blur，不接完整 SVG 折射：`feDisplacementMap` 会移动边缘的
+       backdrop sample，造成用户所说的背景纹理错位。大容器仍可消费 `--glass-lens-strong`。
+       镜面角色（--overlay-sheen）显式保持 none：小浮层的面上不画渐变。 */
+    --overlay-blur: blur(8px) saturate(190%) brightness(1.14);
+    --overlay-sheen: none;
+    /*
+     * 浮层里「当前项」的填充。库的默认值是配色表里那个**不透明**的 --bg-hover，
+     * 压在玻璃上就是在材料上挖一块实心补丁：整块面都透着背后，唯独选中那一行是死的。
+     *
+     * 改成一层前景色的低透明度叠层，高亮就变成「这块玻璃在这一行更亮了」。
+     * 取 --text-main 而不是某个具体颜色，是为了一条式子同时管住明暗两档：
+     * 暗色下 --text-main 是浅的，叠上去是提亮；亮色下是深的，叠上去是压暗，方向自动对。
+     * 和上面 --control-surface 那条同一个手法，所以不需要按 appearance 分档。
+     */
+    --overlay-item-active: color-mix(in srgb, var(--text-main) 12%, transparent);
+    --strip-surface: color-mix(in srgb, var(--bg-subtle) 38%, transparent);
+    /* 内容面板与稿面：全屏仅有的两处暖面 */
+    --panel-surface: var(--bg-panel);
+    --panel-outline: color-mix(in srgb, var(--text-main) 10%, transparent);
+    --divider: color-mix(in srgb, var(--text-main) 9%, transparent);
+
+    /*
+     * 控件实心。输入框取一层半透明的前景色而不是 var(--bg-input)，是为了与配色解耦：
+     * 换任何一套配色，输入框都是从它所在的面上抬起 7%，不会再撞上某套配色把 --bg-input
+     * 调得比窗体底还暗——那正是上一轮实测到的「浏览器原生的那一条黑线好像没有删掉」。
+     */
+    --control-surface: color-mix(in srgb, var(--text-main) 7%, transparent);
+    --control-outline: color-mix(in srgb, var(--text-main) 16%, transparent);
+    /* 按钮属器械，跟冷面走 */
+    --button-surface: var(--bg-sidebar);
+    --button-outline: color-mix(in srgb, var(--text-main) 13%, transparent);
+
+    --surface-raise: linear-gradient(180deg, rgb(255 255 255 / 0.16), rgb(255 255 255 / 0.02) 55%, rgb(0 0 0 / 0.035));
+    --inset-shadow: inset 0 1px 1.5px color-mix(in srgb, var(--shadow-color) 12%, transparent);
+
+    /*
+     * 阴影的**结构**照 Apple 官方 macOS 27 UI Kit 抄，不是照 Material 那套「两三层递增投影」。
+     * 本轮从该文件的 Materials 页逐图层读出（图层样式 `Liquid Glass/Light` 与 `/Dark`）：
+     *
+     *   Light（Regular - Large，580×400，Radius 20 Smooth Apple 60%）
+     *     -1.25px 0 0 -0.75px #DBDBDB        ← 左右两道竖边缘光
+     *      1.25px 0 0 -0.75px #DBDBDB
+     *      0 0 0.3px 0.3px    #DBDBDB        ← 一圈发丝轮廓
+     *      0 18px 48px 0      rgb(0 0 0/.25) ← **只有一条**环境投影
+     *      0 2px 0.25px -1.5px inset #FFF
+     *      0 ±1px 1.5px -0.5px inset #272727
+     *      0 ±4px 8px   -4px   inset #272727
+     *   Dark（Regular - Medium，Popover 240.5×230）同构，只换取值：
+     *      轮廓 #A6A6A6 / 环境投影 rgb(0 0 0/.45) / 内边线 #676767 / 顶高光 #FFF 20%
+     *
+     * 三条结论，也是上一版错在哪：
+     *
+     * ① **轮廓靠发丝阴影，不靠中等半径的投影。** 上一版写的是 `0 2px 6px 18%`——那是
+     *    Material 的「近景投影」，读起来是面板浮在一块绒布上。Apple 用的是几乎不糊、
+     *    高不透明度的 `0 0 0.3px 0.3px`，读起来是**一条切出来的边**。
+     * ② **环境投影只有一条。** 上一版是两条（近 + 远）叠加，等于把同一件事说两遍，
+     *    结果是边缘发灰、整块面往下沉。
+     * ③ **内边线是上下对称的。** 上一版是「顶白 + 底黑」，那是拟物按钮的打光；Apple 的
+     *    上下同色，画的是玻璃**两个面**的厚度，另有一条单独的顶高光表示入射光。
+     *
+     * 两处刻意的偏离，都是 CSS 表达不了原件：
+     * - 原件的四条外阴影是 **Plus darker** 混合模式，CSS 的 box-shadow 只有 normal。
+     *   所以轮廓不照抄「浅灰 100%」，改成从 --shadow-color 取低不透明度——落点是同一个
+     *   视觉重量，取值不同。
+     * - 几何从 `0.3px` 放到 `0.5px`：原件是按 2× 稿面画的，0.3px 在 1× 下只剩抗锯齿。
+     *
+     * 另外，box-shadow 只有一条属性，拆成两个变量再拼接会踩上「拼进 none 整条作废」那个坑，
+     * 所以内阴影和外阴影仍然写在同一个 elevation 里，不另开角色。
+     */
+    --elevation-raised:
+        inset 0 1px 0 rgb(255 255 255 / 0.28),
+        0 1px 2px color-mix(in srgb, var(--shadow-color) 20%, transparent);
+    --elevation-popover:
+        0 0 0.5px 0.5px color-mix(in srgb, var(--shadow-color) 20%, transparent),
+        inset 0 2px 0.25px -1.5px rgb(255 255 255 / 0.9),
+        inset 0 1px 1.5px -0.5px color-mix(in srgb, var(--shadow-color) 14%, transparent),
+        inset 0 -1px 1.5px -0.5px color-mix(in srgb, var(--shadow-color) 14%, transparent),
+        0 18px 48px color-mix(in srgb, var(--shadow-color) 25%, transparent);
+    /*
+     * 对话框那一档的环境投影用 `0 36px 100px / .4`——这是上一轮从同一份文件的 Save Dialog
+     * 读到的原值（`0 0 1px rgb(0 0 0/.8), 0 36px 100px rgb(0 0 0/.4)`）。
+     * 它比浮层档（18/48）明显更远更散：对话框压住整个窗口，浮层只压住一小片。
+     */
+    --elevation-dialog:
+        0 0 0.5px 0.5px color-mix(in srgb, var(--shadow-color) 26%, transparent),
+        inset 0 2px 0.25px -1.5px rgb(255 255 255 / 0.9),
+        inset 0 1px 1.5px -0.5px color-mix(in srgb, var(--shadow-color) 14%, transparent),
+        inset 0 -1px 1.5px -0.5px color-mix(in srgb, var(--shadow-color) 14%, transparent),
+        0 36px 100px color-mix(in srgb, var(--shadow-color) 40%, transparent);
+
+    --focus-ring:
+        0 0 0 1px color-mix(in srgb, var(--accent-main) 35%, transparent),
+        0 0 0 3.5px color-mix(in srgb, var(--accent-main) 18%, transparent),
+        0 1px 6px color-mix(in srgb, var(--accent-main) 22%, transparent);
+    --focus-outline: color-mix(in srgb, var(--accent-main) 80%, var(--control-outline));
+
+    --motion-fast: 90ms;
+    --motion-base: 140ms;
+    --motion-enter: 180ms;
+    --ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
+
+    /* ---- 稿面：这套主题相对 macOS 真正新增的一层 ------------------------- */
+    /*
+     * --page-surface 取 --bg-panel 而不是另给一个色，是因为配色表已经保证 panel 恒亮于 main
+     * （见 colorways.ts 不变量 ①）。「纸比桌亮」因此对任何配色都成立，包括用户自建的那套。
+     */
+    --page-surface: var(--bg-panel);
+    --page-ink: var(--text-main);
+    /*
+     * 版心细线从**墨色**派生，不从 --divider 派生。--divider 本身已经是半透明的界面分隔线，
+     * 再叠一层透明就只剩个位数不透明度，在纸上等于没画。
+     */
+    --page-rule: color-mix(in srgb, var(--page-ink) 15%, transparent);
+    /* 稿面比界面大一档：两个区的密度本来就不该一样，界面 14px、正文 17px */
+    --reading-size: 17px;
+    /* CJK 下 1em 是一个汉字宽，所以这个数直接就是「每行多少字」 */
+    --reading-measure: 34em;
+}
+
+/*
+ * 浮层的折射边界。
+ *
+ * 小浮层不接 `backdrop-filter: url(#...)`：SVG `feDisplacementMap` 会按面板局部位移图移动
+ * backdrop sample，导致高对比背景在面板边缘看起来错位。`--overlay-blur` 保留 8px 的纯 blur
+ * 基线，真正的浮层（菜单 / 下拉 / 对话框 / 时间选择器）因此不需要组件层补偿。
+ *
+ * 完整折射配方 `--glass-lens-strong` 仍留给 playground 的大容器对照面；那里有足够大的面和
+ * 明确的边缘，单独验证折射观感。这里不再用 @supports 把它强行路由进所有真实浮层。
+ */
+
+/*
+ * 暗色下的玻璃配方。三处方向是反的：暗色 Liquid Glass 是**压暗**不是提亮；白色镜面高光
+ * 在暗底上会过曝成一圈灰边；面的透明度要收一点，否则暗底透暗底等于什么都看不见。
+ *
+ * 第四处来自 Apple 侧的暗色规范转述（「tint 换低亮度变体、提亮环境边缘光、**加重外阴影**」）：
+ * 浮层与对话框在暗色下把外阴影压得更重。理由是暗色里明度差本来就小，只靠面色区分不出层级。
+ *
+ * 挂 [data-nb-appearance] 而不是 [data-nb-colorway="dark"]：主题必须响应配色的**明暗属性**，
+ * 绑配色身份对用户自定义的暗色配色一律失效。
+ *
+ * **这一块必须排在所有 @media 之前。** 它是 (0,3,0)，比 (0,2,0) 的媒体查询块高一档，
+ * 谁在后面都赢不了它——除非媒体查询也写一条同样带 [data-nb-appearance] 的选择器，
+ * 并且排在它后面。文件末尾那三个块就是这么写的，理由见那里。
+ */
+:root[data-nb-theme="nbook"][data-nb-appearance="dark"] {
+    /* 浮层现在消费单独的 8px 纯 blur；完整的 14px 折射强档及其纯 blur fallback 只给大容器。
+       暗色仍压暗而不是提亮，避免背后的颜色被一层灰板吞掉。 */
+    --glass-blur: blur(8px) saturate(160%) brightness(0.62);
+    --glass-blur-strong: blur(14px) saturate(190%) brightness(0.72);
+    --glass-lens: blur(8px) saturate(160%) brightness(0.62) url("#nbook-lens-sm");
+    --glass-lens-strong: blur(14px) saturate(190%) brightness(0.72) url("#nbook-lens");
+    --overlay-blur: blur(8px) saturate(190%) brightness(0.72);
+
+    --glass-rim:
+        radial-gradient(120% 80% at 16% -10%, rgb(255 255 255 / 0.22), transparent 42%),
+        linear-gradient(118deg, rgb(255 255 255 / 0.14) 0%, transparent 22%, transparent 74%, rgb(255 255 255 / 0.08) 100%);
+    --glass-rim-inset:
+        inset 0 1px 0 rgb(255 255 255 / 0.16),
+        inset 1px 0 0 rgb(255 255 255 / 0.06),
+        inset 0 -1px 0 rgb(0 0 0 / 0.3);
+    /* 暗色下没有单独的浮层镜面了，理由见亮色块里删 --glass-sheen 那一段。
+       --glass-rim 只画整块窗口的轮廓，不接到浮层上。 */
+    --sidebar-surface: color-mix(in srgb, var(--bg-sidebar) 52%, transparent);
+    --toolbar-surface: color-mix(in srgb, var(--bg-sidebar) 56%, transparent);
+    /*
+     * 浮层的 tint：66% → 52% → 34% → 24% → 14%。前四轮都在撤上一轮为「模糊不够」打的补丁。
+     *
+     * 66% 是链子顺序还错着、模糊根本没画出来时定的，只能靠厚 tint 把浮层与背景分开。
+     * 52% 是链子修好但半径还有 50px 时定的——背景被抹平成一片均匀的灰，压在灰上仍是实心板。
+     * 34% 是半径收到 18px 时定的，仍然偏厚：背后只剩一点行带的影子。
+     * 24% 配 10px 的模糊与 brightness(0.56)，仍然被看出是「一个深灰盒子」。
+     * 14% 配 14px 的模糊与 brightness(0.72)：这一档背后的**颜色**第一次留住了。
+     *
+     * 上一轮在这里记了一条「每次把模糊收薄，tint 就得跟着再薄一档」——那条是错的，
+     * 它把相关当成了因果。真正的分工是：**模糊决定背后的字读不读得出，tint 与压暗决定这块面
+     * 有多不透明。** 玻璃感丢在后者，跟半径没关系。所以这一轮模糊放厚、tint 反而更薄，
+     * 两件事各归各位之后才同时成立。
+     */
+    --overlay-surface: color-mix(in srgb, var(--bg-sidebar) 14%, transparent);
+    --strip-surface: color-mix(in srgb, var(--bg-subtle) 60%, transparent);
+
+    --surface-raise: linear-gradient(180deg, rgb(255 255 255 / 0.07), rgb(255 255 255 / 0.01) 55%, rgb(0 0 0 / 0.1));
+
+    /*
+     * 暗色的三处方向反转，全部有原件依据（`Liquid Glass/Dark`，见亮色块那一段的实测表）：
+     *
+     * ① **轮廓与内边线改为提亮。** 原件的轮廓是 #A6A6A6、内边线是 #676767，都比面板本身亮——
+     *    暗色下压暗的边等于没有边，玻璃的厚度只能靠亮线画。上一版底内边写的是黑，
+     *    在近黑的面上完全看不见，等于那一条白写了。
+     * ② **环境投影加重。** 原件亮色 .25 → 暗色 .45（1.8 倍）。暗色里明度差本来就小，
+     *    层级撑不住。对话框档按同一比例从 .4 推到 .7。
+     * ③ 几何**不变**：18/48 与 36/100 亮暗同值。Apple 换的是颜色不是距离——
+     *    投影的远近说的是「这块面浮多高」，那件事跟明暗无关。
+     */
+    --elevation-popover:
+        0 0 0.5px 0.5px rgb(255 255 255 / 0.16),
+        inset 0 2px 0.25px -1.5px rgb(255 255 255 / 0.2),
+        inset 0 1px 1.5px -0.5px rgb(255 255 255 / 0.1),
+        inset 0 -1px 1.5px -0.5px rgb(255 255 255 / 0.1),
+        0 18px 48px color-mix(in srgb, var(--shadow-color) 45%, transparent);
+    --elevation-dialog:
+        0 0 0.5px 0.5px rgb(255 255 255 / 0.18),
+        inset 0 2px 0.25px -1.5px rgb(255 255 255 / 0.22),
+        inset 0 1px 1.5px -0.5px rgb(255 255 255 / 0.11),
+        inset 0 -1px 1.5px -0.5px rgb(255 255 255 / 0.11),
+        0 36px 100px color-mix(in srgb, var(--shadow-color) 70%, transparent);
+
+    /* 纸的投影必须按明暗分档：同一个百分比在暖黑桌面上几乎看不见，在米色桌面上又太重 */
+    --page-lift:
+        0 1px 2px color-mix(in srgb, var(--shadow-color) 45%, transparent),
+        0 24px 56px color-mix(in srgb, var(--shadow-color) 52%, transparent);
+}
+
+:root[data-nb-theme="nbook"][data-nb-appearance="light"] {
+    --page-lift:
+        0 1px 2px color-mix(in srgb, var(--shadow-color) 9%, transparent),
+        0 16px 38px color-mix(in srgb, var(--shadow-color) 11%, transparent);
+}
+
+/* ==========================================================================
+ * 以下三个媒体查询块必须排在**所有** appearance 分档之后，且凡是要覆盖暗色分档里的变量，
+ * 选择器就得跟着带上 [data-nb-appearance="dark"]。
+ *
+ * 这是本轮实测出来的一处哑火：媒体查询**不提升特异性**，它只决定规则参不参加层叠。
+ * 上一版三个块都只写了 `:root[data-nb-theme="nbook"]`（0,2,0），而暗色分档是 (0,3,0)，
+ * 于是「窄屏降级」和「减少透明度」在暗色下**一次都没生效过**——没有报错、没有警告，
+ * 只有在暗色下开着系统开关截图才看得出来。亮色下一切正常，所以它藏得住。
+ *
+ * 写成选择器列表（两条选择器共用一个规则体）而不是复制两遍规则体：两条选择器各自保留
+ * 自己的特异性，(0,3,0) 那条稳压暗色分档，而规则体只有一份，不会改一处漏一处。
+ * ========================================================================== */
+
+/*
+ * 窄屏降级：丢掉折射、把 strong 档再收一半。
+ *
+ * 依据是模糊的开销随面积 × 半径增长，而手机 GPU 与桌面不是一个量级；同类开源实现
+ * （glassfx）也是在 <768px 直接丢弃折射。这里只降材料强度，不改结构——高光、层级、
+ * 颜色全都不变，所以降级后仍是同一套主题，只是没那么费。
+ *
+ * 亮暗两档的配方不同（brightness 方向相反），所以这里是两个规则体而不是一个选择器列表。
+ *
+ * --overlay-blur 也必须显式降到不带折射的 8px 配方；这里不能只关掉 --glass-lens-strong，
+ * 否则窄屏浮层会继续沿用桌面强度，失去这段降级的开销收益。
+ */
+@media (max-width: 768px) {
+    :root[data-nb-theme="nbook"] {
+        --glass-blur-strong: blur(8px) saturate(190%) brightness(1.14);
+        --glass-lens: none;
+        --glass-lens-strong: none;
+        --overlay-blur: var(--glass-blur-strong);
+    }
+
+    :root[data-nb-theme="nbook"][data-nb-appearance="dark"] {
+        --glass-blur-strong: blur(8px) saturate(190%) brightness(0.72);
+        --glass-lens: none;
+        --glass-lens-strong: none;
+        --overlay-blur: var(--glass-blur-strong);
+    }
+}
+
+/*
+ * 减少动效：库只把三个时长归零（`src/tokens.css`，带 !important），它不知道 --glass-lift 存在。
+ * 主题自己新增的动效变量必须由主题自己关掉——这是「新增变量」这个能力的配套义务。
+ * --glass-lift 只在亮色块里声明，所以这一条不需要带 appearance。
+ */
+@media (prefers-reduced-motion: reduce) {
+    :root[data-nb-theme="nbook"] {
+        --glass-lift: none;
+    }
+}
+
+/*
+ * 可访问性兜底。Apple 自己给 Liquid Glass 配了 Reduce Transparency / Increase Contrast
+ * 两个系统开关（iOS 26 早期正是因为通透过头挨了可读性批评），Web 侧只抄视觉不抄这两条，
+ * 等于只复制了表面。
+ *
+ * 注意 prefers-reduced-transparency 的浏览器覆盖不如 prefers-reduced-motion，
+ * 真要交付还得在产品里自带一个开关——这里先把 CSS 侧的合同立住。
+ */
+@media (prefers-reduced-transparency: reduce) {
+    :root[data-nb-theme="nbook"],
+    :root[data-nb-theme="nbook"][data-nb-appearance="dark"] {
+        --glass-blur: none;
+        --glass-blur-strong: none;
+        --glass-lens: none;
+        --glass-lens-strong: none;
+        --glass-rim: none;
+        --window-backdrop: none;
+        --sidebar-surface: var(--bg-sidebar);
+        --toolbar-surface: var(--bg-sidebar);
+        --overlay-surface: var(--bg-sidebar);
+        --overlay-blur: none;
+        --overlay-sheen: none;
+        /* 高亮那一层也得实心：面已经不透了，再叠一层 12% 的前景色只会得到一块灰糊的行 */
+        --overlay-item-active: var(--bg-hover);
+        /* 半透明的窄条也得跟着实心，否则一条透明带子横在实心浮层里，等于只关了一半 */
+        --strip-surface: var(--bg-subtle);
+    }
+}
+
+@media (prefers-contrast: more) {
+    :root[data-nb-theme="nbook"],
+    :root[data-nb-theme="nbook"][data-nb-appearance="dark"] {
+        --glass-blur: none;
+        --glass-blur-strong: none;
+        --glass-lens: none;
+        --glass-lens-strong: none;
+        --glass-rim: none;
+        --glass-rim-inset: none;
+        --sidebar-surface: var(--bg-sidebar);
+        --toolbar-surface: var(--bg-sidebar);
+        --overlay-surface: var(--bg-sidebar);
+        --overlay-blur: none;
+        --overlay-sheen: none;
+        --overlay-item-active: var(--bg-hover);
+        --strip-surface: var(--bg-subtle);
+        --panel-outline: var(--border-strong);
+        --control-outline: var(--border-strong);
+        --button-outline: var(--border-strong);
+        --divider: var(--border-strong);
+        --page-rule: var(--border-strong);
+    }
+}

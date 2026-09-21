@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>记忆图查看器 · nbook.novel-memory/v2-spike</title>
+<style>
+/* ─────────────────────────────────────────────────────────
+   宣纸 / 墨 / 朱批 / 石绿
+   认识论状态在亮色下渲染成墨色浓度：narrated 是浓墨，
+   inference 是飞白。同一套规则作用在卡片、边、节点上。
+   ───────────────────────────────────────────────────────── */
+:root{
+  --paper:#f3f2f7; --card:#ffffff; --sunk:#eceaf3;
+  --ink:#1b1830; --ink2:#4a4660; --ink3:#8b87a3; --ink4:#b3b0c4;
+  --rule:#dedbe8; --rule2:#eae8f1;
+  --gold:#a87515; --gold-bg:rgba(168,117,21,.09);
+  --cinnabar:#c7304f; --cinnabar-bg:rgba(199,48,79,.07);
+  --verdi:#1e8a74;
+  --f-display:"Noto Serif SC","Songti SC",serif;
+  --f-body:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  --f-mono:"Chivo Mono",ui-monospace,"Consolas",monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:var(--f-body);font-weight:300;font-size:13px;line-height:1.75;
+  -webkit-font-smoothing:antialiased;overflow:hidden;
+}
+button{font:inherit;color:inherit}
+::selection{background:rgba(168,117,21,.2)}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:2px}
+
+.app{display:grid;grid-template-rows:auto 1fr;height:100%}
+
+/* ── 顶栏 ─────────────────────────────────────────────── */
+.bar{
+  display:flex;align-items:center;gap:16px;padding:0 16px;height:50px;
+  background:var(--card);border-bottom:1px solid var(--rule);flex-wrap:nowrap;
+}
+.brand{font-family:var(--f-display);font-weight:700;font-size:15px;letter-spacing:.04em;white-space:nowrap}
+.schema{font-family:var(--f-mono);font-size:10px;color:var(--ink3);letter-spacing:.06em;white-space:nowrap}
+.bar-sp{flex:1}
+.search{
+  width:210px;padding:6px 10px;border:1px solid var(--rule);border-radius:3px;
+  background:var(--paper);font-family:var(--f-body);font-size:12.5px;color:var(--ink);
+}
+.search::placeholder{color:var(--ink4)}
+.btn{
+  background:var(--card);border:1px solid var(--rule);border-radius:3px;
+  padding:6px 12px;font-size:12px;cursor:pointer;white-space:nowrap;transition:.15s;
+}
+.btn:hover{border-color:var(--ink3);background:var(--sunk)}
+.badge{
+  font-family:var(--f-mono);font-size:11px;padding:5px 11px;border-radius:3px;cursor:pointer;
+  border:1px solid transparent;white-space:nowrap;
+}
+.badge.ok{background:rgba(30,138,116,.1);color:var(--verdi);border-color:rgba(30,138,116,.28)}
+.badge.bad{background:var(--cinnabar-bg);color:var(--cinnabar);border-color:rgba(199,48,79,.3)}
+
+/* ── 三栏 ─────────────────────────────────────────────── */
+.body{display:grid;grid-template-columns:266px 1fr 336px;min-height:0}
+.rail,.insp{background:var(--card);display:flex;flex-direction:column;min-height:0}
+.rail{border-right:1px solid var(--rule)}
+.insp{border-left:1px solid var(--rule)}
+.scroll{overflow:auto;min-height:0;flex:1}
+.scroll::-webkit-scrollbar{width:9px;height:9px}
+.scroll::-webkit-scrollbar-thumb{background:var(--rule);border-radius:5px;border:2px solid var(--card)}
+.scroll::-webkit-scrollbar-thumb:hover{background:var(--ink4)}
+
+.kicker{
+  font-family:var(--f-mono);font-size:9.5px;letter-spacing:.2em;color:var(--ink3);
+  text-transform:uppercase;padding:14px 14px 7px;
+}
+.tabs{display:flex;flex-wrap:wrap;gap:3px;padding:0 11px 11px;border-bottom:1px solid var(--rule2)}
+.tab{
+  border:1px solid var(--rule);background:var(--card);border-radius:3px;
+  padding:4px 8px;font-size:11.5px;cursor:pointer;display:flex;gap:6px;align-items:baseline;transition:.15s;
+}
+.tab:hover{background:var(--sunk)}
+.tab.on{background:var(--ink);color:var(--card);border-color:var(--ink)}
+.tab.on i{color:rgba(255,255,255,.62)}
+.tab i{font-style:normal;font-family:var(--f-mono);font-size:10px;color:var(--ink3)}
+.tab.opt{border-style:dashed}
+
+.list{padding:6px 0 20px}
+.item{
+  display:block;width:100%;text-align:left;background:none;border:0;border-left:2px solid transparent;
+  padding:6px 14px;cursor:pointer;line-height:1.5;transition:.12s;
+}
+.item:hover{background:var(--sunk)}
+.item.on{background:var(--gold-bg);border-left-color:var(--gold)}
+.item b{font-weight:400;display:block;font-size:12.5px}
+.item span{font-family:var(--f-mono);font-size:10px;color:var(--ink3)}
+.item.faded{opacity:.4}
+
+/* ── 舞台 ─────────────────────────────────────────────── */
+.stage{display:flex;flex-direction:column;min-width:0;min-height:0}
+.tools{
+  padding:9px 14px;border-bottom:1px solid var(--rule);background:var(--card);
+  display:flex;flex-direction:column;gap:9px;
+}
+.tool-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tool-lab{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.16em;color:var(--ink3);text-transform:uppercase;white-space:nowrap}
+.chip{
+  border:1px solid var(--rule);background:var(--card);border-radius:3px;
+  padding:3px 9px;font-family:var(--f-mono);font-size:10.5px;cursor:pointer;
+  color:var(--ink3);transition:.15s;white-space:nowrap;
+}
+.chip:hover{border-color:var(--ink4)}
+.chip.on{color:var(--ink);border-color:var(--ink3);background:var(--sunk)}
+.chip.on[data-st="narrated"]{background:var(--gold-bg);border-color:var(--gold);color:var(--gold)}
+.chip.on[data-st="claim"]{background:var(--cinnabar-bg);border-color:var(--cinnabar);color:var(--cinnabar)}
+.chip.on[data-st="disputed"]{background:rgba(30,138,116,.1);border-color:var(--verdi);color:var(--verdi)}
+.chip small{font-size:9.5px;opacity:.7;margin-left:4px}
+
+.slider{flex:1;min-width:160px;accent-color:var(--gold);height:18px}
+.pos{font-family:var(--f-mono);font-size:11px;color:var(--ink);min-width:118px;white-space:nowrap}
+.pos b{color:var(--gold);font-weight:400}
+
+.canvas{flex:1;min-height:0;position:relative;background:
+  linear-gradient(var(--rule2) 1px,transparent 1px) 0 0/100% 28px,
+  linear-gradient(90deg,var(--rule2) 1px,transparent 1px) 0 0/28px 100%,var(--paper);
+}
+.canvas svg{width:100%;height:100%;display:block;cursor:grab}
+.canvas svg.drag{cursor:grabbing}
+.hint{
+  position:absolute;left:14px;bottom:12px;font-family:var(--f-mono);font-size:10px;
+  color:var(--ink4);pointer-events:none;line-height:1.8;
+}
+
+.edge{fill:none;transition:stroke-opacity .15s}
+.edge-lab{font-family:var(--f-mono);font-size:8.5px;fill:var(--ink3);pointer-events:none;transition:opacity .15s}
+.node{cursor:pointer}
+.node-shape{transition:filter .15s}
+.node:hover .node-shape{filter:brightness(.96)}
+.node.on .node-shape{stroke-width:2.6}
+.node-lab{font-family:var(--f-body);font-size:11.5px;fill:var(--ink);text-anchor:middle;pointer-events:none;font-weight:400}
+.node-sub{font-family:var(--f-mono);font-size:8.5px;fill:var(--ink3);text-anchor:middle;pointer-events:none}
+.dim{opacity:.16}
+
+/* ── 检视器 ───────────────────────────────────────────── */
+.insp-head{padding:14px 14px 12px;border-bottom:1px solid var(--rule2)}
+.insp-type{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.2em;color:var(--ink3);text-transform:uppercase}
+.insp-name{font-family:var(--f-display);font-weight:700;font-size:19px;letter-spacing:.03em;margin:5px 0 2px;line-height:1.4}
+.insp-id{font-family:var(--f-mono);font-size:10.5px;color:var(--ink3)}
+.fields{padding:2px 0 0}
+.f{display:flex;gap:10px;padding:6px 14px;border-bottom:1px solid var(--rule2);align-items:baseline}
+.f dt{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.1em;color:var(--ink3);width:92px;flex:0 0 92px;text-transform:uppercase}
+.f dd{margin:0;font-size:12px;min-width:0;word-break:break-word;flex:1}
+.f dd.mono{font-family:var(--f-mono);font-size:11px}
+.f dd.na{color:var(--ink4);font-family:var(--f-mono);font-size:11px}
+.ref{
+  border:0;background:none;padding:0;font:inherit;color:var(--gold);cursor:pointer;
+  border-bottom:1px solid rgba(168,117,21,.4);
+}
+.ref:hover{background:var(--gold-bg)}
+.sub{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.2em;color:var(--ink3);text-transform:uppercase;padding:16px 14px 8px;border-top:1px solid var(--rule2)}
+.pad{padding:0 14px 14px}
+.none{color:var(--ink4);font-size:12px;padding:0 14px 12px;font-style:italic}
+
+/* ── 认识论：墨色浓度阶梯 ─────────────────────────────── */
+.fact{
+  display:block;width:100%;text-align:left;border:1px solid transparent;
+  padding:6px 9px;margin-bottom:5px;border-radius:2px;font-size:12px;line-height:1.6;
+  background:var(--sunk);cursor:pointer;transition:.12s;
+}
+.fact:hover{filter:brightness(.975)}
+.fact .p{font-family:var(--f-mono);font-size:11px}
+.fact .h{font-family:var(--f-mono);font-size:9.5px;color:var(--ink3);margin-left:6px}
+.fact .fid{font-family:var(--f-mono);font-size:9.5px;color:var(--ink4);float:right;margin-left:8px}
+
+.st-narrated  {background:var(--gold-bg);border-color:rgba(168,117,21,.42);color:var(--ink)}
+.st-narrated .p{color:var(--gold)}
+.st-claim     {background:var(--card);border-color:rgba(199,48,79,.4);color:var(--ink)}
+.st-claim .p{color:var(--cinnabar)}
+.st-belief    {background:var(--card);border-color:var(--rule);border-style:dashed;color:var(--ink2)}
+.st-belief .p{color:var(--ink2)}
+.st-speculation{background:var(--card);border-color:var(--rule2);border-style:dashed;color:var(--ink3)}
+.st-speculation .p{color:var(--ink3)}
+.st-disputed  {border-color:rgba(30,138,116,.4);color:var(--ink2);
+  background:repeating-linear-gradient(135deg,transparent 0 5px,rgba(30,138,116,.11) 5px 6px)}
+.st-disputed .p{color:var(--verdi)}
+.st-inference {background:var(--card);border-color:var(--rule2);border-style:dotted;color:var(--ink3);font-style:italic}
+.st-inference .p{color:var(--ink3)}
+.st-dead{opacity:.45}
+.st-dead .obj{text-decoration:line-through;text-decoration-color:var(--ink4)}
+.fact.on{box-shadow:0 0 0 2px rgba(168,117,21,.35)}
+
+/* ── 弹层 ─────────────────────────────────────────────── */
+.sheet{
+  position:fixed;inset:0;background:rgba(27,24,48,.28);display:none;
+  align-items:center;justify-content:center;z-index:80;padding:24px;
+}
+.sheet.open{display:flex}
+.sheet-in{
+  background:var(--card);border-radius:4px;max-width:640px;width:100%;max-height:76vh;
+  display:flex;flex-direction:column;box-shadow:0 24px 60px -20px rgba(27,24,48,.4);
+}
+.sheet-h{padding:16px 18px;border-bottom:1px solid var(--rule);display:flex;align-items:center;gap:12px}
+.sheet-h b{font-family:var(--f-display);font-size:15px;font-weight:700;flex:1}
+.issue{padding:9px 18px;border-bottom:1px solid var(--rule2);font-size:12px;display:flex;gap:10px}
+.issue em{font-family:var(--f-mono);font-style:normal;font-size:10px;flex:0 0 auto;padding-top:2px}
+.issue.error em{color:var(--cinnabar)}
+.issue.warn em{color:var(--gold)}
+.issue code{font-family:var(--f-mono);font-size:11px;color:var(--ink2)}
+
+.stat{display:grid;grid-template-columns:1fr auto;gap:8px;padding:4px 14px;font-size:12px;align-items:center}
+.stat span{font-family:var(--f-mono);font-size:11px;color:var(--ink2)}
+.meter{height:4px;background:var(--rule2);border-radius:2px;overflow:hidden;grid-column:1/-1;margin-bottom:4px}
+.meter i{display:block;height:100%;background:var(--gold)}
+
+@media (max-width:1180px){
+  .body{grid-template-columns:220px 1fr 300px}
+}
+@media (max-width:920px){
+  body{overflow:auto}
+  .app{height:auto}
+  .body{grid-template-columns:1fr}
+  .rail,.insp{border:0;border-bottom:1px solid var(--rule)}
+  .canvas{height:62vh}
+  .scroll{max-height:320px}
+}
+@media (prefers-reduced-motion:reduce){*{transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="bar">
+    <span class="brand">记忆图查看器</span>
+    <span class="schema" id="schema-tag">—</span>
+    <span class="bar-sp"></span>
+    <input class="search" id="search" type="search" placeholder="搜索 id、名称、别名、谓词…" aria-label="搜索记录">
+    <button class="btn" id="btn-stats" type="button">统计</button>
+    <button class="btn" id="btn-load" type="button">载入数据集</button>
+    <button class="badge ok" id="badge" type="button">—</button>
+    <input type="file" id="file" accept=".json,application/json" hidden>
+  </header>
+
+  <div class="body">
+    <nav class="rail">
+      <p class="kicker">记录类型</p>
+      <div class="tabs" id="tabs"></div>
+      <div class="scroll"><div class="list" id="list"></div></div>
+    </nav>
+
+    <section class="stage">
+      <div class="tools">
+        <div class="tool-row">
+          <span class="tool-lab">读到</span>
+          <input class="slider" id="slider" type="range" min="1" max="80" value="80" aria-label="叙述位置">
+          <span class="pos" id="pos">第 1 章 第 <b>80</b> 段</span>
+          <button class="chip on" id="chip-all" type="button">读完全章</button>
+        </div>
+        <div class="tool-row">
+          <span class="tool-lab">状态</span>
+          <span id="chips"></span>
+        </div>
+        <div class="tool-row">
+          <span class="tool-lab">图层</span>
+          <button class="chip on" data-layer="kinds" type="button">类型节点</button>
+          <button class="chip" data-layer="isa" type="button">isa 边</button>
+          <button class="chip" data-layer="episodes" type="button">场景节点</button>
+          <button class="chip" data-layer="labels" type="button">边标签</button>
+          <span class="bar-sp"></span>
+          <button class="chip" id="relayout" type="button">重新布局</button>
+        </div>
+      </div>
+      <div class="canvas">
+        <svg id="svg" role="img" aria-label="记忆图">
+          <defs>
+            <marker id="a-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#8b87a3"></path></marker>
+            <marker id="a-gold" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#a87515"></path></marker>
+            <marker id="a-cin" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#c7304f"></path></marker>
+            <marker id="a-ver" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#1e8a74"></path></marker>
+          </defs>
+          <g id="vp">
+            <g id="edges"></g>
+            <g id="nodes"></g>
+          </g>
+        </svg>
+        <p class="hint">拖节点可固定位置 · 拖空白平移 · 滚轮缩放 · 圆＝continuous 六边＝functional 方＝nominal 虚线＝provisional／Kind</p>
+      </div>
+    </section>
+
+    <aside class="insp">
+      <div class="scroll" id="insp"></div>
+    </aside>
+  </div>
+</div>
+
+<div class="sheet" id="sheet">
+  <div class="sheet-in">
+    <div class="sheet-h"><b id="sheet-title">—</b><button class="btn" id="sheet-close" type="button">关闭</button></div>
+    <div class="scroll" id="sheet-body"></div>
+  </div>
+</div>
+
+<script type="application/json" id="dataset">
+{"memory":{"schema":"nbook.novel-memory/v4-spike","provenance":{"method":"人工通读手工装填，不是抽取管线输出","model":"memory-model-v4.md 第 5、6 节","sourceText":"../t01-novel-understanding-spike/evidences/chapter-001-source-normalized.txt","sourceNormalization":"chapter-source-normalization/v1，文件第 N 行即第 N 段","companion":"evidences/chapter-01-beats.json 是同一章的另一半（正文怎么切）。时刻的真源在那个文件里，本文件的 timeRef 按 id 引用它；主体 id 两边必须一致，scripts/build-viewer.ts 会核对","note":"本文件不构成任何召回率或准确率证据。v2 版本（nbook.novel-memory/v2-spike，8 个 Episode、26 条 Fact）已按 v4 第 11 节 W6 的倾向重建，不是迁移——v2 的 Episode 与 v4 的 Beat 不是同一个尺度，逐条搬运没有意义"},"chapter":1,"chapterTitle":"反派魔法少女","paragraphCount":77,"facets":{"note":"库内粗分面，不是内容。我们贴的标签，没有来源也没有叙述位置，只用来给查看器分组。与下面的 kinds 严格分开——见 findings 第 4 条","values":["人物","身体","物品","地点","概念"]},"kinds":[{"id":"K_fox_girl","name":"狐女","note":"第 11 段「一只娇小的金毛狐女」","category":"body"},{"id":"K_codex","name":"典籍","note":"第 8 段「这本飘浮在半空中的黑色古书」","category":"item"},{"id":"K_sapient","name":"智慧体","note":"文本从没说过它有自我意识。这个类只能由读者推断挂上去，且按第 5.2 节不能反过来当推理前提","category":"character"},{"id":"K_candidate","name":"适格者","note":"第 30、31 段古书自称在找的那种人","category":"character"},{"id":"K_star_envoy","name":"星界使者","note":"第 45 段古书的自我定位","category":"character"},{"id":"K_magical_girl","name":"魔法少女","note":"第 67 段","category":"character"},{"id":"K_villain_mg","name":"反派魔法少女","note":"第 1 段章标题就出现了，正文第 64 段才由古书说出","category":"character"},{"id":"K_oudou","name":"王道系","note":"第 69 段古书说这一款魔法少女是王道系的","category":"concept"},{"id":"K_creator","name":"造物主","note":"第 67 段，只有古书提过一次","category":"character"}],"entities":[{"id":"su_tianqing","label":"苏天晴","note":"库内标签不是读者知道的名字。读者知道的名字由 (su_tianqing, 专名) 这个槽在某个叙述位置上求值得到"},{"id":"codex","label":"黑色古书","intro":[{"at":12,"text":"一本浮在半空的黑色古书，能以低沉的声音说话。来历不明。"},{"at":32,"text":"墨丘利秘典。自称从星空彼岸而来，为寻找它最优秀的适格者。"}],"note":"第 5.1 节那两条介绍的出处。只存一份全局介绍，读到第 12 段的检索就会泄漏第 30 段才揭晓的专名"},{"id":"body_fox","label":"这具狐女身体","intro":[{"at":8,"text":"镜子里那道陌生的娇小身影。是谁不清楚。"},{"at":12,"text":"一只娇小的金毛狐女：金色长发、毛茸茸的兽耳、白皙的肌肤、背后一只炸毛的大尾巴。"}],"note":"身体是主体。苏天晴与这具身体是两个节点，「她居于其中」是一条读者推断，不是默认前提"},{"id":"body_prev","label":"原来的身体","note":"第 73 段她想回去的那具。本章只有这一处提及"},{"id":"tainai","label":"太奶","note":"第 16 段，猝死前听见她说话。文本没说她是活人还是幻觉"},{"id":"contract","label":"那份契约"},{"id":"star_beyond","label":"星空彼岸","note":"只由古书说出，叙述者一次也没提"},{"id":"room","label":"昏暗的房间"},{"id":"noodle_stall","label":"街边面摊"},{"id":"task_set","label":"那一整套任务"}],"predicates":[{"id":"P_proper_name","name":"专名","cardinality":"single","volatility":"low","note":"正式名字。与「称呼」分开，因为查看器要用它当揭晓前后的显示名"},{"id":"P_appellation","name":"称呼","cardinality":"multi","volatility":"low","note":"文本用来指称它的说法，可以有很多个"},{"id":"P_kind","name":"类","cardinality":"multi","volatility":"low","note":"值指向一个类。文本说出来的类别才走这里，库内粗分面走 entity.facet"},{"id":"P_voice","name":"声音","cardinality":"single","volatility":"low"},{"id":"P_hair","name":"发色","cardinality":"single","volatility":"low"},{"id":"P_ear","name":"耳型","cardinality":"single","volatility":"low","note":"第 5.3 节的例子。耳朵当前是耷拉还是竖起不建槽，那个每一拍都在变"},{"id":"P_ear_count","name":"耳朵数量","cardinality":"single","volatility":"low"},{"id":"P_skin","name":"肤色","cardinality":"single","volatility":"low"},{"id":"P_features","name":"五官","cardinality":"single","volatility":"low"},{"id":"P_tail","name":"尾巴","cardinality":"multi","volatility":"low","note":"基数被迫写成 multi，理由不正当——它只有一条尾巴。写 multi 是为了让第 12 段的外观和第 18 段的触感并存，而不是被判成竞争。见 findings 第 3 条"},{"id":"P_build","name":"体型","cardinality":"single","volatility":"low"},{"id":"P_foot","name":"脚","cardinality":"single","volatility":"low"},{"id":"P_wearing","name":"穿着","cardinality":"single","volatility":"medium","note":"在小说里穿着换得比发色勤。本章只有一条披露，建槽属于边界判断"},{"id":"P_prev_owner","name":"原来的主人","cardinality":"single","volatility":"low"},{"id":"P_inhabits","name":"居于哪具身体","cardinality":"single","volatility":"low"},{"id":"P_cause_of_death","name":"死因","cardinality":"single","volatility":"low"},{"id":"P_prev_work","name":"前世的工作状况","cardinality":"single","volatility":"medium"},{"id":"P_kin","name":"亲属","cardinality":"multi","volatility":"low"},{"id":"P_locomotion","name":"行动方式","cardinality":"single","volatility":"low"},{"id":"P_origin","name":"来处","cardinality":"single","volatility":"low"},{"id":"P_purpose","name":"目的","cardinality":"single","volatility":"low"},{"id":"P_role_to_su","name":"对苏天晴的身份","cardinality":"single","volatility":"low","note":"宾语烧进谓词名里，与第 5.4 节的「(爱丽丝, 对罗兰的态度)」同一种写法"},{"id":"P_attitude_feet","name":"对小脚的态度","cardinality":"single","volatility":"low"},{"id":"P_wish_claim","name":"主张的通用愿望","cardinality":"multi","volatility":"low"},{"id":"P_party","name":"契约相对方","cardinality":"multi","volatility":"low"},{"id":"P_content","name":"契约内容","cardinality":"single","volatility":"low"},{"id":"P_state","name":"契约状态","cardinality":"single","volatility":"medium","note":"整章唯一一个在同一个时刻内部改了值的槽。见 findings 第 2 条"},{"id":"P_task_giver","name":"任务的定制者","cardinality":"single","volatility":"low"},{"id":"P_task_purpose","name":"任务的用途","cardinality":"single","volatility":"low"},{"id":"P_death_rate","name":"死亡率","cardinality":"single","volatility":"low"},{"id":"P_genre_shape","name":"故事里的走向","cardinality":"single","volatility":"low"},{"id":"P_prospect","name":"在王道故事里的处境","cardinality":"single","volatility":"low"}],"slots":[{"id":"S_su_name","subject":{"type":"entity","id":"su_tianqing"},"predicate":"P_proper_name"},{"id":"S_su_voice","subject":{"type":"entity","id":"su_tianqing"},"predicate":"P_voice"},{"id":"S_su_kind","subject":{"type":"entity","id":"su_tianqing"},"predicate":"P_kind"},{"id":"S_su_inhabits","subject":{"type":"entity","id":"su_tianqing"},"predicate":"P_inhabits","note":"第 7 节那条推断落在这个槽上"},{"id":"S_su_cod","subject":{"type":"entity","id":"su_tianqing"},"predicate":"P_cause_of_death"},{"id":"S_su_prev_work","subject":{"type":"entity","id":"su_tianqing"},"predicate":"P_prev_work"},{"id":"S_su_kin","subject":{"type":"entity","id":"su_tianqing"},"predicate":"P_kin"},{"id":"S_su_feet","subject":{"type":"entity","id":"su_tianqing"},"predicate":"P_attitude_feet"},{"id":"S_su_wish","subject":{"type":"entity","id":"su_tianqing"},"predicate":"P_wish_claim"},{"id":"S_codex_name","subject":{"type":"entity","id":"codex"},"predicate":"P_proper_name"},{"id":"S_codex_appel","subject":{"type":"entity","id":"codex"},"predicate":"P_appellation"},{"id":"S_codex_kind","subject":{"type":"entity","id":"codex"},"predicate":"P_kind"},{"id":"S_codex_voice","subject":{"type":"entity","id":"codex"},"predicate":"P_voice"},{"id":"S_codex_locomotion","subject":{"type":"entity","id":"codex"},"predicate":"P_locomotion"},{"id":"S_codex_origin","subject":{"type":"entity","id":"codex"},"predicate":"P_origin"},{"id":"S_codex_purpose","subject":{"type":"entity","id":"codex"},"predicate":"P_purpose","note":"全章唯一一处「认识论并存」"},{"id":"S_codex_role","subject":{"type":"entity","id":"codex"},"predicate":"P_role_to_su"},{"id":"S_body_appel","subject":{"type":"entity","id":"body_fox"},"predicate":"P_appellation"},{"id":"S_body_kind","subject":{"type":"entity","id":"body_fox"},"predicate":"P_kind"},{"id":"S_body_hair","subject":{"type":"entity","id":"body_fox"},"predicate":"P_hair"},{"id":"S_body_ear","subject":{"type":"entity","id":"body_fox"},"predicate":"P_ear"},{"id":"S_body_earcount","subject":{"type":"entity","id":"body_fox"},"predicate":"P_ear_count"},{"id":"S_body_skin","subject":{"type":"entity","id":"body_fox"},"predicate":"P_skin"},{"id":"S_body_features","subject":{"type":"entity","id":"body_fox"},"predicate":"P_features"},{"id":"S_body_tail","subject":{"type":"entity","id":"body_fox"},"predicate":"P_tail"},{"id":"S_body_build","subject":{"type":"entity","id":"body_fox"},"predicate":"P_build"},{"id":"S_body_foot","subject":{"type":"entity","id":"body_fox"},"predicate":"P_foot"},{"id":"S_body_wearing","subject":{"type":"entity","id":"body_fox"},"predicate":"P_wearing"},{"id":"S_body_prev_owner","subject":{"type":"entity","id":"body_fox"},"predicate":"P_prev_owner"},{"id":"S_bprev_appel","subject":{"type":"entity","id":"body_prev"},"predicate":"P_appellation"},{"id":"S_tainai_appel","subject":{"type":"entity","id":"tainai"},"predicate":"P_appellation"},{"id":"S_creator_appel","subject":{"type":"kind","id":"K_creator"},"predicate":"P_appellation"},{"id":"S_creator_kind","subject":{"type":"kind","id":"K_creator"},"predicate":"P_kind"},{"id":"S_contract_appel","subject":{"type":"entity","id":"contract"},"predicate":"P_appellation"},{"id":"S_contract_party","subject":{"type":"entity","id":"contract"},"predicate":"P_party"},{"id":"S_contract_content","subject":{"type":"entity","id":"contract"},"predicate":"P_content"},{"id":"S_contract_state","subject":{"type":"entity","id":"contract"},"predicate":"P_state"},{"id":"S_mg_appel","subject":{"type":"kind","id":"K_magical_girl"},"predicate":"P_appellation"},{"id":"S_mg_kind","subject":{"type":"kind","id":"K_magical_girl"},"predicate":"P_kind"},{"id":"S_mg_death_rate","subject":{"type":"kind","id":"K_magical_girl"},"predicate":"P_death_rate"},{"id":"S_vmg_appel","subject":{"type":"kind","id":"K_villain_mg"},"predicate":"P_appellation"},{"id":"S_vmg_prospect","subject":{"type":"kind","id":"K_villain_mg"},"predicate":"P_prospect"},{"id":"S_oudou_appel","subject":{"type":"kind","id":"K_oudou"},"predicate":"P_appellation"},{"id":"S_oudou_shape","subject":{"type":"kind","id":"K_oudou"},"predicate":"P_genre_shape"},{"id":"S_star_appel","subject":{"type":"entity","id":"star_beyond"},"predicate":"P_appellation"},{"id":"S_room_appel","subject":{"type":"entity","id":"room"},"predicate":"P_appellation"},{"id":"S_stall_appel","subject":{"type":"entity","id":"noodle_stall"},"predicate":"P_appellation"},{"id":"S_task_appel","subject":{"type":"entity","id":"task_set"},"predicate":"P_appellation"},{"id":"S_task_giver","subject":{"type":"entity","id":"task_set"},"predicate":"P_task_giver"},{"id":"S_task_purpose","subject":{"type":"entity","id":"task_set"},"predicate":"P_task_purpose"}],"disclosures":[{"id":"D01","slot":"S_vmg_appel","value":{"t":"literal","v":"反派魔法少女"},"source":{"channel":"author","holder":null,"hedge":"plain"},"at":1,"timeRef":null,"note":"章标题。故事外的 Beat 照样产生披露——读者在第 1 段就读到了这个词，比第 64 段古书说出契约内容早 63 段。第 8 节第五条的实物"},{"id":"D02","slot":"S_su_name","value":{"t":"literal","v":"苏天晴"},"source":{"channel":"speech","holder":"su_tianqing","hedge":"plain"},"at":6,"timeRef":"M_a","note":"她自己报的名"},{"id":"D03","slot":"S_su_voice","value":{"t":"literal","v":"清脆悦耳的女声"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":7,"timeRef":"M_a"},{"id":"D04","slot":"S_codex_voice","value":{"t":"literal","v":"低沉的、仿佛来自遥远彼方的言语"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":7,"timeRef":"M_a"},{"id":"D05","slot":"S_room_appel","value":{"t":"literal","v":"昏暗的房间"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":7,"timeRef":"M_a"},{"id":"D06","slot":"S_su_name","value":{"t":"literal","v":"苏天晴"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":8,"timeRef":"M_a","note":"印证 D02：同槽同值，来源通道不同（角色说出口 / 叙述者）。「她自称苏天晴」到「叙述者也这么叫她」是两件事"},{"id":"D07","slot":"S_codex_appel","value":{"t":"literal","v":"黑色古书"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":8,"timeRef":"M_a"},{"id":"D08","slot":"S_codex_kind","value":{"t":"kind","id":"K_codex"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":8,"timeRef":"M_a"},{"id":"D09","slot":"S_codex_locomotion","value":{"t":"literal","v":"飘浮在半空中"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":8,"timeRef":"M_a"},{"id":"D10","slot":"S_body_appel","value":{"t":"literal","v":"一道陌生的娇小身影"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":8,"timeRef":"M_a","note":"「陌生」是这条披露里最有用的一个字：它是第 7 节那条推断的第一处支持"},{"id":"D11","slot":"S_body_build","value":{"t":"literal","v":"娇小"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":8,"timeRef":"M_a"},{"id":"D12","slot":"S_body_hair","value":{"t":"literal","v":"灿烂的金色长发，垂落在肩膀后背"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":9,"timeRef":"M_a"},{"id":"D13","slot":"S_body_ear","value":{"t":"literal","v":"毛茸茸的耳朵，长在头顶"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":9,"timeRef":"M_a","note":"同一段里的「耷拉」不进这个槽——耳朵姿态每一拍都在变，按第 5.3 节不建槽"},{"id":"D14","slot":"S_body_features","value":{"t":"literal","v":"精致的五官与眼眸"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":9,"timeRef":"M_a"},{"id":"D15","slot":"S_body_skin","value":{"t":"literal","v":"白皙"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":10,"timeRef":"M_a"},{"id":"D16","slot":"S_body_kind","value":{"t":"kind","id":"K_fox_girl"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":11,"timeRef":"M_a"},{"id":"D16b","slot":"S_body_appel","value":{"t":"literal","v":"一只娇小的金毛狐女"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":11,"timeRef":"M_a","note":"与 D16 同一句原文，却是两条披露：一条给称呼，一条给类。读者在这一段之前只有第 8 段那个「一道陌生的娇小身影」，节点在这里当场改名"},{"id":"D17","slot":"S_body_tail","value":{"t":"literal","v":"背后一只正在炸毛的大尾巴"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":12,"timeRef":"M_a"},{"id":"D18","slot":"S_su_prev_work","value":{"t":"literal","v":"连续三个夜班后刚下班"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":16,"timeRef":"M_nightshifts","note":"整份数据里最要紧的一条：它所在的 Beat（B05）停在 M_b（面摊那一刻），而它说的那件事发生在 M_nightshifts。Beat.时刻 与 披露.时间指示 在同一个 Beat 上取了不同的值——第 5.7.3 节「两个挂钩，一种节点」的实物"},{"id":"D19","slot":"S_stall_appel","value":{"t":"literal","v":"街边面摊"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":16,"timeRef":"M_b"},{"id":"D20","slot":"S_tainai_appel","value":{"t":"literal","v":"太奶"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":16,"timeRef":"M_b"},{"id":"D21","slot":"S_su_kin","value":{"t":"ref","id":"tainai"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":16,"timeRef":null,"note":"时间指示为空：亲属关系不系于某一刻。文本没说太奶当时是活人还是回光返照，模型也不替它决定"},{"id":"D22","slot":"S_su_inhabits","value":{"t":"ref","id":"body_fox"},"source":{"channel":"reader_inference","holder":null,"hedge":"plain"},"at":16,"timeRef":"M_a","inferredFrom":["S_body_appel","S_body_kind","S_body_tail","S_su_prev_work"],"note":"第 7 节那条推断。四处支持横跨三个 Beat（B02、B03、B05），没有一处是直说的：读到第 15 段它还立不住，第 16 段才成立。第 41 段的 S_body_prev_owner 是第五处支持，做梦阶段重跑时会把它一起收进来——推断自指向槽而不是指向披露，就是为了让这种重跑成立"},{"id":"D23","slot":"S_body_earcount","value":{"t":"number","v":2,"unit":"只"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":18,"timeRef":"M_a"},{"id":"D24","slot":"S_body_tail","value":{"t":"literal","v":"触感无比柔顺，被薅时的摩挲拉拽感从尾巴尖直冲天灵盖"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":18,"timeRef":"M_a","note":"与 D17 同槽、同时刻、同来源通道，值却不同。按第 5.6 节那张表这是「竞争」，可它们根本不打架——一条讲外观一条讲触感。见 findings 第 3 条"},{"id":"D25","slot":"S_su_kind","value":{"t":"kind","id":"K_fox_girl"},"source":{"channel":"thought","holder":"su_tianqing","hedge":"plain"},"at":26,"timeRef":"M_a","note":"「重生成了一只金毛狐女」。她自己认定的，不是叙述者说的"},{"id":"D26","slot":"S_codex_purpose","value":{"t":"literal","v":"在找某个特定的人"},"source":{"channel":"narrator","holder":null,"hedge":"hedged"},"at":29,"timeRef":"M_a","note":"「像是在思考……到底是不是自己要找的人」。叙述者带保留。与 D28 构成全章唯一一处「认识论并存」：同一个槽、同一个时刻、值不同、来源通道不同，两条并存，不是冲突"},{"id":"D27","slot":"S_codex_name","value":{"t":"literal","v":"墨丘利秘典"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":30,"timeRef":"M_a","note":"专名揭晓。在这一段之前，读者对它的唯一称呼是第 8 段的「黑色古书」"},{"id":"D28","slot":"S_codex_purpose","value":{"t":"literal","v":"寻找它最优秀的适格者"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":30,"timeRef":"M_a"},{"id":"D29","slot":"S_codex_origin","value":{"t":"ref","id":"star_beyond"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":30,"timeRef":"M_a"},{"id":"D30","slot":"S_star_appel","value":{"t":"literal","v":"星空彼岸"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":30,"timeRef":null,"note":"全章唯一的地点披露里，这一个从头到尾只有古书说过，叙述者一次都没提"},{"id":"D31","slot":"S_codex_kind","value":{"t":"kind","id":"K_sapient"},"source":{"channel":"reader_inference","holder":null,"hedge":"plain"},"at":30,"timeRef":"M_a","inferredFrom":["S_codex_voice","S_codex_purpose","S_codex_origin"],"note":"它会说话、有目的、报得出来处。但文本从没说它有自我意识，它也可能只是个复读机——所以这条是推断，而且按第 5.2 节它不能反过来当前提去推别的事"},{"id":"D32","slot":"S_su_kind","value":{"t":"kind","id":"K_candidate"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":31,"timeRef":"M_a","note":"「而那个人就是你，苏天晴小姐。」只有古书这么说，叙述者没证实"},{"id":"D33","slot":"S_body_wearing","value":{"t":"literal","v":"宽松的睡裙"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":33,"timeRef":"M_a"},{"id":"D34","slot":"S_body_foot","value":{"t":"literal","v":"白皙软嫩、带着红晕的小脚"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":34,"timeRef":"M_a"},{"id":"D35","slot":"S_su_feet","value":{"t":"literal","v":"小脚是世界上最美好的瑰宝"},"source":{"channel":"speech","holder":"su_tianqing","hedge":"plain"},"at":39,"timeRef":null,"note":"时间指示为空：这是她一贯的态度，不是这一刻才成立的"},{"id":"D36","slot":"S_body_prev_owner","value":{"t":"special","v":"UNKNOWN"},"source":{"channel":"thought","holder":"su_tianqing","hedge":"plain"},"at":41,"timeRef":"M_a","note":"「这本书知道自己并不是这副身体原来的主人」。UNKNOWN 是文本明确留白：确实有一个原主，是谁本章不说。与「库里没有这条披露」是两回事"},{"id":"D37","slot":"S_codex_kind","value":{"t":"kind","id":"K_star_envoy"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":45,"timeRef":"M_a"},{"id":"D38","slot":"S_codex_role","value":{"t":"literal","v":"引导苏天晴走上完美的生活"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":45,"timeRef":null},{"id":"D39","slot":"S_contract_appel","value":{"t":"literal","v":"一个小小的契约"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":45,"timeRef":"M_a"},{"id":"D40","slot":"S_contract_party","value":{"t":"ref","id":"su_tianqing"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":45,"timeRef":"M_a"},{"id":"D41","slot":"S_contract_party","value":{"t":"ref","id":"codex"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":45,"timeRef":"M_a"},{"id":"D42","slot":"S_contract_state","value":{"t":"literal","v":"尚未签订"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":45,"timeRef":"M_a"},{"id":"D43","slot":"S_codex_appel","value":{"t":"literal","v":"小破书"},"source":{"channel":"speech","holder":"su_tianqing","hedge":"plain"},"at":50,"timeRef":"M_a","note":"称呼是多值的，所以它不与第 8 段的「黑色古书」竞争。专名是单值的，所以第 30 段的「墨丘利秘典」才是显示名"},{"id":"D44","slot":"S_su_wish","value":{"t":"literal","v":"取之不尽的财富"},"source":{"channel":"speech","holder":"su_tianqing","hedge":"plain"},"at":54,"timeRef":null},{"id":"D45","slot":"S_su_wish","value":{"t":"literal","v":"变成萝莉"},"source":{"channel":"speech","holder":"su_tianqing","hedge":"plain"},"at":54,"timeRef":null},{"id":"D46","slot":"S_contract_state","value":{"t":"literal","v":"成立"},"source":{"channel":"speech","holder":"su_tianqing","hedge":"plain"},"at":60,"timeRef":"M_a","note":"与 D42 同槽、同时刻（都是 M_a）、值不同。文本里这明摆着是先后，可 M_a 是一整场对话的区间，第 5.6 节的「接续」要求时刻可判定为不相交，这里判不出来。见 findings 第 2 条"},{"id":"D47","slot":"S_contract_content","value":{"t":"literal","v":"反派魔法少女"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":64,"timeRef":"M_a"},{"id":"D48","slot":"S_vmg_appel","value":{"t":"literal","v":"反派魔法少女"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":64,"timeRef":null,"note":"印证 D01：同槽同值，来源不同（作者 / 古书说出口）。两条隔了 63 段"},{"id":"D49","slot":"S_su_kind","value":{"t":"kind","id":"K_magical_girl"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":67,"timeRef":"M_today","note":"「从今天开始，你就将成为魔法少女」。时间指示指向 M_today——但原话是「从今天开始」，一个开口向后的区间，模型只存得下一个时刻。见 findings 第 8 条"},{"id":"D50","slot":"S_mg_appel","value":{"t":"literal","v":"魔法少女"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":67,"timeRef":null},{"id":"D51","slot":"S_creator_appel","value":{"t":"literal","v":"造物主"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":67,"timeRef":null},{"id":"D51b","slot":"S_creator_kind","value":{"t":"kind","id":"K_creator"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":67,"timeRef":null,"note":"「造物主」这三个字在原文里一次出手同时干了两件事：给这个主体一个称呼，也给了它一个类别。第一章有三个名词是这样（造物主、魔法少女、反派魔法少女），每一个都得建两个节点——见 findings 第 5 条"},{"id":"D52","slot":"S_task_appel","value":{"t":"literal","v":"一整套任务"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":67,"timeRef":"M_a"},{"id":"D53","slot":"S_task_giver","value":{"t":"kind","id":"K_creator"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":67,"timeRef":null},{"id":"D54","slot":"S_task_purpose","value":{"t":"literal","v":"帮助她逐步走上反派魔法少女的顶点"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":67,"timeRef":null},{"id":"D55","slot":"S_mg_death_rate","value":{"t":"number","v":90,"unit":"%"},"source":{"channel":"speech","holder":"su_tianqing","hedge":"hedged"},"at":68,"timeRef":null,"note":"原话是问句（「是那种死亡率高达90%的高危职业吗？！」），所以保留度是带保留。古书的回答绕开了这个数字，没否认也没确认——求值时这条落在「悬而未决」里"},{"id":"D56","slot":"S_mg_kind","value":{"t":"kind","id":"K_oudou"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":69,"timeRef":null},{"id":"D57","slot":"S_oudou_appel","value":{"t":"literal","v":"王道系"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":69,"timeRef":null},{"id":"D58","slot":"S_vmg_prospect","value":{"t":"literal","v":"纯纯的找死"},"source":{"channel":"speech","holder":"su_tianqing","hedge":"plain"},"at":70,"timeRef":null},{"id":"D59","slot":"S_oudou_shape","value":{"t":"literal","v":"魔法少女面对强敌逐渐成长，然后喊着友情和羁绊冲上去把反派干碎"},"source":{"channel":"thought","holder":"su_tianqing","hedge":"plain"},"at":72,"timeRef":null,"note":"全章唯一一条出自说明 Beat（B22）的披露。时间指示必须为空——一般规律不在某一刻为真，这和 B22 本身没有时刻是同一个理由的两面"},{"id":"D60","slot":"S_su_cod","value":{"t":"literal","v":"急性心肌梗死"},"source":{"channel":"thought","holder":"su_tianqing","hedge":"hedged"},"at":73,"timeRef":"M_b","note":"全书这条信息的唯一来源，是她慌乱中的自我推测，不是诊断。第 8 节第六条那条标杆样例"},{"id":"D61","slot":"S_bprev_appel","value":{"t":"literal","v":"原来的身体"},"source":{"channel":"thought","holder":"su_tianqing","hedge":"plain"},"at":73,"timeRef":null},{"id":"D62","slot":"S_codex_name","value":{"t":"literal","v":"墨丘利秘典"},"source":{"channel":"system","holder":null,"hedge":"plain"},"at":74,"timeRef":"M_a","note":"印证 D27。这一条的价值在来源：第 30 段是古书自称，这一条是系统通知——两个不同的通道说了同一个名字，专名从「它自己说的」升级成了两处支持"},{"id":"D63","slot":"S_contract_state","value":{"t":"literal","v":"成立"},"source":{"channel":"system","holder":null,"hedge":"plain"},"at":76,"timeRef":"M_a","note":"印证 D46：同槽同值、来源通道不同（角色说出口 / 系统通知）"},{"id":"D64","slot":"S_su_kind","value":{"t":"kind","id":"K_villain_mg"},"source":{"channel":"system","holder":null,"hedge":"plain"},"at":77,"timeRef":"M_today","note":"「走上反派魔法少女的道路吧，苏天晴。」形式上是祈使句，功能上是系统在宣告她的类别。这一条是本章的落幕，也是第 1 段那个剧透在正文里兑现的地方"}],"findings":["77 段正文装出 9 个类、14 个主体、32 个谓词、50 个槽、66 条披露。密度极不均：第 7 至 11 段五段产出 15 条（外貌描写那一片），第 19 至 25 段连续七段一条都没有。","24 个 Beat 里有 5 个一条披露都不产出：B04（古书再次出声，她茫然）、B07（古书不解她为什么薅尾巴）、B15（她当场就签，古书凌乱）、B17（古书短暂错乱）、B21（她突然有点后悔）。五个全是在写情绪与反应——**推进剧情和产出披露是两回事**，一个 Beat 可以很重要却什么也不往图里存。这也说明 Beat 层不能省：这五段的内容只活在它们的一句话和原文里。","场内的状态变化被判成了「认识论并存」，于是求值给出一个明摆着错的答案。契约状态在第 45 段是「尚未签订」、第 60 段是「成立」，两条的时刻都是 M_a（整场对话是一个区间），值不同、来源通道不同，照第 5.6 节那张表正好落在「认识论并存」这一行——不是冲突，两条并存。结果读到第 77 段时，求值同时认为契约「尚未签订」和「成立」都为真。这不是精度问题，是答错了。出路只有一条：承认同一时刻内部叙述位置可以当次序用。需要拍板，记为 W11。","第 5.6 节那张表默认两个值互斥，可互不互斥由基数决定，而表里一个字都没提基数。不接基数就照表判，第一章会凭空判出三处「竞争」：她列的两个愿望（第 54 段「取之不尽的财富」和「变成萝莉」）、契约的两个相对方（第 45 段她和古书）、古书的两个称呼（「黑色古书」和「小破书」）。schema.ts 因此加了第六行「并列累加」——这不是新裁决，是把第 5.3 节已有的基数接进第 5.6 节。","接上一条，还有一种真的判错。第 12 段说尾巴「正在炸毛」，第 18 段说它「触感无比柔顺」，同槽、同时刻、同来源通道、值不同——照表是「竞争」，可它们一条讲外观一条讲触感，根本不打架。数据里只能把「尾巴」的基数写成多值绕过去，而它明明只有一条尾巴。**基数被用错了地方**：模型缺的是「同一个东西的多面描写」与「同一个位置的多个候选值」之间的区分。","五行关系表实际只用到三行。全章命中：印证 4 处、认识论并存 2 处、并列累加 7 处；竞争、接续、候选同指各 0 处。竞争和整套反驳机制在本章一次都没被演到——第一章还没到翻案的时候，所以这两样在这份数据上没有被验证过。","四处印证，每一处的价值都在「来源换了」而不在「又说了一遍」：专名苏天晴（第 6 段她自称 / 第 8 段叙述者）、专名墨丘利秘典（第 30 段自称 / 第 74 段系统通知）、契约成立（第 60 段她说 / 第 76 段系统通知）、反派魔法少女（第 1 段作者标题 / 第 64 段古书）。最后一处隔了 63 段。","66 条披露里只有 3 条带保留，而这 3 条恰好全落在同一类内容上：第 29 段叙述者揣测古书在想什么、第 68 段她问出的死亡率数字、第 73 段她对自己死因的猜测。求值到第 77 段，悬而未决的槽正好也是这三个——**保留度在这一章是唯一一个真正在起作用的分流器**，时刻一次都没能分出先后。","「类」在 v4 里装了两件事。「苏天晴是狐女」是第 26 段她自己认定的，有来源、有叙述位置、将来可能被推翻；「苏天晴是人物」文本从来没说过，是我们贴的分面。本文件把后者拆成 entity.facet 并标明它没有来源——但 v4 第 5.2 节没做这个区分。","同一个名词常常既要当类又要当主体，第一章有三个。「造物主」「魔法少女」「反派魔法少女」当类才能贴到主体身上（第 67、77 段），当主体才能挂自己的槽（魔法少女的「死亡率 90%」在第 68 段）。数据里只能各建两个节点，而 v4 没说这两者之间该不该有边、谁是谁的什么。记为 W10。","读者推断只有两条，一条比一条弱。(苏天晴, 居于哪具身体) 有四处支持横跨三个 Beat；(古书, 类) = 智慧体 只有三处，而且全是它自己的表现——文本从没说过它有自我意识，它也可能只是个复读机。两条都不能反过来当别的推断的前提，schema.ts 的 validate() 会把这条规则查出来。","时间指示与时刻的对不齐有三种，第一章各出现一次。一、Beat 的时刻和披露的时间指示不同：B05 停在 M_b，它的披露 D18 指向 M_nightshifts。二、时间指示是个开口向后的区间：第 67 段「从今天开始」，模型只存得下 M_today 这一个时刻，「从此以后」存不下。三、时间指示为空且必须为空：说明 Beat 产生的披露（D59）、一般态度（D35）、亲属关系（D21）都不发生在某一刻。","第 3 段的作者声明（「本书出场角色均已满18岁」）一条披露都不产生：它没有主体，也不指向虚构世界里的任何东西。与第 1 段的章标题恰好构成一对——同样是故事外的 Beat，一个剧透了 63 段之后的情节，一个什么也没进图。故事外不等于不产生披露，也不等于一定产生披露。","叙述位置切片真的会改名，而且两个主体各改一次。读到第 8 段，古书叫「黑色古书」、身体叫「一道陌生的娇小身影」；读到第 11 段身体改叫「一只娇小的金毛狐女」；读到第 30 段古书改叫「墨丘利秘典」。这不是查看器的效果，是「专名」和「称呼」两个槽在不同叙述位置上求值的结果。读到第 1 段时图上只有一个节点，而它正是那个剧透。"]},"beats":{"schema":"nbook.novel-beats/v4-spike","provenance":{"method":"人工通读手工拆分，不是抽取管线输出","model":"memory-model-v4.md 第 3 节","sourceText":"../../t01-novel-understanding-spike/evidences/chapter-001-source-normalized.txt","sourceNormalization":"chapter-source-normalization/v1，文件第 N 行即第 N 段","note":"本文件不构成任何召回率或准确率证据；它的用途是给 t03 的 S1 当对照答案，以及验证 v4 第 3 节的切分规则在真实正文上能不能落地"},"chapter":1,"chapterTitle":"反派魔法少女","entityLegend":{"note":"只是给本文件 holder 字段用的图例。主体的真源是 ../chapter-01.json 的 entities，两边的 id 必须一致，build-viewer.ts 会核对","su_tianqing":"苏天晴。自称此名的那个人，前世下夜班后猝死","codex":"黑色古书。第 30 段起揭晓专名为墨丘利秘典","body_fox":"金毛狐女的身体。苏天晴现在居于其中，原主本章未说明"},"moments":[{"id":"M_a","grain":"interval","label":null,"note":"第一章当下。房间里这一场连续对话发生的时刻，文本没有给它任何名字。它是一个区间，从第 5 段铺到第 77 段——所以它不能当相对时间词的锚点，见 v4 第 5.7.6 节"},{"id":"M_b","grain":"interval","label":null,"note":"回述那一场发生的时刻，面摊那一刻。文本管它叫「五分钟前」，但那是相对说法，按 v4 第 5.7.2 节只能进关系不能当 label"},{"id":"M_c","grain":"interval","label":null,"note":"古书第一次说那段开场白的时刻。正文里没有这一段——第 30、31 段明写是「重复」，原话在第 5 段之前就说过了。所以这是一个没有任何 Beat 停在上面、也不属于任何场的时刻，见 v4 第 5.7.6 节第二条"},{"id":"M_today","grain":"interval","label":null,"note":"第 67 段古书说的「今天」，包着当下那一刻的那一天。粒度是日，比 M_a 粗——粒度不是时刻的属性，是关系上单位的属性"},{"id":"M_nightshifts","grain":"interval","label":null,"note":"「连续三个夜班」那一段。它不是任何 Beat 停在的地方——B05 停在 M_b（面摊那一刻），这一段是 B05 产生的披露「她连上了三个夜班」指向的时刻。这是 v4 第 5.7.3 节「两个挂钩，一种节点」的实物：Beat.时刻 与 披露.时间指示 在同一个 Beat 上取了不同的值"}],"momentRelations":[{"subject":"M_b","predicate":"before","anchor":null,"offset":{"value":5,"unit":"分钟"},"at":16,"source":{"channel":"narrator","holder":null,"hedge":"plain"},"note":"「五分钟前」。锚点为空表示叙述当下，也就是第 16 段那一刻——不是这个 Beat 的时刻（B05 的时刻是 M_b 本身，写成锚点就成了「面摊比面摊早五分钟」）"},{"subject":"M_c","predicate":"before","anchor":null,"offset":{"value":2,"unit":"分钟"},"at":29,"source":{"channel":"narrator","holder":null,"hedge":"plain"},"note":"「两分钟前的开场白」。与上一条一起构成 v4 第 5.7.6 节那个对撞：两条都锚到 M_a 就会推出「面摊比开场白早 3 分钟」，锚到各自叙述位置只能推出「开场白至少比面摊晚 3 分钟」"},{"subject":"M_today","predicate":"contains","anchor":null,"offset":null,"at":67,"source":{"channel":"speech","holder":"codex","hedge":"plain"},"note":"「从今天开始」。包含关系没有偏移。来源是古书说出口，不是叙述者——同一个「今天」由不同人说出来是两条记录，规则 6"},{"subject":"M_nightshifts","predicate":"before","anchor":{"type":"moment","ref":"M_b"},"offset":null,"at":16,"source":{"channel":"narrator","holder":null,"hedge":"plain"},"note":"「结束了连续三个夜班后刚下班的自己坐在街边面摊上」。全章唯一一条锚点写死的关系——文本明确把夜班挂在面摊那一刻上，不是挂在叙述当下。偏移为空：「后刚下班」有先后没有距离，按第 5.7.4 节不编数字"}],"beats":[{"id":"B01","paragraphs":[1,4],"type":"paratext","sources":[{"channel":"author","holder":null,"hedge":"plain"}],"moment":null,"gist":"章标题「反派魔法少女」与作者的满18岁声明","note":"故事外，但仍向读者披露了「反派魔法少女」这个词——比正文第 64 段揭晓早了 60 段。第 1、2 段标题重复是归一化产物"},{"id":"B02","paragraphs":[5,8],"type":"narrative","sources":[{"channel":"speech","holder":"codex","hedge":"plain"},{"channel":"speech","holder":"su_tianqing","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"}],"moment":"M_a","gist":"古书问名，她报出苏天晴；她坐在床头看着浮空的黑色古书，从镜中瞥见陌生身影"},{"id":"B03","paragraphs":[9,12],"type":"description","sources":[{"channel":"narrator","holder":null,"hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"hedged"}],"moment":"M_a","gist":"这具身体：金色长发、兽耳、精致五官、白皙肌肤、炸毛大尾巴——一只娇小的金毛狐女","note":"全章披露密度最高的一段，一个 Beat 产出 6 条披露。第 12 段「这应该是一只乖巧可爱的」是叙述者带保留的评价，够不上建槽，因此按 v4 第 5.5 节「没有槽就没有披露」不产生任何披露，只活在原文里"},{"id":"B04","paragraphs":[13,15],"type":"narrative","sources":[{"channel":"speech","holder":"codex","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"}],"moment":"M_a","gist":"古书再次出声把她的注意力拽回，她仍然茫然"},{"id":"B05","paragraphs":[16,16],"type":"narrative","sources":[{"channel":"narrator","holder":null,"hedge":"plain"}],"moment":"M_b","gist":"三个夜班后在面摊吃面，听见太奶说话，回头看见她坐在藤椅上织围巾，随后胸口剧痛失去意识","note":"回述。全章唯一一处时刻切换，也是唯一一处硬边界由时刻切出来的地方"},{"id":"B06","paragraphs":[17,19],"type":"narrative","sources":[{"channel":"narrator","holder":null,"hedge":"plain"},{"channel":"thought","holder":"su_tianqing","hedge":"plain"}],"moment":"M_a","gist":"她薅了一把炸毛的尾巴，触感真实得让她耳朵竖起、全身绷直"},{"id":"B07","paragraphs":[20,22],"type":"narrative","sources":[{"channel":"speech","holder":"codex","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"},{"channel":"thought","holder":"codex","hedge":"plain"}],"moment":"M_a","gist":"古书不解她为什么薅自己的尾巴，心想不疼吗","note":"视角漂移第一处：第 21 段后半句是叙述者贴着古书写，第 22 段是古书的心声"},{"id":"B08","paragraphs":[23,27],"type":"narrative","sources":[{"channel":"speech","holder":"su_tianqing","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"},{"channel":"thought","holder":"su_tianqing","hedge":"plain"}],"moment":"M_a","gist":"她干咳掩饰尴尬制止古书说话，理清思绪：我重生了，重生成一只金毛狐女","note":"第 25 至 27 段人称切到第一人称"},{"id":"B09","paragraphs":[28,29],"type":"narrative","sources":[{"channel":"speech","holder":"su_tianqing","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"hedged"}],"moment":"M_a","gist":"她问「你是谁」；古书沉默良久，像是在判断她是不是自己要找的人","note":"视角漂移第二处：第 29 段「像是在思考」是叙述者带保留地揣测古书"},{"id":"B10","paragraphs":[30,32],"type":"narrative","sources":[{"channel":"speech","holder":"codex","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"}],"moment":"M_a","gist":"古书自称墨丘利秘典，从星空彼岸而来寻找最优秀的适格者，认定她就是那个人；她觉得这台词中二","note":"本章设定密度最高的一段。这三条设定全部出自古书自称，叙述者一条也没直陈证实——它只在上一段（第 29 段）带保留地给过一个自己的版本「是不是自己要找的人」，两条落在同一个槽上，构成 v4 第 5.6 节的「认识论并存」"},{"id":"B11","paragraphs":[33,35],"type":"narrative","sources":[{"channel":"narrator","holder":null,"hedge":"plain"},{"channel":"thought","holder":"su_tianqing","hedge":"plain"}],"moment":"M_a","gist":"她跳下床走到镜前，抬脚端详这只白嫩带红晕的小脚，自评完美"},{"id":"B12","paragraphs":[36,39],"type":"narrative","sources":[{"channel":"speech","holder":"codex","hedge":"plain"},{"channel":"speech","holder":"su_tianqing","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"}],"moment":"M_a","gist":"古书以为她满意这具身体、不解她为何盯着脚看；她答小脚是世上最美好的瑰宝"},{"id":"B13","paragraphs":[40,41],"type":"narrative","sources":[{"channel":"narrator","holder":null,"hedge":"plain"},{"channel":"thought","holder":"su_tianqing","hedge":"plain"}],"moment":"M_a","gist":"她一边搭话一边意识到：这本书知道她不是这具身体原来的主人","note":"支持「她不是原主」这条推断的第五处，也是本章最直接的一处"},{"id":"B14","paragraphs":[42,45],"type":"narrative","sources":[{"channel":"speech","holder":"codex","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"}],"moment":"M_a","gist":"古书快进到下一步：她是最佳适格者，它作为星界使者引导她，只需签一个小小的契约"},{"id":"B15","paragraphs":[46,49],"type":"narrative","sources":[{"channel":"speech","holder":"su_tianqing","hedge":"plain"},{"channel":"speech","holder":"codex","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"}],"moment":"M_a","gist":"她当场就签，古书凌乱，问她怎么不犹豫考虑"},{"id":"B16","paragraphs":[50,56],"type":"narrative","sources":[{"channel":"speech","holder":"su_tianqing","hedge":"plain"},{"channel":"speech","holder":"codex","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"}],"moment":"M_a","gist":"她严肃宣称世上最通用的两个愿望是取之不尽的财富和变成萝莉，而变成可爱狐狐本身就是最大的奖励","note":"七段一个 Beat，是全章最长的。来源在这七段里来回换了五次——这正是来源不能当切分依据的例子"},{"id":"B17","paragraphs":[57,58],"type":"narrative","sources":[{"channel":"narrator","holder":null,"hedge":"hedged"}],"moment":"M_a","gist":"古书短暂错乱，随即把话题拖回正题","note":"视角漂移第三处：第 58 段「好像有哪里很对，好像又根本不对」是叙述者贴着古书写，且带保留"},{"id":"B18","paragraphs":[59,63],"type":"narrative","sources":[{"channel":"speech","holder":"codex","hedge":"plain"},{"channel":"speech","holder":"su_tianqing","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"},{"channel":"thought","holder":"su_tianqing","hedge":"plain"}],"moment":"M_a","gist":"契约算成立，她不假思索地承认；随后才想起问契约内容，担心是奴隶契约","note":"如果作者在这里断章，一刀不会切到任何 Beat——好的断章点天然落在 Beat 边界上"},{"id":"B19","paragraphs":[64,67],"type":"narrative","sources":[{"channel":"speech","holder":"codex","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"},{"channel":"speech","holder":"su_tianqing","hedge":"plain"}],"moment":"M_a","gist":"契约内容是反派魔法少女；从今天起她将成为魔法少女，造物主给她定制了一整套任务"},{"id":"B20","paragraphs":[68,70],"type":"narrative","sources":[{"channel":"speech","holder":"su_tianqing","hedge":"plain"},{"channel":"speech","holder":"codex","hedge":"plain"}],"moment":"M_a","gist":"她指出魔法少女死亡率九成；古书说是王道系的那种；她说王道故事里当反派是纯纯找死"},{"id":"B21","paragraphs":[71,71],"type":"narrative","sources":[{"channel":"narrator","holder":null,"hedge":"plain"}],"moment":"M_a","gist":"她突然有点后悔了"},{"id":"B22","paragraphs":[72,72],"type":"exposition","sources":[{"channel":"thought","holder":"su_tianqing","hedge":"plain"}],"moment":null,"gist":"王道系是什么：魔法少女面对强敌逐渐成长，喊着友情和羁绊把反派干碎的那种故事","note":"全章唯一的说明 Beat。形式上是心声，功能上是作者借心声给读者解释概念——类型是说明、来源是心声，两维分开才装得下。它没有时刻，但夹在两个有时刻的 Beat 中间，是「场必须是区间不能是集合」的直接理由"},{"id":"B23","paragraphs":[73,73],"type":"narrative","sources":[{"channel":"thought","holder":"su_tianqing","hedge":"hedged"}],"moment":"M_a","gist":"她想能不能反悔、能不能送回原来的身体，觉得急性心肌梗死或许还有抢救机会","note":"「死因是急性心肌梗死」这条全书唯一的来源就在这里，是她慌乱中的自我推测，不是诊断"},{"id":"B24","paragraphs":[74,77],"type":"narrative","sources":[{"channel":"system","holder":null,"hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"}],"moment":"M_a","gist":"脑中依次响起秘典绑定成功、契约成立、走上反派魔法少女的道路；她欲哭无泪","note":"系统通知通道的唯一出处。第 75 段明写「脑子里响起的声音」，说话人从未出现，四个旧通道一个都装不下"}],"scenes":[{"id":"SC1","beats":["B02","B04"],"moment":"M_a","location":"昏暗的房间","pov":"su_tianqing","gist":"醒来，古书问名，她发现自己变成了狐女"},{"id":"SC2","beats":["B05","B05"],"moment":"M_b","location":"街边面摊","pov":"su_tianqing","gist":"回述：前世下夜班后在面摊猝死"},{"id":"SC3","beats":["B06","B24"],"moment":"M_a","location":"昏暗的房间","pov":"su_tianqing","povDrift":["B07","B09","B17"],"gist":"从薅尾巴到契约成立：她问出古书身份，看新身体，秒签契约，得知自己要当反派魔法少女"}],"findings":["三条场记录，但只有两个时刻。SC1 与 SC3 共享 M_a，是被回述打断的同一场戏——「是同一场」由共享时刻表达，不由场的身份表达。","第一章几乎就是一场戏：一个房间、一段连续时间、两个角色。t03 那次真实 S1 调用切出了 7 个窗口，它切的其实是 Beat，不是场。","24 个 Beat 覆盖全部 77 段，无重叠无空隙，平均 3.2 段。最长的 B16 有 7 段，最短的 B21、B22、B23 各 1 段。","硬边界在这一章只切出过两刀：B05 处时刻变，B22 处类型变。其余 21 处边界全是软边界（一句话概括不了）。","地点在这一章一次都没有切出边界——第 33 段「走到落地镜前」按不换地点处理，落地镜就在房间里。","视角漂移三处（B07、B09、B17），全部漂到古书身上。t03 那次 S1 给七个窗口全标了 pov 苏天晴，三处全漏。","类型分布：叙事 21、描写 1、说明 1、故事外 1。描写和说明各只有一个 Beat，但都是模型里不可替代的一类——B03 是披露密度最高的一段，B22 是「场必须是区间」的理由。","来源通道用到五个：作者、叙述者、角色说出口、角色心里想、系统通知都直接出现在正文里；第六个「读者推断」不出现在 Beat 上，它只出现在披露上。","三处视角漂移里只有 B07 能从字段算出来（心里想 + 持有者=古书）。B09、B17 的漂移载体是「叙述者 + 带保留」，持有者按定义为空，现有字段表达不了它贴着谁——见 v4 的待裁决 W8。","五个时刻里只有两个被 Beat 占用。M_c（第一次说开场白那一刻）、M_today（第 67 段的「今天」）、M_nightshifts（连上三个夜班那一段）都没有任何 Beat 停在上面，M_c 更是完全落在正文之外——时刻的集合比场的集合大，时刻不能由场生成。","M_nightshifts 是「两个挂钩，一种节点」的实物：B05 这个 Beat 停在 M_b（面摊那一刻），可它产生的披露「她连上了三个夜班」指的是 M_b 之前那一段。同一个 Beat 上，Beat.时刻 与 披露.时间指示 取了不同的值，一个字段装不下。","四条时刻关系里三条锚点为空（叙述当下），只有 M_nightshifts 那条锚点写死在 M_b 上——因为文本明确把夜班挂在面摊那一刻上（「结束了连续三个夜班后刚下班的自己坐在街边面摊上」），不是挂在读者读到的那一刻。","全章带数值的时间指示只有两条：第 16 段「五分钟前」、第 29 段「两分钟前」。其余的「随后」「接着」「良久后」「片刻后」「没有丝毫停顿」「后刚下班」全都只有先后没有距离，按 v4 第 5.7.4 节偏移留空，不编数字。","全章一个绝对时间词都没有。第一章的时间线是一团浮着的相对位置，没有任何一点能钉在日历上——这不妨碍回答「面摊那一刻在房间那一刻之前」，但任何想给时刻发坐标的设计在这一章就会开始编造。"]}}
+</script>
+
+<script>
+/* ═══ 载入 ═══════════════════════════════════════════════ */
+let DB = JSON.parse(document.getElementById('dataset').textContent);
+
+const $ = s => document.querySelector(s);
+const NS = 'http://www.w3.org/2000/svg';
+const el = (n, a) => { const e = document.createElementNS(NS, n); for (const k in (a||{})) e.setAttribute(k, a[k]); return e; };
+const esc = s => String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+
+const STATUSES = ['narrated','claim','belief','speculation','disputed','inference'];
+const TYPES = [
+  { k:'individual', label:'Individual', coll:'individuals', opt:false },
+  { k:'kind',       label:'Kind',       coll:'kinds',       opt:false },
+  { k:'predicate',  label:'Predicate',  coll:'predicates',  opt:false },
+  { k:'fact',       label:'Fact',       coll:'facts',       opt:false },
+  { k:'episode',    label:'Episode',    coll:'episodes',    opt:false },
+  { k:'summary',    label:'Summary',    coll:'summaries',   opt:true  },
+  { k:'question',   label:'Question',   coll:'questions',   opt:true  },
+  { k:'mention',    label:'Mention',    coll:'mentions',    opt:true  }
+];
+
+let IX = {};
+function reindex() {
+  IX = { kind:new Map(), individual:new Map(), predicate:new Map(), fact:new Map(),
+         episode:new Map(), summary:new Map(), question:new Map(), mention:new Map() };
+  for (const t of TYPES) for (const r of (DB[t.coll] || [])) IX[t.k].set(r.id, r);
+}
+
+/* ═══ 状态 ═══════════════════════════════════════════════ */
+const S = {
+  tab: 'individual',
+  sel: null,              // {type, id}
+  upto: 999,              // 叙述位置上限（段）
+  status: new Set(STATUSES),
+  layer: { kinds:true, isa:false, episodes:false, labels:false },
+  query: '',
+  pos: new Map(),         // 布局缓存
+  pinned: new Set(),
+  view: { x:0, y:0, k:1 }
+};
+
+const cmp = (a, b) => a.chapter - b.chapter || a.paragraph - b.paragraph || (a.sentence||0) - (b.sentence||0);
+const upto = () => ({ chapter: 1, paragraph: S.upto, sentence: 9999 });
+const posText = p => `${p.chapter}·${p.paragraph}` + (p.sentence ? `·${p.sentence}` : '');
+
+const known = (f) => cmp(f.assertedAt, upto()) <= 0 && (!f.retractedAt || cmp(f.retractedAt, upto()) > 0);
+const dead  = (f) => !!f.validUntil || !!f.retractedAt;
+const shown = (f) => known(f) && S.status.has(f.status);
+
+/* ═══ 叙述位置切片 ═══════════════════════════════════════
+   三层处理，对应 v2 的数据模型：
+     Episode / Fact    自带出生位置，纯追加，各自按位置过滤
+     Individual        打戳（since）。没有 since 的按 v1 数据处理，视为始终可见
+     Kind / Predicate  不打戳。这里按「有没有可见的 Individual 或 Fact 用到它」
+                       派生出可见性——注意这是**显示**层的取舍，不是数据层的：
+                       schema.ts 的 snapshotAt() 会把整份词表原样保留在切片里，
+                       因为「读者第几段才知道 located_in 存在」不是有意义的问题。
+                       图上不画没人用的词表节点，只是为了不堆无边的孤立点。
+*/
+let VIS = { individual:new Set(), kind:new Set(), predicate:new Set() };
+
+function revis() {
+  const individual = new Set(), kind = new Set(), predicate = new Set();
+  for (const i of DB.individuals || []) {
+    if (i.since && cmp(i.since, upto()) > 0) continue;
+    individual.add(i.id); kind.add(i.kind);
+  }
+  for (const f of DB.facts || []) {
+    if (!known(f)) continue;
+    predicate.add(f.predicate);
+    if (IX.kind.has(f.subject)) kind.add(f.subject);            // 泛称事实的主语就是 Kind
+    if (f.object && f.object.t === 'kindref') kind.add(f.object.id);
+  }
+  // 可见的 Kind 把祖先一并带出来：分类树缺一节就不成其为分类树
+  for (const id of [...kind]) {
+    let k = IX.kind.get(id);
+    while (k && k.parent && !kind.has(k.parent)) { kind.add(k.parent); k = IX.kind.get(k.parent); }
+  }
+  VIS = { individual, kind, predicate };
+}
+
+const vis = (type, id) => VIS[type] ? VIS[type].has(id) : true;
+
+/** 每一类在当前位置可见多少条。Kind / Predicate 走派生，其余走各自的出生位置。 */
+function visCount(k) {
+  const A = DB[(TYPES.find(t => t.k === k) || {}).coll] || [];
+  if (VIS[k])           return A.filter(r => vis(k, r.id)).length;
+  if (k === 'fact')     return A.filter(known).length;
+  if (k === 'episode')  return A.filter(e => cmp(e.discoursePos, upto()) <= 0).length;
+  if (k === 'question') return A.filter(q => !q.raisedAt || cmp(q.raisedAt, upto()) <= 0).length;
+  if (k === 'summary')  return A.filter(s => !s.generatedAt || cmp(s.generatedAt, upto()) <= 0).length;
+  if (k === 'mention')  return A.filter(m => { const e = IX.episode.get(m.episode); return !e || cmp(e.discoursePos, upto()) <= 0; }).length;
+  return A.length;
+}
+const bornQ = q => !q.raisedAt || cmp(q.raisedAt, upto()) <= 0;
+const bornS = s => !s.generatedAt || cmp(s.generatedAt, upto()) <= 0;
+const bornM = m => { const e = IX.episode.get(m.episode); return !e || cmp(e.discoursePos, upto()) <= 0; };
+
+
+/** 读到当前位置为止，这个个体的显示名。别名的 since 就在这里生效。 */
+function labelOf(id) {
+  const i = IX.individual.get(id);
+  if (i) {
+    const ks = (i.aliases || []).filter(a => cmp(a.since, upto()) <= 0);
+    if (!ks.length) return '⟨未具名⟩';
+    const byName = ks.filter(a => a.route === 'name');
+    return (byName.length ? byName[byName.length-1] : ks[0]).surface;
+  }
+  const k = IX.kind.get(id);
+  if (k) return k.name;
+  if (id === 'world') return 'world';
+  if (id === 'reader') return 'reader';
+  return id;
+}
+
+/* ═══ 轻量校验（与 schema.ts 的 validate 相互独立） ══════ */
+function checkDB() {
+  const out = [];
+  const E = (at, m) => out.push({ level:'error', at, message:m });
+  const W = (at, m) => out.push({ level:'warn', at, message:m });
+  const has = (t, id) => IX[t].has(id);
+  const subj = id => has('individual', id) || has('kind', id);
+
+  for (const k of DB.kinds || []) {
+    if (k.parent && !has('kind', k.parent)) E(k.id, 'parent 不存在 → ' + k.parent);
+    for (const s of k.attributeSlots || []) if (!has('predicate', s)) E(k.id, 'attributeSlots 谓词不存在 → ' + s);
+  }
+  for (const i of DB.individuals || []) {
+    if (!has('kind', i.kind)) E(i.id, 'kind 不存在 → ' + i.kind);
+    if (i.status === 'established' && !(i.aliases || []).length) W(i.id, 'established 但没有别名');
+    // since 不能晚于第一次被引用 —— 晚了，切片时图上会出现指向不存在节点的边
+    if (i.since) {
+      const refs = (i.aliases || []).map(a => a.since);
+      for (const f of DB.facts || []) {
+        if (f.subject === i.id || f.holder === i.id ||
+            (f.object && f.object.t === 'ref' && f.object.id === i.id)) refs.push(f.assertedAt);
+      }
+      for (const e of DB.episodes || []) {
+        const c = e.context || {};
+        if ((e.participants || []).some(p => p.entity === i.id) || c.location === i.id || c.pov === i.id)
+          refs.push(e.discoursePos);
+      }
+      if (refs.length) {
+        const first = refs.reduce((a, b) => cmp(a, b) <= 0 ? a : b);
+        if (cmp(i.since, first) > 0) E(i.id, `since ${posText(i.since)} 晚于第一次被引用 ${posText(first)}`);
+      }
+    }
+  }
+  for (const p of DB.predicates || []) {
+    for (const d of p.domain || []) if (!has('kind', d)) E(p.id, 'domain 不存在 → ' + d);
+    for (const r of (p.range && p.range.kinds) || []) if (!has('kind', r)) E(p.id, 'range 不存在 → ' + r);
+    if (p.inverseOf && !has('predicate', p.inverseOf)) E(p.id, 'inverseOf 不存在 → ' + p.inverseOf);
+    if (p.inverseOf && has('predicate', p.inverseOf)) {
+      const q = IX.predicate.get(p.inverseOf);
+      if (q.inverseOf !== p.id) W(p.id, `inverseOf 不对称：${p.id}→${q.id}，但 ${q.id}→${q.inverseOf || 'null'}`);
+      // 真互逆的两个谓词，domain 与 range 应当互换。毫无交集说明它们只是「相关」，不是互逆
+      const pr = (p.range && p.range.kinds) || [], qd = q.domain || [];
+      if (pr.length && qd.length && !pr.some(x => qd.includes(x)))
+        W(p.id, `inverseOf 可疑：${p.id} 的 range [${pr}] 与 ${q.id} 的 domain [${qd}] 没有交集，互逆应当 domain/range 互换`);
+    }
+  }
+  for (const f of DB.facts || []) {
+    if (!subj(f.subject)) E(f.id, 'subject 不存在 → ' + f.subject);
+    if (!has('predicate', f.predicate)) E(f.id, 'predicate 未登记 → ' + f.predicate);
+    if (!STATUSES.includes(f.status)) E(f.id, 'status 不在枚举内 → ' + f.status);
+    if (!['world','reader'].includes(f.holder) && !has('individual', f.holder)) E(f.id, 'holder 不存在 → ' + f.holder);
+    const o = f.object || {};
+    if (o.t === 'ref' && !has('individual', o.id)) E(f.id, 'object.ref 不存在 → ' + o.id);
+    if (o.t === 'kindref' && !has('kind', o.id)) E(f.id, 'object.kindref 不存在 → ' + o.id);
+    if (o.t === 'unresolved') W(f.id, 'object 仍是 unresolved 暂存态');
+    for (const e of f.evidence || []) if (!has('episode', e)) E(f.id, 'evidence 不是 Episode → ' + e);
+    for (const x of f.inferredFrom || []) if (!has('fact', x)) E(f.id, 'inferredFrom 不是 Fact → ' + x);
+    if ((f.evidence||[]).length && (f.inferredFrom||[]).length) E(f.id, 'evidence 与 inferredFrom 同时非空');
+    if (f.status === 'inference' && !(f.inferredFrom||[]).length) E(f.id, 'inference 没有 inferredFrom');
+    if (f.status !== 'inference' && !(f.evidence||[]).length) E(f.id, f.status + ' 没有 evidence');
+    if (f.validFrom && !has('episode', f.validFrom)) E(f.id, 'validFrom 不是 Episode');
+    if (f.validUntil && !has('episode', f.validUntil)) E(f.id, 'validUntil 不是 Episode');
+    // 断言位置不能早于自己的依据 —— 早了就是「读者还没看到依据，却已经知道结论」
+    const src = [
+      ...(f.evidence || []).map(e => (IX.episode.get(e) || {}).discoursePos),
+      ...(f.inferredFrom || []).map(x => (IX.fact.get(x) || {}).assertedAt),
+    ].filter(Boolean);
+    if (src.length) {
+      const last = src.reduce((a, b) => cmp(a, b) >= 0 ? a : b);
+      if (cmp(f.assertedAt, last) < 0)
+        W(f.id, `assertedAt ${posText(f.assertedAt)} 早于依据位置 ${posText(last)}`);
+    }
+  }
+  const live = new Map();
+  for (const f of DB.facts || []) {
+    if (dead(f)) continue;
+    const p = IX.predicate.get(f.predicate);
+    if (!p || p.cardinality !== 'single') continue;
+    const key = `${f.subject} .${f.predicate} %${f.status} ^${f.holder}`;
+    live.set(key, [...(live.get(key) || []), f.id]);
+  }
+  for (const [key, ids] of live) if (ids.length > 1) E(ids.join(','), 'single 基数并存: ' + key);
+
+  for (const e of DB.episodes || []) {
+    for (const p of e.participants || []) if (!has('individual', p.entity)) E(e.id, 'participant 不存在 → ' + p.entity);
+    for (const n of e.precedes || []) if (!has('episode', n)) E(e.id, 'precedes 不存在 → ' + n);
+  }
+  for (const q of DB.questions || []) for (const a of q.anchors || []) if (!subj(a) && !has('episode', a)) E(q.id, 'anchor 无法解析 → ' + a);
+  return out;
+}
+
+/* ═══ 图 ═════════════════════════════════════════════════ */
+function graphModel() {
+  const nodes = [], links = [];
+  const use = new Set();
+
+  for (const i of DB.individuals) {
+    if (!vis('individual', i.id)) continue;              // Individual.since 在这里生效
+    nodes.push({ id:i.id, t:'individual', r:0 }); use.add(i.id);
+  }
+  if (S.layer.kinds) for (const k of DB.kinds) {
+    if (!vis('kind', k.id)) continue;                    // 派生：没有可见实例或事实用到它就不画
+    nodes.push({ id:k.id, t:'kind', r:0 }); use.add(k.id);
+  }
+  if (S.layer.episodes) for (const e of DB.episodes) {
+    if (cmp(e.discoursePos, upto()) > 0) continue;
+    nodes.push({ id:e.id, t:'episode', r:0 }); use.add(e.id);
+  }
+
+  for (const f of DB.facts) {
+    if (!shown(f)) continue;
+    const o = f.object;
+    if (o.t !== 'ref' && o.t !== 'kindref') continue;
+    if (!use.has(f.subject) || !use.has(o.id)) continue;
+    links.push({ id:f.id, kind:'fact', a:f.subject, b:o.id, label:f.predicate, status:f.status, dead:dead(f) });
+  }
+  if (S.layer.isa && S.layer.kinds) for (const i of DB.individuals) {
+    if (use.has(i.id) && use.has(i.kind)) links.push({ id:'isa:'+i.id, kind:'isa', a:i.id, b:i.kind, label:'isa' });
+  }
+  if (S.layer.isa && S.layer.kinds) for (const k of DB.kinds) {
+    if (k.parent && use.has(k.id) && use.has(k.parent)) links.push({ id:'isa:'+k.id, kind:'isa', a:k.id, b:k.parent, label:'isa' });
+  }
+  if (S.layer.episodes) for (const e of DB.episodes) {
+    if (!use.has(e.id)) continue;
+    for (const p of e.participants || []) if (use.has(p.entity))
+      links.push({ id:'pt:'+e.id+':'+p.entity, kind:'part', a:e.id, b:p.entity, label:p.role });
+  }
+
+  const deg = new Map();
+  for (const l of links) { deg.set(l.a, (deg.get(l.a)||0)+1); deg.set(l.b, (deg.get(l.b)||0)+1); }
+  for (const n of nodes) {
+    const d = deg.get(n.id) || 0;
+    n.r = n.t === 'episode' ? 15 : Math.min(38, 17 + d * 3.2);
+  }
+  return { nodes, links };
+}
+
+function simulate(nodes, links, iters) {
+  const W = 900, H = 620;
+  nodes.forEach((n, i) => {
+    const p = S.pos.get(n.id);
+    if (p) { n.x = p.x; n.y = p.y; }
+    else { const a = i * 2.399; n.x = W/2 + Math.cos(a) * (90 + i * 11); n.y = H/2 + Math.sin(a) * (90 + i * 11); }
+  });
+  const byId = new Map(nodes.map(n => [n.id, n]));
+  for (let it = 0; it < iters; it++) {
+    const t = 1 - it / iters;
+    for (const n of nodes) { n.vx = 0; n.vy = 0; }
+    for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) {
+      const a = nodes[i], b = nodes[j];
+      let dx = b.x - a.x, dy = b.y - a.y, d2 = dx*dx + dy*dy || 1;
+      const d = Math.sqrt(d2);
+      const min = a.r + b.r + 34;
+      const rep = (d < min ? 5200 : 2400) / d2;
+      dx /= d; dy /= d;
+      a.vx -= dx * rep; a.vy -= dy * rep;
+      b.vx += dx * rep; b.vy += dy * rep;
+    }
+    for (const l of links) {
+      const a = byId.get(l.a), b = byId.get(l.b);
+      if (!a || !b) continue;
+      let dx = b.x - a.x, dy = b.y - a.y;
+      const d = Math.hypot(dx, dy) || 1;
+      const rest = a.r + b.r + (l.kind === 'fact' ? 78 : 58);
+      const f = (d - rest) * 0.045;
+      dx /= d; dy /= d;
+      a.vx += dx * f; a.vy += dy * f;
+      b.vx -= dx * f; b.vy -= dy * f;
+    }
+    for (const n of nodes) {
+      n.vx += (W/2 - n.x) * 0.0026;
+      n.vy += (H/2 - n.y) * 0.0026;
+      if (S.pinned.has(n.id)) continue;
+      n.x += Math.max(-22, Math.min(22, n.vx)) * t;
+      n.y += Math.max(-22, Math.min(22, n.vy)) * t;
+    }
+  }
+  for (const n of nodes) S.pos.set(n.id, { x:n.x, y:n.y });
+}
+
+const STROKE = { narrated:'#a87515', claim:'#c7304f', disputed:'#1e8a74', belief:'#4a4660', speculation:'#b3b0c4', inference:'#b3b0c4' };
+const MARKER = { narrated:'a-gold', claim:'a-cin', disputed:'a-ver' };
+const DASH   = { belief:'5 4', speculation:'4 4', disputed:'2 3', inference:'1 4' };
+
+function shapeFor(n) {
+  if (n.t === 'kind') return 'kindbox';
+  if (n.t === 'episode') return 'diamond';
+  const i = IX.individual.get(n.id);
+  const k = i && IX.kind.get(i.kind);
+  const c = k ? k.identityCriteria : 'nominal';
+  return c === 'continuous' ? 'circle' : c === 'functional' ? 'hex' : 'rect';
+}
+
+let G = { nodes:[], links:[] };
+
+function drawGraph(relayout) {
+  G = graphModel();
+  simulate(G.nodes, G.links, relayout ? 340 : 90);
+  const byId = new Map(G.nodes.map(n => [n.id, n]));
+  const gE = $('#edges'), gN = $('#nodes');
+  gE.textContent = ''; gN.textContent = '';
+
+  for (const l of G.links) {
+    const a = byId.get(l.a), b = byId.get(l.b);
+    if (!a || !b) continue;
+    let dx = b.x - a.x, dy = b.y - a.y;
+    const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
+    const x1 = a.x + dx * (a.r + 3), y1 = a.y + dy * (a.r + 3);
+    const x2 = b.x - dx * (b.r + 8), y2 = b.y - dy * (b.r + 8);
+    const g = el('g', { 'data-link': l.id, 'data-a': l.a, 'data-b': l.b });
+    const stroke = l.kind === 'fact' ? (STROKE[l.status] || '#8b87a3') : '#b3b0c4';
+    const line = el('line', {
+      class:'edge', x1, y1, x2, y2, stroke,
+      'stroke-width': l.kind === 'fact' ? (l.status === 'narrated' ? 1.7 : 1.2) : 0.9,
+      'stroke-opacity': l.dead ? 0.28 : (l.kind === 'fact' ? 0.85 : 0.4),
+      'marker-end': 'url(#' + (l.kind === 'fact' ? (MARKER[l.status] || 'a-ink') : 'a-ink') + ')'
+    });
+    const dash = l.kind === 'fact' ? DASH[l.status] : '3 4';
+    if (dash) line.setAttribute('stroke-dasharray', dash);
+    g.appendChild(line);
+    if (S.layer.labels || l.kind === 'fact') {
+      const t = el('text', { class:'edge-lab', x:(x1+x2)/2, y:(y1+y2)/2 - 4, 'text-anchor':'middle',
+                             opacity: S.layer.labels ? 1 : 0.55 });
+      t.textContent = l.label;
+      g.appendChild(t);
+    }
+    gE.appendChild(g);
+  }
+
+  for (const n of G.nodes) {
+    const g = el('g', { class:'node', 'data-node': n.id, 'data-t': n.t, tabindex:'0', role:'button' });
+    const ind = IX.individual.get(n.id);
+    const prov = ind && ind.status === 'provisional';
+    const sh = shapeFor(n);
+    let shape;
+    if (sh === 'circle') shape = el('circle', { cx:n.x, cy:n.y, r:n.r });
+    else if (sh === 'hex') {
+      const pts = [];
+      for (let i = 0; i < 6; i++) { const a = Math.PI/6 + i*Math.PI/3; pts.push((n.x + n.r*Math.cos(a)) + ',' + (n.y + n.r*Math.sin(a))); }
+      shape = el('polygon', { points: pts.join(' ') });
+    } else if (sh === 'diamond') {
+      shape = el('polygon', { points: [[n.x,n.y-n.r],[n.x+n.r,n.y],[n.x,n.y+n.r],[n.x-n.r,n.y]].map(p=>p.join(',')).join(' ') });
+    } else {
+      const w = Math.max(64, n.r * 2.1), h = n.r * 1.25;
+      shape = el('rect', { x:n.x - w/2, y:n.y - h/2, width:w, height:h, rx:2 });
+    }
+    shape.setAttribute('class', 'node-shape');
+    shape.setAttribute('fill', n.t === 'kind' ? '#eceaf3' : n.t === 'episode' ? '#ffffff' : prov ? '#f7f6fa' : '#ffffff');
+    shape.setAttribute('stroke', n.t === 'kind' ? '#8b87a3' : n.t === 'episode' ? '#1e8a74' : prov ? '#b3b0c4' : '#4a4660');
+    shape.setAttribute('stroke-width', 1.4);
+    if (prov || n.t === 'kind') shape.setAttribute('stroke-dasharray', '4 3');
+    g.appendChild(shape);
+
+    const lab = el('text', { class:'node-lab', x:n.x, y:n.y + 4 });
+    lab.textContent = n.t === 'episode' ? n.id : labelOf(n.id);
+    g.appendChild(lab);
+    const sub = el('text', { class:'node-sub', x:n.x, y:n.y + n.r + 12 });
+    sub.textContent = n.t === 'kind' ? 'KIND' : n.t === 'episode' ? (IX.episode.get(n.id) ? posText(IX.episode.get(n.id).discoursePos) : '') : n.id;
+    g.appendChild(sub);
+    gN.appendChild(g);
+  }
+  applyFocus();
+  applyView();
+}
+
+function applyFocus() {
+  const id = S.sel && (S.sel.type === 'individual' || S.sel.type === 'kind' || S.sel.type === 'episode') ? S.sel.id : null;
+  const factSel = S.sel && S.sel.type === 'fact' ? S.sel.id : null;
+  document.querySelectorAll('#nodes .node').forEach(g => {
+    g.classList.toggle('on', g.dataset.node === id);
+    if (!id && !factSel) { g.classList.remove('dim'); return; }
+    if (factSel) {
+      const f = IX.fact.get(factSel);
+      const near = f && (g.dataset.node === f.subject || (f.object && g.dataset.node === f.object.id));
+      g.classList.toggle('dim', !near);
+      return;
+    }
+    const near = g.dataset.node === id ||
+      G.links.some(l => (l.a === id && l.b === g.dataset.node) || (l.b === id && l.a === g.dataset.node));
+    g.classList.toggle('dim', !near);
+  });
+  document.querySelectorAll('#edges g').forEach(g => {
+    if (factSel) { g.classList.toggle('dim', g.dataset.link !== factSel); return; }
+    if (!id) { g.classList.remove('dim'); return; }
+    g.classList.toggle('dim', g.dataset.a !== id && g.dataset.b !== id);
+  });
+}
+
+function applyView() { $('#vp').setAttribute('transform', `translate(${S.view.x} ${S.view.y}) scale(${S.view.k})`); }
+
+/* ═══ 左栏 ═══════════════════════════════════════════════ */
+function renderTabs() {
+  $('#tabs').innerHTML = TYPES.map(t => {
+    const n = (DB[t.coll] || []).length;
+    const v = visCount(t.k);
+    const badge = (n && v < n) ? `${v}/${n}` : n;
+    return `<button class="tab${S.tab===t.k?' on':''}${t.opt?' opt':''}" data-tab="${t.k}" type="button" title="当前位置可见 ${v} / 共 ${n}" ${n?'':'disabled style="opacity:.35"'}>${t.label}<i>${badge}</i></button>`;
+  }).join('');
+}
+
+function rowsFor(kind) {
+  const q = S.query.trim().toLowerCase();
+  const t = TYPES.find(x => x.k === kind);
+  const all = DB[t.coll] || [];
+  const row = r => {
+    if (kind === 'individual') return { title: labelOf(r.id), sub: r.id + ' · ' + r.kind + (r.status==='provisional'?' · provisional':'') + (r.since ? ' · since ' + posText(r.since) : ''),
+      hay: [r.id, r.kind, ...(r.aliases||[]).map(a=>a.surface)].join(' '), faded: !vis('individual', r.id) };
+    if (kind === 'kind') return { title: r.name, sub: r.id + ' · ' + r.identityCriteria, hay: r.id + ' ' + r.name, faded: !vis('kind', r.id) };
+    if (kind === 'predicate') return { title: r.id, sub: r.cardinality + ' · ' + r.temporalShape + ' · ' + (r.aliases||[]).join('/'),
+      hay: [r.id, ...(r.aliases||[])].join(' '), faded: !vis('predicate', r.id) };
+    if (kind === 'fact') return { title: labelOf(r.subject) + ' .' + r.predicate, sub: r.id + ' · ' + r.status + ' · ^' + r.holder,
+      hay: [r.id, r.subject, r.predicate, r.status, objText(r.object)].join(' '), faded: !shown(r) };
+    if (kind === 'episode') return { title: r.id + ' · ' + posText(r.discoursePos), sub: (r.outcome || '—') + ' · ' + (r.participants||[]).length + ' 参与者',
+      hay: [r.id, r.content, r.outcome].join(' '), faded: cmp(r.discoursePos, upto()) > 0 };
+    if (kind === 'question') return { title: r.text, sub: r.id + ' · ' + r.origin + ' · ' + r.status, hay: r.id + ' ' + r.text, faded: !bornQ(r) };
+    if (kind === 'summary') return { title: r.grain + ' 摘要', sub: r.id + ' · 覆盖 ' + (r.covers||[]).length + ' 场景', hay: r.id + ' ' + r.gist, faded: !bornS(r) };
+    return { title: r.surface, sub: r.id + ' · ' + r.episode + ' → ' + (r.resolvedTo || '未消解'), hay: r.id + ' ' + r.surface, faded: !bornM(r) };
+  };
+  return all.map(r => ({ r, ...row(r) })).filter(x => !q || x.hay.toLowerCase().includes(q));
+}
+
+function renderList() {
+  const rows = rowsFor(S.tab);
+  $('#list').innerHTML = rows.length ? rows.map(x =>
+    `<button class="item${S.sel && S.sel.type===S.tab && S.sel.id===x.r.id ? ' on':''}${x.faded?' faded':''}" data-pick="${esc(S.tab + ':' + x.r.id)}" type="button">
+       <b>${esc(x.title)}</b><span>${esc(x.sub)}</span></button>`).join('')
+    : '<p class="none">没有匹配的记录。</p>';
+}
+
+/* ═══ 检视器 ═════════════════════════════════════════════ */
+function objText(o) {
+  if (!o) return '—';
+  if (o.t === 'ref' || o.t === 'kindref') return (o.quant ? o.quant + ' ' : '') + labelOf(o.id);
+  if (o.t === 'special') return o.v;
+  if (o.t === 'number') return o.v + (o.unit ? ' ' + o.unit : '');
+  if (o.t === 'unresolved') return '「' + o.surface + '」?';
+  return o.v;
+}
+function objHTML(o) {
+  if (o && (o.t === 'ref' || o.t === 'kindref'))
+    return `<button class="ref" data-pick="${esc((o.t==='ref'?'individual':'kind') + ':' + o.id)}" type="button">${esc(objText(o))}</button>`;
+  return '<span class="obj">' + esc(objText(o)) + '</span>';
+}
+function refBtn(type, id) {
+  if (id === 'world' || id === 'reader') return `<span class="mono">${esc(id)}</span>`;
+  return `<button class="ref" data-pick="${esc(type + ':' + id)}" type="button">${esc(labelOf(id))}</button>`;
+}
+function factBtn(f) {
+  const cls = ['fact', 'st-' + f.status, dead(f) ? 'st-dead' : '', S.sel && S.sel.type==='fact' && S.sel.id===f.id ? 'on' : ''].filter(Boolean).join(' ');
+  const holder = f.holder !== 'world' ? `<span class="h">^${esc(labelOf(f.holder))}</span>` : '';
+  return `<button class="${esc(cls)}" data-pick="${esc('fact:' + f.id)}" type="button">
+    <span class="fid">${esc(f.id)}</span><span class="p">.${esc(f.predicate)}</span> <span class="obj">${esc(objText(f.object))}</span>${holder}</button>`;
+}
+const F = (k, v, cls) => `<div class="f"><dt>${k}</dt><dd class="${cls||''}">${v}</dd></div>`;
+const NA = '<span class="na">null</span>';
+
+function renderInsp() {
+  const box = $('#insp');
+  if (!S.sel) { box.innerHTML = '<p class="none" style="padding:18px 14px">从左栏或图上选一条记录。</p>'; return; }
+  const { type, id } = S.sel;
+  const r = IX[type].get(id);
+  if (!r) { box.innerHTML = '<p class="none" style="padding:18px 14px">记录不存在。</p>'; return; }
+  const T = TYPES.find(t => t.k === type);
+
+  let title = id, fields = '', extra = '';
+
+  if (type === 'individual') {
+    title = labelOf(id);
+    const kn = (r.aliases||[]).filter(a => cmp(a.since, upto()) <= 0);
+    const hidden = (r.aliases||[]).length - kn.length;
+    const sinceTxt = r.since
+      ? posText(r.since) + (vis('individual', id) ? '' : ' · 当前位置尚未出现')
+      : '未标注 · v1 数据，视为始终可见';
+    fields = F('KIND', refBtn('kind', r.kind)) + F('STATUS', r.status, 'mono')
+      + F('SINCE', r.since ? esc(sinceTxt) : `<span class="na">${esc(sinceTxt)}</span>`, r.since ? 'mono' : '')
+      + F('ALIASES', (r.aliases||[]).length
+          ? (r.aliases||[]).map(a => {
+              const yet = cmp(a.since, upto()) > 0;
+              return `<div style="${yet?'opacity:.38':''}">${esc(a.surface)}
+                <span class="na" style="margin-left:6px">${a.route} · since ${posText(a.since)}${yet?' · 尚未揭示':''}</span></div>`;
+            }).join('')
+          : NA)
+      + (hidden > 0 ? F('', `<span class="na">当前位置隐藏了 ${hidden} 个尚未揭示的称呼</span>`) : '')
+      + (r.mergedFrom ? F('MERGED_FROM', r.mergedFrom.join(', '), 'mono') : '')
+      + (r.note ? F('NOTE', esc(r.note)) : '');
+
+    const mine = DB.facts.filter(f => f.subject === id);
+    const about = DB.facts.filter(f => f.object && f.object.t === 'ref' && f.object.id === id);
+    const inEp = DB.episodes.filter(e => (e.participants||[]).some(p => p.entity === id));
+    const qs = (DB.questions||[]).filter(q => (q.anchors||[]).includes(id));
+    extra = section('以它为主语 · ' + mine.filter(known).length + '/' + mine.length, mine.map(factBtn).join('') || null)
+      + (about.length ? section('以它为宾语 · ' + about.length, about.map(f => factBtn(f)).join('')) : '')
+      + (inEp.length ? section('出现于 · ' + inEp.length, inEp.map(e => {
+          const role = e.participants.find(p => p.entity === id).role;
+          return `<button class="fact" data-pick="episode:${e.id}" type="button"><span class="fid">${e.id}</span>${esc(role)} · ${esc(posText(e.discoursePos))}</button>`;
+        }).join('')) : '')
+      + (qs.length ? section('未决 · ' + qs.length, qs.map(q => `<button class="fact st-disputed" data-pick="question:${q.id}" type="button"><span class="fid">${q.id}</span>${esc(q.text)}</button>`).join('')) : '');
+
+  } else if (type === 'kind') {
+    title = r.name;
+    fields = F('PARENT', r.parent ? refBtn('kind', r.parent) : NA)
+      + F('BASIC_LEVEL', String(r.basicLevel), 'mono')
+      + F('IDENTITY', r.identityCriteria, 'mono')
+      + F('SLOTS', (r.attributeSlots||[]).map(s => `<button class="ref" data-pick="predicate:${s}" type="button">${s}</button>`).join('、') || NA)
+      + F('可见性', vis('kind', id) ? '当前位置可见 · 派生' : '当前位置不可见 · 没有可见的实例或事实用到它', 'mono');
+    const insts = DB.individuals.filter(i => i.kind === id);
+    const generic = DB.facts.filter(f => f.subject === id);
+    extra = section('实例 · ' + insts.filter(i => vis('individual', i.id)).length + '/' + insts.length, insts.map(i => `<button class="fact${vis('individual', i.id)?'':' st-dead'}" data-pick="individual:${i.id}" type="button"><span class="fid">${i.id}</span>${esc(labelOf(i.id))}</button>`).join('') || null)
+      + (generic.length ? section('泛称事实 · ' + generic.filter(known).length + '/' + generic.length, generic.map(factBtn).join('')) : '');
+
+  } else if (type === 'predicate') {
+    fields = F('ALIASES', (r.aliases||[]).join('、') || NA)
+      + F('DOMAIN', (r.domain||[]).map(d => refBtn('kind', d)).join('、') || NA)
+      + F('RANGE', esc(JSON.stringify(r.range)), 'mono')
+      + F('CARDINALITY', `<span class="mono" style="color:${r.cardinality==='single'?'var(--cinnabar)':'var(--ink)'}">${r.cardinality}</span>`)
+      + F('SHAPE', r.temporalShape, 'mono')
+      + F('INVERSE_OF', r.inverseOf ? refBtn('predicate', r.inverseOf) : NA)
+      + F('DEFAULTS', `volatility=${r.defaultVolatility} centrality=${r.defaultCentrality}` + (r.defaultStatus ? ` status=${r.defaultStatus}` : ''), 'mono')
+      + (r.note ? F('NOTE', esc(r.note)) : '')
+      + F('可见性', vis('predicate', id) ? '当前位置可见 · 派生' : '当前位置不可见 · 还没有可见的事实用到它', 'mono');
+    const used = DB.facts.filter(f => f.predicate === id);
+    extra = section('用到它的事实 · ' + used.filter(known).length + '/' + used.length, used.map(f => factBtn(f)).join('') || null);
+
+  } else if (type === 'fact') {
+    title = labelOf(r.subject) + ' .' + r.predicate;
+    fields = F('SUBJECT', refBtn(IX.individual.has(r.subject) ? 'individual' : 'kind', r.subject))
+      + F('PREDICATE', refBtn('predicate', r.predicate))
+      + F('OBJECT', `<span class="mono na">${r.object.t}</span> ${objHTML(r.object)}`)
+      + F('STATUS', `<span class="fact st-${r.status}" style="display:inline-block;margin:0;padding:1px 7px;cursor:default">${r.status}</span>`)
+      + F('HOLDER', refBtn('individual', r.holder))
+      + F('VALID_FROM', r.validFrom ? refBtn('episode', r.validFrom) : NA)
+      + F('VALID_UNTIL', r.validUntil ? refBtn('episode', r.validUntil) : NA)
+      + F('ASSERTED_AT', posText(r.assertedAt), 'mono')
+      + F('RETRACTED_AT', r.retractedAt ? posText(r.retractedAt) : NA, 'mono')
+      + F('EVIDENCE', (r.evidence||[]).length ? r.evidence.map(e => refBtn('episode', e)).join('、') : NA)
+      + F('INFERRED_FROM', (r.inferredFrom||[]).length ? r.inferredFrom.map(x => `<button class="ref" data-pick="fact:${x}" type="button">${x}</button>`).join('、') : NA)
+      + F('CONFIDENCE', r.confidence, 'mono') + F('STRENGTH', r.strength, 'mono') + F('SUPPORT', r.support, 'mono')
+      + F('MODALITY', r.modality, 'mono') + F('VOLATILITY', r.volatility, 'mono') + F('CENTRALITY', r.centrality, 'mono');
+    const p = IX.predicate.get(r.predicate);
+    const sibs = DB.facts.filter(f => f.id !== r.id && f.subject === r.subject && f.predicate === r.predicate);
+    extra = sibs.length ? section('同主谓的其它事实 · ' + sibs.length, sibs.map(factBtn).join('')
+      + (p && p.cardinality === 'single' ? `<p class="none" style="padding:6px 0 0">${p.cardinality} 基数：它们靠 status/holder 或有效区间区分，否则就是冲突。</p>` : '')) : '';
+
+  } else if (type === 'episode') {
+    title = r.id;
+    fields = F('DISCOURSE', posText(r.discoursePos), 'mono')
+      + F('DURATION', r.duration ? esc(r.duration) : NA)
+      + F('CONTENT', esc(r.content))
+      + F('SOURCE_POINTER', esc(JSON.stringify(r.sourcePointer)), 'mono')
+      + F('CONTEXT', [r.context.chapter, r.context.scene].filter(Boolean).join(' / ')
+          + (r.context.location ? ' · ' + refBtn('individual', r.context.location) : '')
+          + (r.context.pov ? ' · POV ' + refBtn('individual', r.context.pov) : ''))
+      + F('PRECEDES', (r.precedes||[]).length ? r.precedes.map(e => refBtn('episode', e)).join('、') : NA)
+      + F('OUTCOME', r.outcome ? esc(r.outcome) : NA)
+      + F('VALENCE', meter((r.valence+1)/2, r.valence)) + F('AROUSAL', meter(r.arousal, r.arousal))
+      + F('SURPRISE', meter(r.surprise, r.surprise))
+      + F('REGISTER', (r.register||[]).join('、') || NA);
+    const parts = r.participants || [];
+    const ev = DB.facts.filter(f => (f.evidence||[]).includes(r.id));
+    extra = section('参与者 · ' + parts.length, parts.map(p =>
+        `<button class="fact" data-pick="individual:${p.entity}" type="button"><span class="fid">${p.role}</span>${esc(labelOf(p.entity))}</button>`).join(''))
+      + section('由它作证的事实 · ' + ev.length, ev.map(factBtn).join('') || null);
+
+  } else if (type === 'question') {
+    title = r.text;
+    fields = F('ORIGIN', r.origin, 'mono') + F('RAISED_AT', posText(r.raisedAt), 'mono')
+      + F('STATUS', r.status, 'mono')
+      + F('ANCHORS', (r.anchors||[]).map(a => refBtn(IX.episode.has(a) ? 'episode' : IX.kind.has(a) ? 'kind' : 'individual', a)).join('、') || NA)
+      + F('RESOLVED_BY', r.resolvedBy || NA, 'mono');
+
+  } else if (type === 'summary') {
+    title = r.grain + ' 摘要';
+    fields = F('GRAIN', r.grain, 'mono')
+      + F('COVERS', (r.covers||[]).map(c => refBtn('episode', c)).join('、') || NA)
+      + F('GIST', esc(r.gist)) + F('WHY', esc(r.why))
+      + F('GENERATED_AT', posText(r.generatedAt), 'mono')
+      + F('RECOMPUTABLE', String(r.recomputable), 'mono');
+
+  } else if (type === 'mention') {
+    title = r.surface;
+    fields = F('EPISODE', refBtn('episode', r.episode))
+      + F('SPAN', '[' + r.span.join(', ') + ']', 'mono')
+      + F('RESOLVED_TO', r.resolvedTo ? refBtn('individual', r.resolvedTo) : NA)
+      + F('METHOD', r.method, 'mono');
+  }
+
+  box.innerHTML = `<div class="insp-head"><p class="insp-type">${T.label}${T.opt?' · 可选':''}</p>
+      <h2 class="insp-name">${esc(title)}</h2><p class="insp-id">${esc(id)}</p></div>
+      <div class="fields">${fields}</div>${extra}`;
+}
+const section = (title, html) => `<p class="sub">${esc(title)}</p>` + (html ? `<div class="pad">${html}</div>` : '<p class="none">无。</p>');
+const meter = (frac, val) => `<span class="mono">${val}</span><span class="meter" style="margin-top:5px"><i style="width:${Math.round(Math.max(0,Math.min(1,frac))*100)}%"></i></span>`;
+
+/* ═══ 顶栏 / 弹层 ════════════════════════════════════════ */
+function renderBadge() {
+  const issues = checkDB();
+  const errs = issues.filter(i => i.level === 'error').length;
+  const b = $('#badge');
+  b.className = 'badge ' + (errs ? 'bad' : 'ok');
+  b.textContent = errs ? `${errs} 处错误` : `校验通过 · ${issues.length} warn`;
+  b.dataset.issues = JSON.stringify(issues);
+}
+function openIssues() {
+  const issues = JSON.parse($('#badge').dataset.issues || '[]');
+  $('#sheet-title').textContent = '结构校验';
+  $('#sheet-body').innerHTML = issues.length
+    ? issues.map(i => `<div class="issue ${i.level}"><em>${i.level.toUpperCase()}</em><div><code>${esc(i.at)}</code> ${esc(i.message)}</div></div>`).join('')
+    : '<p class="none" style="padding:18px">没有发现结构问题。检查的是外键、枚举、证据/推断分离、single 基数并存与叙述轴时序。</p>';
+  $('#sheet').classList.add('open');
+}
+function openStats() {
+  const load = new Map();
+  for (const f of DB.facts) {
+    const c = load.get(f.subject) || { live:0, total:0 };
+    c.total++; if (!dead(f)) c.live++;
+    load.set(f.subject, c);
+  }
+  const rows = [...load.entries()].sort((a,b) => b[1].live - a[1].live);
+  const max = Math.max(1, ...rows.map(r => r[1].total));
+  const byStatus = STATUSES.map(s => [s, DB.facts.filter(f => f.status === s).length]);
+  const maxS = Math.max(1, ...byStatus.map(r => r[1]));
+  $('#sheet-title').textContent = '统计';
+  $('#sheet-body').innerHTML =
+    '<p class="sub" style="border:0">单节点 Fact 负载 · D7 的度量口径</p><div style="padding:0 4px 10px">'
+    + rows.map(([id, c]) =>
+        `<div class="stat"><span style="font-family:var(--f-body);color:var(--ink)">${esc(labelOf(id))}</span><span>${c.live} 活跃 / ${c.total} 累计</span>
+         <span class="meter"><i style="width:${c.total/max*100}%"></i></span></div>`).join('')
+    + `<p class="none" style="padding:8px 14px 0">D7 的推导值是主角活跃 50–150、累计 200–500。单章样本远低于此，只能说明量级口径可测，不能验证推导。</p></div>`
+    + '<p class="sub">认识论状态分布</p><div style="padding:0 4px 16px">'
+    + byStatus.map(([s, n]) =>
+        `<div class="stat"><span class="fact st-${s}" style="display:inline-block;margin:0;padding:1px 8px;cursor:default;font-family:var(--f-mono);font-size:10.5px">${s}</span><span>${n}</span>
+         <span class="meter"><i style="width:${n/maxS*100}%"></i></span></div>`).join('')
+    + '</div>';
+  $('#sheet').classList.add('open');
+}
+
+/* ═══ 交互 ═══════════════════════════════════════════════ */
+function pick(type, id) {
+  if (!IX[type] || !IX[type].has(id)) return;
+  S.sel = { type, id };
+  if (S.tab !== type) { S.tab = type; renderTabs(); }
+  renderList(); renderInsp(); applyFocus();
+  const item = document.querySelector(`[data-pick="${type}:${id}"].item`);
+  if (item && item.scrollIntoView) item.scrollIntoView({ block:'nearest' });
+}
+
+function paraBounds() {
+  const ps = [];
+  for (const f of DB.facts) { ps.push(f.assertedAt.paragraph); if (f.retractedAt) ps.push(f.retractedAt.paragraph); }
+  for (const e of DB.episodes) ps.push(e.discoursePos.paragraph);
+  for (const i of DB.individuals) {
+    if (i.since) ps.push(i.since.paragraph);
+    for (const a of (i.aliases||[])) ps.push(a.since.paragraph);
+  }
+  for (const q of DB.questions || []) if (q.raisedAt) ps.push(q.raisedAt.paragraph);
+  for (const s of DB.summaries || []) if (s.generatedAt) ps.push(s.generatedAt.paragraph);
+  return { min: Math.min(...ps, 1), max: Math.max(...ps, 1) };
+}
+
+function setUpto(v, redraw) {
+  S.upto = v;
+  revis();                                   // 切片一变，Kind / Predicate 的派生可见性跟着重算
+  const b = paraBounds();
+  $('#pos').innerHTML = v >= b.max ? '第 1 章 · <b>读完</b>' : `第 1 章 第 <b>${v}</b> 段`;
+  $('#chip-all').classList.toggle('on', v >= b.max);
+  renderTabs(); renderChips(); renderList(); renderInsp();
+  if (redraw !== false) drawGraph(false);
+}
+
+function renderChips() {
+  $('#chips').innerHTML = STATUSES.map(s => {
+    const n = DB.facts.filter(f => f.status === s && known(f)).length;
+    return `<button class="chip${S.status.has(s)?' on':''}" data-st="${s}" type="button">${s}<small>${n}</small></button>`;
+  }).join(' ');
+}
+
+function boot() {
+  reindex();
+  const b = paraBounds();
+  const noSince = (DB.individuals || []).filter(i => !i.since).length;
+  $('#schema-tag').textContent = (DB.meta && DB.meta.schema || '?') + ' · ' + (DB.meta && DB.meta.scope || '')
+    + (noSince ? ` · ${noSince} 个实体没有 since，不参与切片` : '');
+  $('#slider').min = b.min; $('#slider').max = b.max; $('#slider').value = b.max;
+  S.upto = b.max; S.pos = new Map(); S.pinned = new Set(); S.sel = null;
+  S.view = { x:0, y:0, k:1 };
+  revis();
+  renderTabs(); renderChips(); renderList(); renderBadge();
+  setUpto(b.max, false);
+  drawGraph(true);
+  const first = DB.individuals[0];
+  if (first) pick('individual', first.id);
+}
+
+document.addEventListener('click', e => {
+  const p = e.target.closest('[data-pick]');
+  if (p) { const [t, ...r] = p.dataset.pick.split(':'); pick(t, r.join(':')); return; }
+  const tab = e.target.closest('[data-tab]');
+  if (tab) { S.tab = tab.dataset.tab; renderTabs(); renderList(); return; }
+  const st = e.target.closest('[data-st]');
+  if (st) { const s = st.dataset.st; S.status.has(s) ? S.status.delete(s) : S.status.add(s); renderChips(); drawGraph(false); return; }
+  const ly = e.target.closest('[data-layer]');
+  if (ly) { const k = ly.dataset.layer; S.layer[k] = !S.layer[k]; ly.classList.toggle('on', S.layer[k]); drawGraph(true); return; }
+  const node = e.target.closest('[data-node]');
+  if (node) { pick(node.dataset.t, node.dataset.node); return; }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') $('#sheet').classList.remove('open');
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('[data-node]')) {
+    e.preventDefault();
+    const n = e.target.closest('[data-node]');
+    pick(n.dataset.t, n.dataset.node);
+  }
+});
+$('#slider').addEventListener('input', e => setUpto(+e.target.value));
+$('#chip-all').addEventListener('click', () => { const b = paraBounds(); $('#slider').value = b.max; setUpto(b.max); });
+$('#search').addEventListener('input', e => { S.query = e.target.value; renderList(); });
+$('#relayout').addEventListener('click', () => { S.pos = new Map(); S.pinned = new Set(); drawGraph(true); });
+$('#badge').addEventListener('click', openIssues);
+$('#btn-stats').addEventListener('click', openStats);
+$('#sheet-close').addEventListener('click', () => $('#sheet').classList.remove('open'));
+$('#sheet').addEventListener('click', e => { if (e.target.id === 'sheet') $('#sheet').classList.remove('open'); });
+
+$('#btn-load').addEventListener('click', () => $('#file').click());
+$('#file').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  f.text().then(t => { try { DB = JSON.parse(t); boot(); } catch (err) { alert('解析失败：' + err.message); } });
+});
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  const f = e.dataTransfer.files[0];
+  if (f) f.text().then(t => { try { DB = JSON.parse(t); boot(); } catch (err) { alert('解析失败：' + err.message); } });
+});
+
+/* 拖动节点 / 平移 / 缩放 */
+(() => {
+  const svg = $('#svg');
+  let mode = null, drag = null, start = null;
+  const toLocal = e => {
+    const r = svg.getBoundingClientRect();
+    return { x: (e.clientX - r.left - S.view.x) / S.view.k, y: (e.clientY - r.top - S.view.y) / S.view.k };
+  };
+  svg.addEventListener('pointerdown', e => {
+    const n = e.target.closest('[data-node]');
+    if (n) { mode = 'node'; drag = n.dataset.node; }
+    else { mode = 'pan'; start = { x:e.clientX - S.view.x, y:e.clientY - S.view.y }; svg.classList.add('drag'); }
+    svg.setPointerCapture(e.pointerId);
+  });
+  svg.addEventListener('pointermove', e => {
+    if (mode === 'node') {
+      const p = toLocal(e);
+      S.pos.set(drag, p); S.pinned.add(drag);
+      drawGraph(false);
+    } else if (mode === 'pan') {
+      S.view.x = e.clientX - start.x; S.view.y = e.clientY - start.y; applyView();
+    }
+  });
+  svg.addEventListener('pointerup', e => { mode = null; drag = null; svg.classList.remove('drag'); svg.releasePointerCapture(e.pointerId); });
+  svg.addEventListener('wheel', e => {
+    e.preventDefault();
+    const r = svg.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+    const k2 = Math.max(0.35, Math.min(2.6, S.view.k * (e.deltaY < 0 ? 1.12 : 0.89)));
+    S.view.x = mx - (mx - S.view.x) * (k2 / S.view.k);
+    S.view.y = my - (my - S.view.y) * (k2 / S.view.k);
+    S.view.k = k2; applyView();
+  }, { passive:false });
+})();
+
+boot();
+</script>
+</body>
+</html>

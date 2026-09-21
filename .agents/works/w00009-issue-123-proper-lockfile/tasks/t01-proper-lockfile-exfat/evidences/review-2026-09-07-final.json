@@ -1,0 +1,122 @@
+{
+    "schema": "nbook.review-evidence/v2",
+    "workId": "w00009-issue-123-proper-lockfile",
+    "taskId": "t01-proper-lockfile-exfat",
+    "worktree": "C:/Users/notnotype/Documents/CodeRepository/GithubProjects/neuro-book",
+    "branch": "master",
+    "head": "83f231344bcfe85ee2111cb8d96b8569da62598f",
+    "verdict": "未完成验证",
+    "reviewRemediation": {
+        "lockfileSyncAccepted": true,
+        "acceptanceEvidence": "evidences/lockfile-sync-acceptance.json",
+        "taskEnotsupWordingCorrected": true,
+        "plannedSpecImplementationDetailsRemoved": true,
+        "patchValidatorAdded": "scripts/ci/validate-proper-lockfile-patch.ts",
+        "heartbeatObservabilityAdded": "成功 utimes 回调计数；async 与 sync 均要求三轮更新"
+    },
+    "commands": [
+        {
+            "command": "bun install --frozen-lockfile --ignore-scripts --linker hoisted",
+            "result": "通过；Bun 1.3.14；3 packages installed"
+        },
+        {
+            "command": "git worktree add --detach C:/Users/notnotype/AppData/Local/Temp/neuro-book/issue-123-lock-clean-7176da61 7176da61fc4c5dfc8eda2f65e22ae36b744d80af && bun install --frozen-lockfile --ignore-scripts --linker hoisted",
+            "result": "通过；Bun 1.3.14；全新隔离 Temp worktree 安装 1534 packages，使用独立 node_modules"
+        },
+        {
+            "command": "bun scripts/ci/validate-proper-lockfile-patch.ts（clean Temp root；默认 repositoryRoot）",
+            "result": "通过；校验器从当前 clean Temp worktree 默认根读取 manifest、patch 和 node_modules/proper-lockfile"
+        },
+        {
+            "command": "bun x vitest run --config scripts/vitest.config.ts scripts/build/proper-lockfile-patch.test.ts（clean Temp root；默认 repositoryRoot；测试内含显式 fixture root 回归）",
+            "result": "通过；1 file passed；13 tests passed"
+        },
+        {
+            "command": "bun x tsc --noEmit -p scripts/tsconfig.json（clean Temp root）",
+            "result": "通过；无输出"
+        },
+        {
+            "command": "bun scripts/ci/validate-proper-lockfile-patch.ts",
+            "result": "通过；精确登记、Bun lock 映射、上游坐标、patch 载荷和安装产物均通过"
+        },
+        {
+            "command": "bun x vitest run --config scripts/vitest.config.ts scripts/build/proper-lockfile-patch.test.ts",
+            "result": "通过；1 file passed；13 tests passed；包含错位安装根回归"
+        },
+        {
+            "command": "bun x tsc --noEmit -p scripts/tsconfig.json",
+            "result": "通过；无输出"
+        },
+        {
+            "command": "bun run --cwd packages/neuro-book nuxt:prepare && bun run --cwd packages/neuro-book test -- server/agent/session/agent-session-store-lease.test.ts server/agent/session/agent-session-store-lease-compromise.test.ts server/agent/session/agent-session-store-release.test.ts",
+            "result": "通过；3 files passed；14 tests passed"
+        },
+        {
+            "command": "bun run --cwd packages/neuro-book test -- server/workspace-files/project-lock.test.ts",
+            "result": "通过；1 file passed；9 tests passed"
+        },
+        {
+            "command": "bun run docs:check",
+            "result": "通过；failures: []；checkedFiles: 5407"
+        },
+        {
+            "command": "git diff --check",
+            "result": "通过；仅有 package.json 的 CRLF 转换提示"
+        },
+        {
+            "command": "bun run governance:check",
+            "result": "未重新运行；此前失败为既有无关缺口 .agents/works/w00003-neurobook-ui-foundation-migration/tasks/t14-agent-profile-nav-lab-migration/README.md 缺失"
+        },
+        {
+            "command": "git merge --no-ff --no-edit fix/w00009-issue-123-proper-lockfile（master）",
+            "result": "通过；合并提交 83f231344bcfe85ee2111cb8d96b8569da62598f"
+        },
+        {
+            "command": "bun scripts/ci/validate-proper-lockfile-patch.ts（master；默认 repositoryRoot）",
+            "result": "通过；安装载荷与精确 proper-lockfile@4.1.2 patch 校验通过"
+        },
+        {
+            "command": "bun x vitest run --config scripts/vitest.config.ts scripts/build/proper-lockfile-patch.test.ts（master）",
+            "result": "通过；1 file passed；13 tests passed"
+        },
+        {
+            "command": "bun x tsc --noEmit -p scripts/tsconfig.json（master）",
+            "result": "通过；无输出"
+        },
+        {
+            "command": "bun run --cwd packages/neuro-book test -- server/agent/session/agent-session-store-lease.test.ts server/agent/session/agent-session-store-lease-compromise.test.ts server/agent/session/agent-session-store-release.test.ts（master）",
+            "result": "通过；3 files passed；14 tests passed"
+        },
+        {
+            "command": "bun run --cwd packages/neuro-book test -- server/workspace-files/project-lock.test.ts（master）",
+            "result": "通过；1 file passed；9 tests passed"
+        },
+        {
+            "command": "bun run docs:check（master）",
+            "result": "通过；failures: []；checkedFiles: 5417"
+        }
+    ],
+    "verifiedBoundaries": {
+        "patchLoaded": true,
+        "patchSourceFilesObserved": [
+            "node_modules/proper-lockfile/lib/mtime-precision.js",
+            "node_modules/proper-lockfile/lib/lockfile.js"
+        ],
+        "productStage": "阻塞；既有入口报 ReferenceError: ProductRuntimeImageBuilder is not defined，已记录为 GitHub #226",
+        "portableProduct": "未完成",
+        "realNtfs120SecondSmoke": "未完成",
+        "realExfat": "未完成；当前主机无 exFAT 卷",
+        "specStatus": "planned"
+    },
+    "remainingRequiredEvidence": [
+        "Product/Portable 载荷重建与 product:start smoke",
+        "真实 Windows NTFS 120 秒 Product 观察",
+        "可用 exFAT 卷上的真实 120 秒观察"
+    ],
+    "scopeBoundary": {
+        "workIssueIdUnchanged": "i123",
+        "remoteWritesAfterIssue226": false,
+        "reviewerDirectlyEditedImplementation": false,
+        "remediationAppliedByMainAgent": true
+    }
+}

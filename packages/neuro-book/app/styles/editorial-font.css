@@ -1,0 +1,20 @@
+/*
+ * 全局编辑风衬线。
+ *
+ * Noto Serif SC Variable 随应用分发（@fontsource-variable/noto-serif-sc），
+ * 按 unicode-range 分片、浏览器按需加载，任何机器效果一致；系统衬线栈兜底。
+ * 等宽场景（源码/Monaco/diff/frontmatter）各自有字体，不受本文件影响。
+ */
+:root {
+    --font-editorial: "Noto Serif SC Variable", "Source Han Serif SC", "Noto Serif SC", "Songti SC", "SimSun", serif;
+    --font-ui-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+}
+
+body {
+    font-family: var(--font-editorial);
+}
+
+/* 极小字号徽章/注释保留无衬线，防止衬线小字发糊。 */
+.font-ui-sans {
+    font-family: var(--font-ui-sans);
+}

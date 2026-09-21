@@ -1,0 +1,23 @@
+export {WorldEngineFacade} from "nbook/server/world-engine/world-engine.facade";
+export type {
+    Instant,
+    JsonValue,
+    CreateWorldSubjectResult,
+    DeleteSliceResult,
+    PatchInput,
+    QueryStateResult,
+    SliceInput,
+    SliceListItem,
+    SliceWriteResult,
+    SubjectState,
+    WorldIssue,
+    WorldIssueCode,
+    WorldIssueExplanation,
+    WorldIssueLabel,
+    WorldIssueSeverity,
+    WorldPatchOp,
+    WorldSchemaProjection,
+    WorldSliceSubjectFilterMode,
+    WorldState,
+    WorldSubjectListItem,
+} from "nbook/server/world-engine/types";

@@ -1,0 +1,259 @@
+{
+  "schema": "nbook.s2-import-verification/v1",
+  "taskId": "00149-monorepo-workspace-consolidation",
+  "capturedAt": "2026-08-16T18:37:33.393Z",
+  "sourceManifestIndex": {
+    "path": "C:/Users/notnotype/AppData/Local/Temp/neuro-book/runs/00149-s0-import-manifests/index.json",
+    "sha256": "sha256:f8ae3f8f0e72cda652c17d8a997f18c692608ced3202a2b4b9f6faa897519d66"
+  },
+  "policy": {
+    "sourceCheckoutsReadOnly": true,
+    "skippedIncludedPaths": [
+      ".gitignore",
+      "bun.lock",
+      "web/.gitignore"
+    ],
+    "relocatedPrefix": {
+      "from": "docs/tasks/",
+      "to": ".agents/tasks/"
+    },
+    "controlledChanges": {
+      "description": "受控的 package manifest、项目治理入口、Task索引和活跃文档 canonical link rewrites；这些路径不按字节原样副本计数",
+      "paths": {
+        "nb-history": [
+          "package.json",
+          "README.md"
+        ],
+        "nb-workflow": [
+          "package.json",
+          "README.md"
+        ],
+        "nb-memory": [
+          "package.json",
+          "docs/architecture.html",
+          "docs/reports/2026-08-01-round1-regression.md"
+        ],
+        "nb-ui": [
+          "AGENTS.md",
+          "package.json"
+        ],
+        "neuro-agent-harness": [
+          "AGENTS.md",
+          "docs/README.md",
+          "package.json",
+          "docs/tasks/README.md"
+        ],
+        "llmlint": [
+          "AGENTS.md",
+          "package.json",
+          "docs/tasks/README.md",
+          "CONTEXT.md",
+          "docs/proposed/author-reviewer-ecosystem.md",
+          "docs/README.md",
+          "docs/specs/README.md",
+          "evals/experiments/README.md",
+          "evals/METHODOLOGY.md",
+          "evals/README.md",
+          "PROJECT-STATUS.md",
+          "skill/references/rule-model.md",
+          "web/scripts/style-review-report.ts"
+        ]
+      }
+    },
+    "manifestExcludedFilesNotCopied": true
+  },
+  "packages": [
+    {
+      "name": "nb-history",
+      "sourcePath": "C:\\Users\\notnotype\\Documents\\CodeRepository\\GithubProjects\\nb-history",
+      "targetPath": "packages/nb-history",
+      "head": "68c54caed73c4499eac44e92931895aa130672b3",
+      "candidateCount": 30,
+      "includedCount": 30,
+      "manifestExcluded": 0,
+      "sourceEntriesVerified": 30,
+      "exactCopied": 26,
+      "relocated": 0,
+      "policySkipped": [
+        ".gitignore",
+        "bun.lock"
+      ],
+      "controlledChanges": [
+        "README.md",
+        "package.json"
+      ],
+      "missing": [],
+      "mismatches": [],
+      "sourceDrift": []
+    },
+    {
+      "name": "nb-workflow",
+      "sourcePath": "C:\\Users\\notnotype\\Documents\\CodeRepository\\GithubProjects\\nb-workflow",
+      "targetPath": "packages/nb-workflow",
+      "head": "cf34d1567181f77b49f12721648f8f73c3385120",
+      "candidateCount": 24,
+      "includedCount": 24,
+      "manifestExcluded": 0,
+      "sourceEntriesVerified": 24,
+      "exactCopied": 20,
+      "relocated": 0,
+      "policySkipped": [
+        ".gitignore",
+        "bun.lock"
+      ],
+      "controlledChanges": [
+        "README.md",
+        "package.json"
+      ],
+      "missing": [],
+      "mismatches": [],
+      "sourceDrift": []
+    },
+    {
+      "name": "nb-memory",
+      "sourcePath": "C:\\Users\\notnotype\\Documents\\CodeRepository\\GithubProjects\\nb-memory",
+      "targetPath": "packages/nb-memory",
+      "head": "0676cd446b55f212885625468c4498007afd97a1",
+      "candidateCount": 37,
+      "includedCount": 37,
+      "manifestExcluded": 0,
+      "sourceEntriesVerified": 37,
+      "exactCopied": 32,
+      "relocated": 0,
+      "policySkipped": [
+        ".gitignore",
+        "bun.lock"
+      ],
+      "controlledChanges": [
+        "docs/architecture.html",
+        "docs/reports/2026-08-01-round1-regression.md",
+        "package.json"
+      ],
+      "missing": [],
+      "mismatches": [],
+      "sourceDrift": []
+    },
+    {
+      "name": "nb-ui",
+      "sourcePath": "C:\\Users\\notnotype\\Documents\\CodeRepository\\GithubProjects\\nb-ui",
+      "targetPath": "packages/nb-ui",
+      "head": "6296c693e21751c984f3ac8bdefbb899d0244cf9",
+      "candidateCount": 131,
+      "includedCount": 130,
+      "manifestExcluded": 1,
+      "sourceEntriesVerified": 130,
+      "exactCopied": 126,
+      "relocated": 0,
+      "policySkipped": [
+        ".gitignore",
+        "bun.lock"
+      ],
+      "controlledChanges": [
+        "AGENTS.md",
+        "package.json"
+      ],
+      "missing": [],
+      "mismatches": [],
+      "sourceDrift": []
+    },
+    {
+      "name": "neuro-agent-harness",
+      "sourcePath": "C:\\Users\\notnotype\\Documents\\CodeRepository\\GithubProjects\\neuro-agent-harness",
+      "targetPath": "packages/neuro-agent-harness",
+      "head": "1e4774f299eae78dc304ca750d105ce2584e5cff",
+      "candidateCount": 299,
+      "includedCount": 298,
+      "manifestExcluded": 1,
+      "sourceEntriesVerified": 298,
+      "exactCopied": 292,
+      "relocated": 100,
+      "policySkipped": [
+        ".gitignore",
+        "bun.lock"
+      ],
+      "controlledChanges": [
+        "AGENTS.md",
+        "docs/README.md",
+        "docs/tasks/README.md",
+        "package.json"
+      ],
+      "missing": [],
+      "mismatches": [],
+      "sourceDrift": []
+    },
+    {
+      "name": "llmlint",
+      "sourcePath": "C:\\Users\\notnotype\\Documents\\CodeRepository\\GithubProjects\\llmlint",
+      "targetPath": "packages/llmlint",
+      "head": "7d23292694039df2c0572611aff93b97165ba0f9",
+      "candidateCount": 814,
+      "includedCount": 745,
+      "manifestExcluded": 69,
+      "sourceEntriesVerified": 745,
+      "exactCopied": 729,
+      "relocated": 40,
+      "policySkipped": [
+        ".gitignore",
+        "bun.lock",
+        "web/.gitignore"
+      ],
+      "controlledChanges": [
+        "docs/proposed/author-reviewer-ecosystem.md",
+        "docs/specs/README.md",
+        "AGENTS.md",
+        "CONTEXT.md",
+        "PROJECT-STATUS.md",
+        "docs/README.md",
+        "docs/tasks/README.md",
+        "evals/METHODOLOGY.md",
+        "evals/README.md",
+        "evals/experiments/README.md",
+        "package.json",
+        "skill/references/rule-model.md",
+        "web/scripts/style-review-report.ts"
+      ],
+      "missing": [],
+      "mismatches": [],
+      "sourceDrift": []
+    }
+  ],
+  "totals": {
+    "sourceEntries": 1264,
+    "sourceVerified": 1264,
+    "exactCopied": 1225,
+    "relocated": 140,
+    "policySkipped": 13,
+    "controlledChanges": 26,
+    "missing": 0,
+    "mismatches": 0,
+    "sourceDrift": 0,
+    "manifestExcluded": 71
+  },
+  "license": {
+    "package": "packages/nb-ui/LICENSE",
+    "sha256": "c0ea4a896d2c8c394b29f9427589996db826cd501c512279ff0ed3ef48fabbe5",
+    "expected": "c0ea4a896d2c8c394b29f9427589996db826cd501c512279ff0ed3ef48fabbe5"
+  },
+  "lockfile": {
+    "sha256": "sha256:1433b696f687d2d7942c50386846a286ae5bdf77780e3b674f12e17fde490ff8",
+    "frozenInstall": "bun install --frozen-lockfile --linker hoisted",
+    "installs": 1680,
+    "packageCount": 1938
+  },
+  "generatedArtifacts": {
+    "nbUiCss": {
+      "path": "packages/nb-ui/dist/nb-ui.css",
+      "bytes": 39954,
+      "sha256": "sha256:875a7866ca0db4c53e35f2fe4ae0fd64218b9d5649ce23e59e66a840e7a754ca"
+    }
+  },
+  "validation": {
+    "nb-history": "typecheck passed; 49 tests / 200 expect calls passed",
+    "nb-workflow": "18 tests / 96 expect calls passed; demo generated 70 frames with 15 invalid snapshots and 2 reruns",
+    "nb-memory": "typecheck passed; 86 tests / 464 expect calls passed",
+    "nb-ui": "build:css, typecheck and 13 files / 185 tests passed; browser /lab smoke passed at 1280x900 and 390x844 with 19 controls and no horizontal overflow",
+    "neuro-agent-harness": "build, typecheck, verify and 529 tests / 2204 expect calls passed; pack:smoke installed generated tarball",
+    "llmlint": "root verify remains inherited gap: typecheck passed, bun test 367 passed / 7 failed / 7 errors on unresolved llmlint/fix, evals-generator/agent-loop and #shared/analysis aliases; skill CLI version/rules/guide passed; style-review-report default output smoke wrote packages/llmlint/evals/report/style-review-report.json; web island frozen install, Nuxt prepare, Prisma generate/init, typecheck, server typecheck and production build passed in degraded no-report mode",
+    "root": "root typecheck passed after desktop/electron frozen island install; nuxt prepare + bun run test -- --retry=3 passed 500 files / 1 skipped and 3496 tests / 14 skipped"
+  }
+}

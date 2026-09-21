@@ -1,0 +1,67 @@
+{
+  "windows": [
+    {
+      "id": "W1",
+      "paragraphs": [1, 4],
+      "scene": "章节开始与声明",
+      "location": "未知",
+      "pov": "叙述者",
+      "storyAfter": null,
+      "storyOffset": null
+    },
+    {
+      "id": "W2",
+      "paragraphs": [5, 12],
+      "scene": "苏天晴醒来并发现变身狐女",
+      "location": "昏暗房间",
+      "pov": "苏天晴",
+      "storyAfter": null,
+      "storyOffset": null
+    },
+    {
+      "id": "W3",
+      "paragraphs": [13, 24],
+      "scene": "苏天晴回忆前世死亡并接受现状",
+      "location": "昏暗房间",
+      "pov": "苏天晴",
+      "storyAfter": "W2",
+      "storyOffset": "五分钟前"
+    },
+    {
+      "id": "W4",
+      "paragraphs": [25, 32],
+      "scene": "墨丘利秘典自我介绍",
+      "location": "昏暗房间",
+      "pov": "苏天晴",
+      "storyAfter": "W3",
+      "storyOffset": null
+    },
+    {
+      "id": "W5",
+      "paragraphs": [33, 43],
+      "scene": "苏天晴检查新身体并赞美小脚",
+      "location": "落地镜前",
+      "pov": "苏天晴",
+      "storyAfter": "W4",
+      "storyOffset": null
+    },
+    {
+      "id": "W6",
+      "paragraphs": [44, 59],
+      "scene": "签订契约的约定",
+      "location": "昏暗房间",
+      "pov": "苏天晴",
+      "storyAfter": "W5",
+      "storyOffset": null
+    },
+    {
+      "id": "W7",
+      "paragraphs": [60, 77],
+      "scene": "契约成立，成为反派魔法少女",
+      "location": "昏暗房间",
+      "pov": "苏天晴",
+      "storyAfter": "W6",
+      "storyOffset": null
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+    "schema": "nbook.lockfile-scope-acceptance/v1",
+    "workId": "w00009-issue-123-proper-lockfile",
+    "taskId": "t01-proper-lockfile-exfat",
+    "decision": "accepted",
+    "scope": "接受 Bun 根据当前 package manifests 重生 bun.lock 时同步已有 manifest/lock 不一致的结果；不把这些解析变化表述为 proper-lockfile 功能升级。",
+    "lockfile": {
+        "path": "bun.lock",
+        "generator": "Bun 1.3.14",
+        "frozenInstall": "bun install --frozen-lockfile --ignore-scripts --linker hoisted",
+        "patchMapping": "proper-lockfile@4.1.2 -> patches/proper-lockfile@4.1.2.patch",
+        "acceptedExistingSync": [
+            "packages/neuro-book workspace version 0.9.5-canary.20260814.021137Z.323410b8 -> 0.10.0-canary.20260907.031100Z.4b10ab1d，已与当前 package manifest 一致",
+            "packages/neuro-book-manager workspace version 0.1.0-canary.55 -> 0.1.0-canary.58，已与当前 package manifest 一致",
+            "@types/bun、bun-types、@types/node 及其 workspace 解析条目按当前 manifest 重新生成",
+            "Windows workspace file 路径条目由 Bun 重新生成"
+        ]
+    },
+    "boundaries": {
+        "packageJsonVersionChangesInThisWork": false,
+        "dependencyUpgradeIntent": false,
+        "manualLockfileEdit": false,
+        "unrelatedRuntimeBehaviorClaimed": false,
+        "properLockfilePatchStillRequired": true
+    },
+    "evidence": {
+        "manifestVersionsObserved": {
+            "@notnotype/neuro-book": "0.10.0-canary.20260907.031100Z.4b10ab1d",
+            "@notnotype/neuro-book-manager": "0.1.0-canary.58"
+        },
+        "worktreeHead": "7176da61fc4c5dfc8eda2f65e22ae36b744d80af",
+        "worktreeBranch": "fix/w00009-issue-123-proper-lockfile"
+    },
+    "authorization": "开发者明确要求记录并接受这些既有 manifest/lock 不一致的同步结果。"
+}

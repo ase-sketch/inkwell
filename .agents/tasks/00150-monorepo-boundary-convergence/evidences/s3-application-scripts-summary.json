@@ -1,0 +1,57 @@
+{
+  "schema": "nbook.evidence/v1",
+  "taskId": "00150-monorepo-boundary-convergence",
+  "stage": "application-scripts-boundary",
+  "status": "verified",
+  "createdAt": "2026-08-19T19:42:00Z",
+  "scope": {
+    "migratedScriptCount": 9,
+    "applicationScriptRoot": "packages/neuro-book/scripts",
+    "legacyApplicationScriptRootsRemoved": true,
+    "approvedRootBridge": "scripts/cli/source-dev.ts -> #scripts/utils/workspace-roots",
+    "taskMigrationIncluded": false
+  },
+  "checks": [
+    {
+      "command": "bun --cwd packages/neuro-book run scripts:typecheck",
+      "result": "passed: 0 errors"
+    },
+    {
+      "command": "bun x tsc --noEmit -p scripts/tsconfig.json",
+      "result": "passed: 0 errors"
+    },
+    {
+      "command": "bun run test -- scripts/smoke/agent.test.ts server/agent/tools/sqlite-vec-smoke.test.ts",
+      "result": "passed: 2 test files, 5 tests"
+    },
+    {
+      "command": "bun run manager:pack",
+      "result": "passed: packed Manager CLI route checks in isolated installation"
+    },
+    {
+      "command": "bun run governance:check",
+      "result": "passed: failures=[], warnings=[]"
+    },
+    {
+      "command": "git diff --check",
+      "result": "passed: no whitespace errors; Windows CRLF conversion warnings only"
+    }
+  ],
+  "taskMigrationBoundary": {
+    "newOwnershipManifest": false,
+    "newApplicationTaskReadme": false,
+    "newApplicationTaskAgents": false,
+    "preexistingTaskStagedChangeCountPreserved": 855,
+    "note": "The pre-existing Task staged migration remains outside this checkpoint; manually touched Task paths were restored before this evidence was written."
+  },
+  "unexecuted": [
+    "真实 Docker",
+    "Windows runner/portable",
+    "浏览器人工验收",
+    "真实 Provider/Model",
+    "私有 corpus",
+    "远端部署/发布/tag",
+    "旧 worktree 删除",
+    "真实数据库 migration"
+  ]
+}

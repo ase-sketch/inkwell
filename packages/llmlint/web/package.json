@@ -1,0 +1,53 @@
+{
+    "name": "llmlint-web",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build:registry": "bun scripts/build-registry.ts",
+        "build:report": "bun scripts/build-report.ts",
+        "db:generate": "prisma generate",
+        "db:init": "bun scripts/init-db.ts",
+        "db:migrate": "prisma migrate dev",
+        "dev": "bun scripts/build-registry.ts && bun scripts/build-report.ts && nuxt dev",
+        "build": "bun scripts/build-registry.ts && bun scripts/build-report.ts && nuxt build",
+        "start": "node .output/server/index.mjs",
+        "generate": "bun scripts/build-registry.ts && bun scripts/build-report.ts && nuxt generate",
+        "preview": "nuxt preview",
+        "typecheck": "bun scripts/build-registry.ts && vue-tsc --noEmit",
+        "typecheck:server": "vue-tsc --noEmit -p .nuxt/tsconfig.server.json"
+    },
+    "dependencies": {
+        "@floating-ui/dom": "^1.7.6",
+        "@libsql/client": "^0.17.4",
+        "@libsql/isomorphic-ws": "^0.1.5",
+        "@prisma/adapter-libsql": "^7.8.0",
+        "@prisma/client": "^7.8.0",
+        "@tiptap/core": "3.23.1",
+        "@tiptap/extension-placeholder": "3.23.1",
+        "@tiptap/markdown": "3.23.1",
+        "@tiptap/pm": "3.23.1",
+        "@tiptap/starter-kit": "3.23.1",
+        "@tiptap/vue-3": "3.23.1",
+        "@vueuse/core": "^14.3.0",
+        "diff-match-patch": "^1.0.5",
+        "dompurify": "^3.4.12",
+        "marked": "^18.0.6",
+        "nuxt-auth-utils": "^0.5.29",
+        "openid-client": "6.8.5",
+        "zod": "^4.4.3"
+    },
+    "devDependencies": {
+        "@iconify-json/lucide": "^1.2.68",
+        "@nuxtjs/color-mode": "^3.5.2",
+        "@types/diff-match-patch": "^1.0.36",
+        "@unocss/nuxt": "^66.6.2",
+        "nuxt": "^4.3.1",
+        "playwright-core": "^1.49",
+        "prisma": "^7.8.0",
+        "typescript": "^5.9.3",
+        "unocss": "^66.6.2",
+        "vue": "^3.5.24",
+        "vue-router": "^4.6.4",
+        "vue-tsc": "^2.2.0"
+    }
+}

@@ -1,0 +1,209 @@
+#!/usr/bin/env bun
+import {randomBytes} from "node:crypto";
+import {spawn} from "node:child_process";
+import {existsSync} from "node:fs";
+import {mkdir} from "node:fs/promises";
+import {readFileSync, writeFileSync} from "node:fs";
+import {dirname, resolve} from "node:path";
+import {fileURLToPath} from "node:url";
+import {
+    PRODUCT_BUN_RUNTIME_ARGS,
+    resolveProductRuntimeInternal,
+} from "@notnotype/neuro-book-contracts/product-runtime";
+import {createProductRuntimeEnvironment} from "@notnotype/neuro-book-contracts/environment";
+import {getSystemAssetSeedPaths, seedSystemAssets} from "nbook/server/workspace-files/system-asset-installation";
+import {readProductRuntimeContract} from "nbook/server/interfaces/product-runtime-image-verifier";
+const productImageRoot = resolveProductImageRoot();
+const applicationRoot = resolveApplicationRoot(productImageRoot);
+const entry = resolve(productImageRoot, "server", "index.mjs");
+const stateRoot = resolveStateRoot(applicationRoot);
+const cacheRoot = resolveCacheRoot(applicationRoot, stateRoot);
+await mkdir(stateRoot, {recursive: true});
+await mkdir(cacheRoot, {recursive: true});
+const stateEnv = ensureProductEnv(stateRoot);
+const productEnv = {
+    ...createProductRuntimeEnvironment({
+        repositoryRoot: applicationRoot,
+        applicationRoot,
+        productImageRoot,
+        stateRoot,
+        cacheRoot,
+        development: false,
+        inheritedEnvironment: process.env,
+        stateEnvironment: stateEnv,
+        host: process.env.NITRO_HOST?.trim() || process.env.HOST?.trim(),
+        runtimeExecutable: process.execPath,
+    }),
+    NEURO_BOOK_RUNTIME_ASSET_MODE: "install",
+};
+
+const seedPaths = getSystemAssetSeedPaths(applicationRoot, productEnv);
+await seedSystemAssets({applicationRoot, stateRoot, seed: seedPaths});
+
+await runInternal(productImageRoot, applicationRoot, productEnv, "check-migrations");
+await runInternal(productImageRoot, applicationRoot, productEnv, "prepare-system-assets");
+
+const child = spawn(process.execPath, [...PRODUCT_BUN_RUNTIME_ARGS, entry, ...process.argv.slice(2)], {
+    cwd: applicationRoot,
+    env: productEnv,
+    stdio: "ignore",
+    windowsHide: false,
+});
+let shutdownSignal;
+
+/** Product启动器是容器PID 1时，必须把停止信号转发给真正的Nitro进程。 */
+for (const signal of ["SIGINT", "SIGTERM"]) {
+    process.once(signal, () => {
+        shutdownSignal = signal;
+        if (child.exitCode === null && child.signalCode === null) {
+            child.kill(signal);
+        }
+    });
+}
+
+/** Product wrapper 只按 Runtime Contract internal ID 执行启动前步骤。 */
+async function runInternal(imageRoot, applicationRoot, env, id) {
+    const contract = await readProductRuntimeContract(imageRoot);
+    const invocation = resolveProductRuntimeInternal(contract, id);
+    await run(process.execPath, [
+        ...PRODUCT_BUN_RUNTIME_ARGS,
+        resolve(imageRoot, ...invocation.entry.split("/")),
+        ...invocation.fixedArgs,
+    ], {
+        cwd: applicationRoot,
+        env,
+        // start 是长驻服务；启动前内部命令也不能继承可能已断开的 supervisor 管道。
+        stdio: "ignore",
+    });
+}
+
+child.on("error", () => {
+    process.exit(1);
+});
+
+child.on("exit", (code, signal) => {
+    if (shutdownSignal) {
+        process.exit(0);
+    }
+    if (signal) {
+        process.kill(process.pid, signal);
+        return;
+    }
+    process.exit(code ?? 1);
+});
+
+/**
+ * 从 Product command bundle 启动时，向上定位带 `.output/server/index.mjs` 的 Product Root。
+ * Windows machine 安装会把只读 Product image 投影到 Cache Root；此时
+ * `NEURO_BOOK_PRODUCT_IMAGE_ROOT` 是投影的 `.output`，而 Application Root 仍
+ * 由 Manager 注入到 Program Files 安装根。
+ */
+function resolveProductImageRoot() {
+    const configured = process.env.NEURO_BOOK_PRODUCT_IMAGE_ROOT?.trim();
+    if (configured) {
+        const imageRoot = resolve(configured);
+        if (!existsSync(resolve(imageRoot, "server", "index.mjs"))) {
+            throw new Error(`NEURO_BOOK_PRODUCT_IMAGE_ROOT 缺少 server/index.mjs：${imageRoot}`);
+        }
+        return imageRoot;
+    }
+    let current = dirname(fileURLToPath(import.meta.url));
+    while (true) {
+        const candidateEntry = resolve(current, ".output", "server", "index.mjs");
+        if (existsSync(candidateEntry)) {
+            return resolve(current, ".output");
+        }
+        const parent = resolve(current, "..");
+        if (parent === current) {
+            throw new Error("无法定位 Product Root：缺少 .output/server/index.mjs。");
+        }
+        current = parent;
+    }
+}
+
+function resolveApplicationRoot(imageRoot) {
+    const configured = process.env.NEURO_BOOK_APPLICATION_ROOT?.trim();
+    return configured ? resolve(configured) : resolve(imageRoot, "..");
+}
+
+/** Manager 可把运行状态放在 Product Root 外，例如 Windows Portable data/。 */
+function resolveStateRoot(root) {
+    const configured = process.env.NEURO_BOOK_STATE_ROOT?.trim();
+    if (!configured) {
+        return root;
+    }
+    return resolve(root, configured);
+}
+
+/** Cache Root 由启动 Adapter 显式决定；未设置时只回退到 State Root/cache。 */
+function resolveCacheRoot(root, stateRoot) {
+    const configured = process.env.NEURO_BOOK_CACHE_ROOT?.trim();
+    return configured ? resolve(root, configured) : resolve(stateRoot, "cache");
+}
+
+/**
+ * 加载 State Root `.env`，缺少 session password 时生成并持久化。
+ * Application Root 与 Runtime Image 在整个 Product 生命周期内保持只读。
+ */
+function ensureProductEnv(root) {
+    const envPath = resolve(root, ".env");
+    const parsed = existsSync(envPath) ? parseEnv(readFileSync(envPath, "utf8")) : {};
+    if (!process.env.NUXT_SESSION_PASSWORD && !parsed.NUXT_SESSION_PASSWORD) {
+        parsed.NUXT_SESSION_PASSWORD = randomBytes(32).toString("hex");
+        writeEnv(envPath, parsed);
+    }
+    return parsed;
+}
+
+/**
+ * 解析简单 KEY=VALUE `.env` 文件。
+ */
+function parseEnv(text) {
+    const result = {};
+    for (const rawLine of text.split(/\r?\n/u)) {
+        const line = rawLine.trim();
+        if (!line || line.startsWith("#")) {
+            continue;
+        }
+        const separator = line.indexOf("=");
+        if (separator <= 0) {
+            continue;
+        }
+        const key = line.slice(0, separator).trim();
+        const value = line.slice(separator + 1).trim();
+        result[key] = value.replace(/^['"]|['"]$/gu, "");
+    }
+    return result;
+}
+
+/**
+ * 写回 Product Root `.env`。
+ */
+function writeEnv(path, values) {
+    const lines = Object.entries(values)
+        .map(([key, value]) => `${key}=${value}`);
+    writeFileSync(path, `${lines.join("\n")}\n`, "utf8");
+}
+
+function run(command, args, options = {}) {
+    return new Promise((resolvePromise, rejectPromise) => {
+        const child = spawn(command, args, {
+            cwd: options.cwd,
+            env: options.env ?? process.env,
+            stdio: options.stdio ?? "inherit",
+            windowsHide: true,
+        });
+        child.on("error", rejectPromise);
+        child.on("exit", (code, signal) => {
+            if (signal) {
+                rejectPromise(new Error(`${command} 被信号中断：${signal}`));
+                return;
+            }
+            if (code !== 0) {
+                rejectPromise(new Error(`${command} 退出码：${code ?? 1}`));
+                return;
+            }
+            resolvePromise();
+        });
+    });
+}

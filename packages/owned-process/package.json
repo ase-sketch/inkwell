@@ -1,0 +1,24 @@
+{
+    "name": "@notnotype/owned-process",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "exports": {
+        ".": "./src/index.ts"
+    },
+    "imports": {
+        "#owned-process/*": "./src/*.ts"
+    },
+    "scripts": {
+        "test": "vitest run --config vitest.config.ts",
+        "test:windows-release": "bun tests/windows-release-smoke.ts",
+        "typecheck": "tsc --noEmit -p tsconfig.json"
+    },
+    "devDependencies": {
+        "@types/bun": "^1.3.14",
+        "@types/node": "^25.6.0",
+        "typescript": "^5.9.3",
+        "vitest": "^4.1.2",
+        "@notnotype/neuro-book-test-support": "file:../neuro-book-test-support"
+    }
+}

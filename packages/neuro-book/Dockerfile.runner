@@ -1,0 +1,21 @@
+FROM oven/bun:1 AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV HOST=0.0.0.0
+ENV PORT=3000
+
+COPY . .
+
+RUN bun install
+
+# Windows 构建产物的 symlink 指向 /c/Users/... Linux 下无法解析。
+# 删除 Nitro 部分打包的 node_modules，symlink 到完整安装的 node_modules。
+RUN rm -rf /app/.output/server/node_modules && ln -s /app/node_modules /app/.output/server/node_modules
+
+# tsconfig.json extends ./.nuxt/tsconfig.json，创建占位文件使其生效
+RUN mkdir -p .nuxt && echo "{}" > .nuxt/tsconfig.json
+
+EXPOSE 3000
+
+ENTRYPOINT ["sh", "./scripts/deploy/docker-product-entrypoint.sh"]

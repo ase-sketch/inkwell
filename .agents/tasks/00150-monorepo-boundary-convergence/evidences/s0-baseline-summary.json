@@ -1,0 +1,36 @@
+{
+  "schema": "nbook.monorepo-boundary-baseline/v1",
+  "recordedAt": "2026-08-19T08:29:41Z",
+  "branch": "master",
+  "head": "679621e5ff6a516b0a45873f21369d4913ea0567",
+  "upstreamState": "master...origin/master [ahead 44]",
+  "trackedFiles": {
+    "count": 5047,
+    "command": "git ls-files",
+    "path": "baseline-tracked-files.txt",
+    "sha256": "5278b8c9791d23b956dadac63947387fc3397734492258c97dd43f15c9a3adf5"
+  },
+  "dirtyFiles": [
+    ".github/workflows/code-baseline.yml",
+    "docs/standards/code/README.md",
+    "docs/standards/code/agent-assets.md",
+    "docs/standards/code/docs-site.md",
+    "docs/standards/code/workspace-assets.md",
+    "scripts/ci/validate-community-files.ts",
+    "scripts/ci/workspace-workflows.test.ts",
+    "scripts/smoke/smoke-agent.ts",
+    "vitepress/.vitepress/config.ts"
+  ],
+  "diffStat": {
+    "files": 9,
+    "insertions": 24,
+    "deletions": 15
+  },
+  "constraints": {
+    "preserveDirtyInput": true,
+    "fetchOrigin": false,
+    "remoteWrites": false,
+    "releaseOrDeploy": false,
+    "databaseMigration": false
+  }
+}

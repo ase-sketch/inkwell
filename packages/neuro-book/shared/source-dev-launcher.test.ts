@@ -1,0 +1,217 @@
+import type {OwnedProcessCompletion, OwnedProcessLease} from "@notnotype/owned-process";
+import {isAbsolute, relative, resolve} from "node:path";
+import {afterEach, describe, expect, it, vi} from "vitest";
+import {resolveAgentCacheRoot} from "@notnotype/neuro-book-test-support/paths";
+import {
+    PRODUCT_RUNTIME_EXIT_CODE_AGENT_SESSION_STORE_LEASE_COMPROMISED,
+    PRODUCT_SHUTDOWN_TOKEN_ENVIRONMENT,
+} from "@notnotype/neuro-book-contracts/product-runtime";
+
+const mocks = vi.hoisted(() => ({
+    spawnOwnedProcess: vi.fn(),
+    shutdownNativeProduct: vi.fn(),
+}));
+
+vi.mock("@notnotype/owned-process", () => ({
+    spawnOwnedProcess: mocks.spawnOwnedProcess,
+}));
+vi.mock("nbook/server/runtime/shutdown/product-shutdown-client", () => ({
+    shutdownNativeProduct: mocks.shutdownNativeProduct,
+}));
+
+import {resolveSourceDevUserRoots, runSourceDev} from "../scripts/cli/source-dev";
+
+describe("Source Dev launcher", () => {
+    afterEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it("公开入口以Owned Process启动内部dev:runtime并传播自然退出码", async () => {
+        mocks.spawnOwnedProcess.mockReturnValue(lease(Promise.resolve({exitCode: 7, signal: null})));
+        const sourceCheckout = process.cwd();
+        const sourceEnvironment = {PORT: "43130", SOURCE_DEV_MARKER: "kept"};
+        const userRoots = resolveSourceDevUserRoots({environment: sourceEnvironment});
+
+        await expect(runSourceDev({
+            cwd: sourceCheckout,
+            env: sourceEnvironment,
+        })).resolves.toBe(7);
+
+        expect(mocks.spawnOwnedProcess).toHaveBeenCalledWith(expect.objectContaining({
+            command: process.execPath,
+            args: ["--no-install", "run", "dev:runtime"],
+            cwd: sourceCheckout,
+            env: expect.objectContaining({
+                PORT: "43130",
+                SOURCE_DEV_MARKER: "kept",
+                HOST: "127.0.0.1",
+                NITRO_HOST: "127.0.0.1",
+                NEURO_BOOK_STATE_ROOT: userRoots.stateRoot,
+                NEURO_BOOK_CACHE_ROOT: userRoots.cacheRoot,
+                NEURO_BOOK_APPLICATION_ROOT: sourceCheckout,
+                [PRODUCT_SHUTDOWN_TOKEN_ENVIRONMENT]: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/u),
+            }),
+            stdin: "inherit",
+            stdout: "inherit",
+            stderr: "inherit",
+        }));
+
+        expect(isWithin(sourceCheckout, userRoots.stateRoot)).toBe(false);
+        expect(isWithin(sourceCheckout, userRoots.cacheRoot)).toBe(false);
+    });
+
+    it("显式Cache Root保持原值，不由Source Dev launcher重写", async () => {
+        mocks.spawnOwnedProcess.mockReturnValue(lease(Promise.resolve({exitCode: 0, signal: null})));
+
+        await expect(runSourceDev({
+            cwd: process.cwd(),
+            env: {
+                NEURO_BOOK_CACHE_ROOT: "C:/custom-cache",
+            },
+        })).resolves.toBe(0);
+
+        expect(mocks.spawnOwnedProcess).toHaveBeenCalledWith(expect.objectContaining({
+            env: expect.objectContaining({
+                NEURO_BOOK_CACHE_ROOT: "C:/custom-cache",
+            }),
+        }));
+    });
+
+    it("首次信号只请求共享graceful shutdown并等待Product终态", async () => {
+        const terminal = deferred<OwnedProcessCompletion>();
+        const ownedLease = lease(terminal.promise);
+        mocks.spawnOwnedProcess.mockReturnValue(ownedLease);
+        mocks.shutdownNativeProduct.mockResolvedValue("graceful");
+        const before = new Set(process.listeners("SIGINT"));
+        const running = runSourceDev({env: {PORT: "43131"}});
+
+        addedSignalListener("SIGINT", before)();
+        terminal.resolve({exitCode: 0, signal: null});
+
+        await expect(running).resolves.toBe(0);
+        expect(mocks.shutdownNativeProduct).toHaveBeenCalledWith(expect.objectContaining({
+            port: 43131,
+            host: "127.0.0.1",
+            completion: expect.any(Promise),
+            forceTerminate: expect.any(Function),
+        }));
+        expect(ownedLease.terminate).not.toHaveBeenCalled();
+    });
+
+    it("显式localhost监听时graceful shutdown使用同一loopback地址", async () => {
+        const terminal = deferred<OwnedProcessCompletion>();
+        mocks.spawnOwnedProcess.mockReturnValue(lease(terminal.promise));
+        mocks.shutdownNativeProduct.mockResolvedValue("graceful");
+        const before = new Set(process.listeners("SIGINT"));
+        const running = runSourceDev({env: {PORT: "43134", HOST: "localhost"}});
+
+        addedSignalListener("SIGINT", before)();
+        terminal.resolve({exitCode: 0, signal: null});
+
+        await expect(running).resolves.toBe(0);
+        expect(mocks.shutdownNativeProduct).toHaveBeenCalledWith(expect.objectContaining({host: "localhost"}));
+    });
+
+    it("shutdown竞态中Product以75退出时保留专用退出码", async () => {
+        const terminal = deferred<OwnedProcessCompletion>();
+        mocks.spawnOwnedProcess.mockReturnValue(lease(terminal.promise));
+        mocks.shutdownNativeProduct.mockResolvedValue("forced");
+        const before = new Set(process.listeners("SIGINT"));
+        const running = runSourceDev({env: {PORT: "43135"}});
+
+        addedSignalListener("SIGINT", before)();
+        terminal.resolve({
+            exitCode: PRODUCT_RUNTIME_EXIT_CODE_AGENT_SESSION_STORE_LEASE_COMPROMISED,
+            signal: null,
+        });
+
+        await expect(running).resolves.toBe(PRODUCT_RUNTIME_EXIT_CODE_AGENT_SESSION_STORE_LEASE_COMPROMISED);
+    });
+
+    it("第二次信号幂等地立即强制收口，不等待仍挂起的graceful请求", async () => {
+        const terminal = deferred<OwnedProcessCompletion>();
+        const graceful = deferred<"graceful" | "forced">();
+        const ownedLease = lease(terminal.promise);
+        vi.mocked(ownedLease.terminate).mockResolvedValue({
+            exitCode: null,
+            signal: "SIGTERM",
+            terminationReason: "shutdown",
+        });
+        mocks.spawnOwnedProcess.mockReturnValue(ownedLease);
+        mocks.shutdownNativeProduct.mockReturnValue(graceful.promise);
+        const before = new Set(process.listeners("SIGINT"));
+        const running = runSourceDev({env: {PORT: "43132"}});
+        const signal = addedSignalListener("SIGINT", before);
+
+        signal();
+        signal();
+        signal();
+        terminal.resolve({exitCode: null, signal: "SIGTERM", terminationReason: "shutdown"});
+
+        await expect(running).resolves.toBe(0);
+        expect(ownedLease.terminate).toHaveBeenCalledTimes(1);
+        expect(ownedLease.terminate).toHaveBeenCalledWith("shutdown");
+    });
+
+    it("graceful和force均失败时立即向CLI传播AggregateError", async () => {
+        const terminal = deferred<OwnedProcessCompletion>();
+        const failure = new AggregateError([new Error("graceful"), new Error("force")], "shutdown failed");
+        mocks.spawnOwnedProcess.mockReturnValue(lease(terminal.promise));
+        mocks.shutdownNativeProduct.mockRejectedValue(failure);
+        const before = new Set(process.listeners("SIGTERM"));
+        const running = runSourceDev({env: {PORT: "43133"}});
+
+        addedSignalListener("SIGTERM", before)();
+
+        await expect(running).rejects.toBe(failure);
+    });
+
+    it("平台默认 State/Cache 根不依赖 checkout", () => {
+        expect(resolveSourceDevUserRoots({
+            platform: "win32",
+            environment: {LOCALAPPDATA: "C:/Users/test/AppData/Local"},
+            homeDirectory: "C:/Users/test",
+        })).toEqual({
+            stateRoot: resolve("C:/Users/test/AppData/Local/Inkwell/data"),
+            cacheRoot: resolve("C:/Users/test/AppData/Local/Inkwell/cache"),
+        });
+        expect(resolveSourceDevUserRoots({
+            platform: "linux",
+            environment: {XDG_DATA_HOME: "/tmp/nbook-data", XDG_CACHE_HOME: "/tmp/nbook-cache"},
+            homeDirectory: "/home/test",
+        })).toEqual({
+            stateRoot: resolve("/tmp/nbook-data/inkwell/data"),
+            cacheRoot: resolve("/tmp/nbook-cache/inkwell"),
+        });
+    });
+});
+
+function isWithin(root: string, candidate: string): boolean {
+    const escaped = relative(resolve(root), resolve(candidate));
+    return escaped === "" || (!escaped.startsWith("..") && !isAbsolute(escaped));
+}
+
+/** 构造测试用 Owned Process lease。 */
+function lease(completion: Promise<OwnedProcessCompletion>): OwnedProcessLease & {terminate: ReturnType<typeof vi.fn>} {
+    return {
+        completion,
+        terminate: vi.fn().mockResolvedValue({exitCode: 0, signal: null, terminationReason: "shutdown"}),
+    };
+}
+
+/** 找出本次 runSourceDev 注册的信号监听器，避免向 Vitest 自身广播真实信号。 */
+function addedSignalListener(signal: NodeJS.Signals, before: Set<(...args: never[]) => unknown>): () => void {
+    const listener = process.listeners(signal)
+        .find((candidate) => !before.has(candidate as (...args: never[]) => unknown)) as ((value: NodeJS.Signals) => void) | undefined;
+    if (!listener) throw new Error(`Source Dev未注册${signal}监听器`);
+    return () => listener(signal);
+}
+
+/** 创建可精确推进的 Promise。 */
+function deferred<T>(): {promise: Promise<T>; resolve(value: T): void} {
+    let resolve!: (value: T) => void;
+    const promise = new Promise<T>((resolvePromise) => {
+        resolve = resolvePromise;
+    });
+    return {promise, resolve};
+}

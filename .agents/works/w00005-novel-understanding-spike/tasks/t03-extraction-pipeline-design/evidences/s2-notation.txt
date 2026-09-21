@@ -1,0 +1,15 @@
+?P "签" -> "签署契约"
+S su_tianqing signed codex
+S su_tianqing designated_as "最佳适格者"
+S body_fox has_feature "金色毛发"
+S body_fox has_feature "毛茸茸大尾巴"
+S original_owner inhabits body_fox
+?I "墨丘利秘典" -> "墨丘利秘典"
+?I "星界使者" -> "星界使者"
+S codex self_role "星界使者"
+S su_tianqing attitude_to "变成萝莉" %claim ^su_tianqing
+S su_tianqing suspects "成为萝莉是奖励" %claim ^su_tianqing
+C W6 "苏天晴被古书告知自己是最佳适格者，无需犹豫便同意签订契约，并提出两个愿望：财富和变成萝莉，古书沉默后确认契约成立。"
+P W6 su_tianqing agent
+P W6 codex instrument
+M W6 valence=high arousal=medium surprise=high outcome=contract_formed register=casual story_after=契约成立

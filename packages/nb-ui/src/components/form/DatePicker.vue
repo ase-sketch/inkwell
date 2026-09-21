@@ -1,0 +1,107 @@
+<script setup lang="ts">
+import {computed, ref} from "vue";
+import {
+    PopoverContent,
+    PopoverPortal,
+    PopoverRoot,
+    PopoverTrigger,
+    type DateValue,
+} from "reka-ui";
+import {NB_Z_INDEX} from "../../theme/z-index";
+import Button from "../controls/Button.vue";
+import Calendar from "./Calendar.vue";
+
+const props = withDefaults(defineProps<{
+    modelValue?: DateValue;
+    placeholder?: string;
+    disabled?: boolean;
+    readonly?: boolean;
+    locale?: string;
+    size?: "sm" | "md" | "lg";
+}>(), {
+    modelValue: undefined,
+    placeholder: "选择日期...",
+    disabled: false,
+    readonly: false,
+    locale: "zh-CN",
+    size: "md",
+});
+
+const emit = defineEmits<{
+    (e: "update:modelValue", value: DateValue | undefined): void;
+}>();
+
+const isOpen = ref(false);
+
+const displayValue = computed(() => {
+    if (!props.modelValue) return "";
+    return props.modelValue.toString();
+});
+
+function handleDateSelect(val: DateValue | undefined): void {
+    emit("update:modelValue", val);
+    isOpen.value = false;
+}
+
+function handleClear(): void {
+    emit("update:modelValue", undefined);
+    isOpen.value = false;
+}
+</script>
+
+<template>
+    <PopoverRoot v-model:open="isOpen">
+        <PopoverTrigger as-child>
+            <button
+                type="button"
+                :disabled="props.disabled"
+                class="nb-ui-control nb-ui-focus-ring relative inline-flex items-center justify-between gap-2 rounded-[var(--radius-control)] border bg-[var(--bg-panel)] px-3 text-left transition-colors [transition-duration:var(--motion-base)] [transition-timing-function:var(--ease-standard)] cursor-pointer select-none disabled:cursor-not-allowed disabled:opacity-40"
+                :class="[
+                    props.size === 'sm' ? 'nb-ui-control-h-sm text-xs' : '',
+                    props.size === 'md' ? 'nb-ui-control-h-md text-sm' : '',
+                    props.size === 'lg' ? 'nb-ui-control-h-lg text-base' : '',
+                ]"
+            >
+                <div class="flex items-center gap-2 truncate">
+                    <span class="i-lucide-calendar h-4 w-4 text-[var(--text-muted)] shrink-0" aria-hidden="true" />
+                    <span v-if="displayValue" class="text-[var(--text-main)] font-mono">{{ displayValue }}</span>
+                    <span v-else class="text-[var(--text-muted)]">{{ props.placeholder }}</span>
+                </div>
+
+                <span v-if="displayValue && !props.disabled && !props.readonly" class="i-lucide-x h-3.5 w-3.5 text-[var(--text-muted)] hover:text-[var(--text-main)] shrink-0" @click.stop="handleClear" />
+            </button>
+        </PopoverTrigger>
+
+        <PopoverPortal>
+            <PopoverContent
+                :side-offset="6"
+                :style="{
+                    zIndex: NB_Z_INDEX.popover,
+                    backgroundColor: 'color-mix(in srgb, var(--bg-panel) 90%, transparent)',
+                    backdropFilter: 'blur(16px) saturate(130%) brightness(1.0)',
+                    WebkitBackdropFilter: 'blur(16px) saturate(130%) brightness(1.0)',
+                    boxShadow: '0 0 0 1px color-mix(in srgb, var(--text-main) 8%, transparent), 0 8px 24px -4px color-mix(in srgb, var(--shadow-color) 24%, transparent)',
+                }"
+                class="nb-ui-popover-surface nb-ui-popover-motion rounded-[var(--radius-panel)] p-2 text-[var(--text-main)] outline-none select-none"
+                @close-auto-focus="(e) => e.preventDefault()"
+            >
+                <Calendar
+                    :model-value="props.modelValue"
+                    :disabled="props.disabled"
+                    :readonly="props.readonly"
+                    :locale="props.locale"
+                    @update:model-value="handleDateSelect"
+                />
+
+                <div class="flex items-center justify-between border-t border-[var(--divider)] pt-2 px-1">
+                    <Button size="sm" variant="ghost" @click="handleClear">
+                        清除
+                    </Button>
+                    <Button size="sm" variant="secondary" @click="isOpen = false">
+                        关闭
+                    </Button>
+                </div>
+            </PopoverContent>
+        </PopoverPortal>
+    </PopoverRoot>
+</template>

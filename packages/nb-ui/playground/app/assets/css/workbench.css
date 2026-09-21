@@ -1,0 +1,349 @@
+/*
+ * 工作台切片 —— 只演示 UI 风格，不复刻产品。
+ *
+ * 上一版摆了四个区、章节卡、会话流、差异卡、输入条，看的人得先看懂产品才能判断好不好看。
+ * 这一版只留判断风格必需的三件东西：
+ *
+ *   ① 器械（侧栏 + 标题条）与稿面并置——两种材质的对比只能靠并置看出来
+ *   ② 一张纸，带朱批栏——签名元素
+ *   ③ 一段真的中文长句——排版好不好看，占位文字看不出来
+ *
+ * 纪律：只消费主题变量和 33 个配色变量。两处例外写在明处——
+ * **窗口几何**（--wb-side-w / --wb-margin-w，属产品 IA，主题不该动）和
+ * **系统绘制物**（交通灯的三个色是 macOS 画的，不是主题画的）。
+ */
+
+.wb-shell {
+    /* 例外一：窗口几何。有哪些区、各区多宽是产品定的，不是主题定的 */
+    --wb-side-w: 212px;
+    /* 朱批栏：12px 中文一行放得下 9 个字才不至于两三个字就折行 */
+    --wb-margin-w: 132px;
+    --wb-bar-h: calc(var(--control-h-lg) + var(--space-4));
+
+    display: grid;
+    grid-template-areas:
+        "chrome title"
+        "side   main";
+    grid-template-columns: var(--wb-side-w) minmax(0, 1fr);
+    grid-template-rows: var(--wb-bar-h) minmax(0, 1fr);
+    background-color: var(--bg-main);
+    background-image: var(--window-backdrop, none);
+    background-attachment: fixed;
+    overflow: hidden;
+}
+
+/* .sc-glass 的镜面高光画在 ::after（z-index: 1）上，区内容必须抬到它之上 */
+.wb-chrome > *,
+.wb-title > *,
+.wb-side > * {
+    position: relative;
+    z-index: 2;
+}
+
+/* ── 左上角那一格：归属由主题定，内容由操作系统定 ──────────────────────── */
+
+.wb-chrome {
+    grid-area: chrome;
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding-inline: var(--space-5);
+    background: var(--chrome-surface, var(--toolbar-surface));
+    box-shadow: var(--chrome-seam, 0 1px 0 var(--divider));
+}
+
+.wb-traffic {
+    display: inline-flex;
+    gap: 8px;
+}
+
+/* 例外二：系统绘制物。这三个色是 macOS 画的，主题换不掉 */
+.wb-traffic > span {
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+}
+
+.wb-traffic__close { background: #ff5f57; }
+.wb-traffic__min { background: #febc2e; }
+.wb-traffic__max { background: #28c840; }
+
+.wb-appmark {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    color: var(--text-secondary);
+}
+
+/* ── 标题条 ──────────────────────────────────────────────────────────────── */
+
+.wb-title {
+    grid-area: title;
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding-inline: var(--space-5);
+    background: var(--toolbar-surface);
+    box-shadow: 0 1px 0 var(--divider);
+    font-family: var(--font-ui);
+}
+
+.wb-title__name {
+    font-size: var(--text-sm);
+    /* 器械默认用次级文字色：把对比留给稿面，眼睛才有落点 */
+    color: var(--text-secondary);
+}
+
+.wb-title__tools {
+    margin-left: auto;
+    display: inline-flex;
+    gap: var(--space-2);
+}
+
+.wb-winbtns {
+    display: inline-flex;
+    gap: var(--space-1);
+    margin-left: var(--space-4);
+}
+
+.wb-winbtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: var(--control-h-sm);
+    border-radius: var(--radius-control);
+    color: var(--text-muted);
+    transition: background var(--motion-fast) var(--ease-standard);
+}
+
+.wb-winbtn:hover { background: var(--bg-hover); }
+.wb-winbtn--close:hover { background: var(--status-danger); color: var(--text-inverse); }
+
+/* ── 侧栏：器械 ──────────────────────────────────────────────────────────── */
+
+.wb-side {
+    grid-area: side;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: var(--space-5) var(--space-4);
+    background: var(--sidebar-surface);
+    box-shadow: 1px 0 0 var(--divider);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    line-height: var(--leading-ui);
+    /* 器械整体降一档对比。这是「两种材质」在颜色上的表达 */
+    color: var(--text-secondary);
+}
+
+.wb-side__project {
+    padding: 0 var(--space-3) var(--space-5);
+    font-size: var(--text-md);
+    font-weight: var(--weight-medium);
+    color: var(--text-main);
+}
+
+.wb-side__label {
+    padding: 0 var(--space-3) var(--space-3);
+    font-size: var(--text-2xs);
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+}
+
+.wb-nav {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: auto;
+}
+
+.wb-nav__item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border-radius: var(--radius-control);
+    text-align: left;
+    transition: background var(--motion-fast) var(--ease-standard);
+}
+
+.wb-nav__item:hover { background: var(--bg-hover); }
+
+/* 当前项：朱色的第二处、也是最后一处 */
+.wb-nav__item[aria-current="true"] {
+    background: var(--accent-bg);
+    color: var(--accent-text);
+}
+
+.wb-nav__dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 999px;
+    flex: none;
+}
+
+.wb-nav__name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.wb-nav__count {
+    font-size: var(--text-2xs);
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.wb-side__foot {
+    margin-top: auto;
+    padding: var(--space-5) var(--space-3) 0;
+    border-top: var(--border-w) solid var(--divider);
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+.wb-side__foot b {
+    font-size: var(--text-md);
+    font-weight: var(--weight-medium);
+    color: var(--text-main);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── 稿面 ────────────────────────────────────────────────────────────────── */
+
+.wb-main {
+    grid-area: main;
+    min-height: 0;
+    overflow: auto;
+    /* 桌面：让 shell 的 --bg-main / 底纹透上来，这里不再铺一层 */
+    padding: var(--space-8) var(--space-6);
+}
+
+.wb-sheet {
+    display: grid;
+    /* 朱批栏 + 版心。行宽单位是 em——CJK 下 1em 就是一个汉字宽，34em ≈ 每行 34 字 */
+    grid-template-columns: var(--wb-margin-w) minmax(0, var(--reading-measure, 34em));
+    width: fit-content;
+    max-width: 100%;
+    margin-inline: auto;
+    padding: var(--space-8) var(--space-7) 5rem var(--space-4);
+    /* 全屏唯一浮起的面，也是暗色下全屏最亮的面 */
+    background: var(--page-surface, var(--bg-panel));
+    box-shadow: var(--page-lift, none);
+    /* em 的基准。稿面字号与界面字号分开，就是「双区制」的字面意思 */
+    font-size: var(--reading-size, 16px);
+    /* 字面在这一层定：整张纸是一种材质，页边和眉批再各自换回界面字 */
+    font-family: var(--font-display);
+    color: var(--page-ink, var(--text-main));
+}
+
+/* 每个块占一整行，页边批注与它对齐的段落落在同一行——锚定不靠 JS */
+.wb-row { display: contents; }
+
+.wb-margin {
+    grid-column: 1;
+    padding-right: var(--space-5);
+    border-right: 1px solid var(--page-rule, var(--divider));
+    text-align: right;
+}
+
+.wb-block {
+    grid-column: 2;
+    padding-left: var(--space-6);
+}
+
+/* 页边批注：全屏唯一用朱的地方 */
+.wb-note {
+    display: inline-block;
+    padding-top: 0.4em;
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    line-height: var(--leading-ui);
+    color: var(--margin-ink, var(--accent-main));
+}
+
+.wb-note__tag {
+    display: block;
+    font-size: var(--text-2xs);
+    letter-spacing: 0.08em;
+    opacity: 0.72;
+}
+
+.wb-eyebrow {
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+}
+
+.wb-doctitle {
+    margin-top: var(--space-3);
+    font-family: var(--font-display);
+    font-size: 2em;
+    font-weight: var(--weight-strong);
+    line-height: var(--leading-tight);
+    letter-spacing: -0.01em;
+    color: var(--page-ink, var(--text-main));
+}
+
+.wb-docmeta {
+    margin-top: var(--space-4);
+    padding-bottom: var(--space-6);
+    border-bottom: 1px solid var(--page-rule, var(--divider));
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+.wb-para {
+    margin-top: var(--space-6);
+    line-height: var(--leading-reading);
+    /* 中文靠段距分段，不用首行缩进：屏幕上缩两格会让左边缘变毛 */
+    text-align: justify;
+}
+
+/* 强调换字面不换字形。浏览器的 italic 是把中文字形剪切变形，看起来像渲染故障 */
+.wb-em {
+    font-family: var(--font-emphasis, var(--font-display));
+    font-style: normal;
+}
+
+/*
+ * 引用不做实心药丸：一段 1.85 行高的宋体里，填充块是一个洞。
+ * 点线 + 一个朱点，密度与正文齐平。
+ */
+.wb-ref {
+    border-bottom: 1px dotted color-mix(in srgb, var(--margin-ink, var(--accent-main)) 60%, transparent);
+    cursor: pointer;
+}
+
+.wb-ref::before {
+    content: "";
+    display: inline-block;
+    width: 4px;
+    height: 4px;
+    margin-right: 0.25em;
+    vertical-align: 0.28em;
+    border-radius: 999px;
+    background: var(--margin-ink, var(--accent-main));
+}
+
+/* ── 读数条：看到的差异必须能归因到主题变量，否则就是页面自己写死的 ────── */
+
+.wb-readout {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-5);
+    border-bottom: var(--border-w) solid var(--divider);
+    background: var(--bg-main);
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    color: var(--text-muted);
+}

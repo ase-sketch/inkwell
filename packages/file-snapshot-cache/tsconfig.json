@@ -1,0 +1,21 @@
+{
+    "compilerOptions": {
+        "target": "ESNext",
+        "module": "ESNext",
+        "moduleResolution": "Bundler",
+        "strict": true,
+        "skipLibCheck": true,
+        "noEmit": true,
+        "types": ["node", "vitest/globals"],
+        "baseUrl": ".",
+        "paths": {
+            "#cache/*": ["./src/*"]
+        }
+    },
+    "include": [
+        "src/**/*.ts",
+        "tests/**/*.ts",
+        "benchmarks/**/*.ts",
+        "vitest.config.ts"
+    ]
+}

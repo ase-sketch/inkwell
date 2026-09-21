@@ -1,0 +1,99 @@
+{
+  "schema": "nbook.evidence/v1",
+  "taskId": "00149-monorepo-workspace-consolidation",
+  "phase": "S5-application-identity-roots-source-dev-prisma",
+  "checkpoint": "b3d202ff",
+  "status": "green-clean-verified",
+  "implementationCommits": [
+    "75626392",
+    "b3d202ff"
+  ],
+  "applicationIdentity": {
+    "manifest": "packages/neuro-book/package.json",
+    "name": "@notnotype/neuro-book",
+    "version": "0.9.5-canary.20260814.021137Z.323410b8",
+    "private": true,
+    "type": "module",
+    "registeredWorkspace": false
+  },
+  "roots": {
+    "resolver": "scripts/utils/workspace-roots.ts",
+    "identityAdapter": "scripts/utils/application-package.ts",
+    "repositoryRoot": "repository root",
+    "applicationSourceRoot": "repository root in S5; packages/neuro-book after nuxt.config.ts cutover",
+    "sourceDevUserRoots": "scripts/cli/source-dev.ts",
+    "defaultStateCacheOutsideSourceRoots": true,
+    "explicitRootsPreserved": true
+  },
+  "prisma": {
+    "config": "prisma.config.ts",
+    "generate": [
+      "prisma/schema.sqlite.prisma",
+      "prisma/project.schema.prisma"
+    ],
+    "migrateDeploy": "scripts/db/sqlite-migrate.mjs",
+    "isolatedSmoke": "passed; 4 SQLite migrations applied and temporary State Root removed"
+  },
+  "verification": {
+    "focusedTests": {
+      "files": 5,
+      "passed": 33,
+      "skipped": 0
+    },
+    "sourceDevTests": {
+      "files": 1,
+      "passed": 8
+    },
+    "managerTests": {
+      "filesPassed": 41,
+      "testsPassed": 330,
+      "testsSkipped": 3
+    },
+    "contractsTests": {
+      "files": 6,
+      "tests": 32
+    },
+    "desktopContractTests": {
+      "files": 13,
+      "tests": 41
+    },
+    "desktopSecurityAudit": {
+      "checks": 22,
+      "passed": 22
+    },
+    "governance": {
+      "failures": [],
+      "warnings": []
+    },
+    "cleanWorktree": {
+      "path": ".worktree/s5-clean-verify",
+      "removedAfterVerification": true,
+      "statusShort": "empty",
+      "frozenInstalls": [
+        "root --linker hoisted",
+        "desktop/electron",
+        "packages/llmlint/web",
+        "packages/llmlint/skill"
+      ],
+      "lockSha256": {
+        "bun.lock": "8ef0f78f611089540cdae3714024b0d9bfc9427b7dfe65ea5e8a57ed35a246f1",
+        "desktop/electron/bun.lock": "2d077a712a2b26465d9d3ae519fc5bf0ccad68a8b7630a955891d48e0ec8dd9a",
+        "packages/llmlint/web/bun.lock": "2ad60c501682d0ae51189a1db5369d4ef5ec0040deca176245b4d2a71e620d8b",
+        "packages/llmlint/skill/bun.lock": "6bda2ed28651c5e8d4aa931215b6eb8493da9a60f852d649a910fba5ff3c1214"
+      },
+      "managerTypecheck": "passed",
+      "scriptsTypecheck": "passed",
+      "contractsTypecheck": "passed",
+      "electronTypecheckBuildAudit": "passed",
+      "prismaGenerateMigrate": "passed"
+    }
+  },
+  "notAccepted": [
+    "real provider/model",
+    "private corpus",
+    "Docker/remote deployment",
+    "Windows runner",
+    "signed release chain",
+    "public release"
+  ]
+}

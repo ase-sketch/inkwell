@@ -1,0 +1,38 @@
+{
+  "schema": "nbook.s0-import-summary/v1",
+  "taskId": "00149-monorepo-workspace-consolidation",
+  "capturedAt": "2026-08-16T15:24:29.218Z",
+  "manifests": {
+    "index": {
+      "path": "C:/Users/notnotype/AppData/Local/Temp/neuro-book/runs/00149-s0-import-manifests/index.json",
+      "sha256": "sha256:f8ae3f8f0e72cda652c17d8a997f18c692608ced3202a2b4b9f6faa897519d66"
+    },
+    "files": [
+      {"name":"nb-history","head":"68c54caed73c4499eac44e92931895aa130672b3","branch":"master","upstream":null,"dirty":true,"candidates":30,"included":30,"excluded":0,"sha256":"sha256:760a5206a9e096973dd5a1f35027cc08326563a907fab27f4fa28cf0ce8d4325"},
+      {"name":"nb-workflow","head":"cf34d1567181f77b49f12721648f8f73c3385120","branch":"master","upstream":"origin/master","ahead":0,"behind":19,"dirty":true,"candidates":24,"included":24,"excluded":0,"sha256":"sha256:0a37b2badbc241ffdf61504bacec6404e3f2d5195928d2a7602d73e3c1c1fbbe"},
+      {"name":"nb-memory","head":"0676cd446b55f212885625468c4498007afd97a1","branch":"master","upstream":"origin/master","ahead":0,"behind":0,"dirty":false,"candidates":37,"included":37,"excluded":0,"sha256":"sha256:b4f2e7be5bbac7aa5382ddfee483aa670658b92cf8c3c79ca1f658d54dc6207a"},
+      {"name":"nb-ui","head":"6296c693e21751c984f3ac8bdefbb899d0244cf9","branch":"refactor/t146-reka-tailwind-base","upstream":null,"dirty":false,"candidates":131,"included":130,"excluded":1,"sha256":"sha256:798ca6b633f0bb277b0091f8d80ec4c405b9f9822135852c1a7310190eee0afc"},
+      {"name":"neuro-agent-harness","head":"1e4774f299eae78dc304ca750d105ce2584e5cff","branch":"master","upstream":"origin/master","ahead":0,"behind":0,"dirty":false,"candidates":299,"included":298,"excluded":1,"sha256":"sha256:815e968ce08f0fffda036f66c97d0a75e423a895bdcb85119790d5561cd7883d"},
+      {"name":"llmlint","head":"7d23292694039df2c0572611aff93b97165ba0f9","branch":"master","upstream":null,"dirty":true,"candidates":814,"included":745,"excluded":69,"sha256":"sha256:315f01cfd376930bf97edf959025469354b2b2ccf79697167ee5ed1868f8ac70"}
+    ]
+  },
+  "snapshots": {
+    "indexPath": "C:/Users/notnotype/AppData/Local/Temp/neuro-book/runs/00149-s0-import-snapshots/index.json",
+    "indexSha256": "sha256:4d6c261a52f9ccd5777903c8a6bb01236c1856480fddc499f4974d2301ce90e1",
+    "rule": "source files copied by manifest path/hash; .git and excluded runtime/secret/corpus/build paths were not copied"
+  },
+  "verification": {
+    "nb-history": "typecheck and test passed: 49 tests / 200 expect calls",
+    "nb-workflow": "test passed: 18 tests / 96 expect calls; no typecheck/build/pack script exists",
+    "nb-memory": "typecheck and test passed: 86 tests / 464 expect calls",
+    "nb-ui": "clean snapshot test first required generated playground/.nuxt tsconfig; after bun run typecheck, test passed 13 files / 185 tests; build:css and playground build passed",
+    "neuro-agent-harness": "initial verify required dist; after bun run build, verify passed 529 tests and pack:smoke installed the generated tarball",
+    "llmlint-skill": "CLI --version, semantic rules JSON and core guide passed",
+    "llmlint-root": "bun run verify remains unverified: clean snapshot ran 367 pass, 7 fail, 7 errors because bun:test did not resolve llmlint/fix, evals-generator/agent-loop and #shared aliases; no source was changed to hide this",
+    "llmlint-web": "after island frozen install and nuxt prepare, db:init, db:generate, typecheck, typecheck:server and build passed; report.json was absent so build used documented degraded no-verdict mode"
+  },
+  "stopConditions": [
+    "No original checkout was modified; all commands ran in copied temp snapshots.",
+    "llmlint root verify alias failure is recorded as an inherited package verification gap for S2; it is not reclassified as green."
+  ]
+}

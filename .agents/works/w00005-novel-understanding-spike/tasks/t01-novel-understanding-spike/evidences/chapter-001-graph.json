@@ -1,0 +1,1119 @@
+{
+  "schema": "nbook.novel-graph.spike/v1",
+  "source": {
+    "briefSchema": "nbook.novel-brief.spike/v1",
+    "chapterRef": "OEBPS/chapter_00001.xhtml",
+    "ingestMode": "brief-only-second-pass"
+  },
+  "summary": {
+    "nodeCount": 17,
+    "edgeCount": 17,
+    "memoryNodeCount": 10,
+    "worldCandidateCount": 2,
+    "plotCandidateCount": 5,
+    "blockedCount": 1,
+    "rejectedCount": 0
+  },
+  "nodes": [
+    {
+      "id": "mem-episode-ch001-scene-01",
+      "layer": "memory-native",
+      "kind": "Episode",
+      "label": "重生与契约",
+      "candidate": true,
+      "truthOwner": "memory",
+      "confidence": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-01",
+        "ch001-evidence-02",
+        "ch001-evidence-03",
+        "ch001-evidence-04",
+        "ch001-evidence-05",
+        "ch001-evidence-06",
+        "ch001-evidence-07",
+        "ch001-evidence-08",
+        "ch001-evidence-09",
+        "ch001-evidence-10",
+        "ch001-evidence-11",
+        "ch001-evidence-12",
+        "ch001-evidence-13",
+        "ch001-evidence-14",
+        "ch001-evidence-15",
+        "ch001-evidence-16",
+        "ch001-evidence-17",
+        "ch001-evidence-18",
+        "ch001-evidence-19",
+        "ch001-evidence-20",
+        "ch001-evidence-21",
+        "ch001-evidence-22",
+        "ch001-evidence-23",
+        "ch001-evidence-24"
+      ],
+      "briefRefs": [
+        "$.scenes[0].id",
+        "$.scenes[0].summary",
+        "$.scenes[0].eventIds"
+      ],
+      "data": {
+        "sceneId": "ch001-scene-01",
+        "order": 1,
+        "pov": "苏天晴（第三人称限知）",
+        "location": "昏暗的房间（床边/落地镜前）",
+        "time": "白天（窗帘缝隙洒入阳光）",
+        "coordinateStatus": "no-story-instant-in-brief; tick/instant null; host must assign"
+      }
+    },
+    {
+      "id": "mem-fact-001",
+      "layer": "memory-native",
+      "kind": "Fact",
+      "label": "苏天晴重生为金毛狐女",
+      "candidate": true,
+      "truthOwner": "memory",
+      "confidence": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-03",
+        "ch001-evidence-04",
+        "ch001-evidence-05",
+        "ch001-evidence-06"
+      ],
+      "briefRefs": [
+        "$.entities[0].description",
+        "$.events[0].knowledgeChanges[0]",
+        "$.knowledgeReveals[0].content"
+      ],
+      "data": {
+        "knower": "ch001-entity-01",
+        "kind": "identity-change",
+        "coordinateStatus": "no-story-instant-in-brief; tick/instant null; host must assign"
+      }
+    },
+    {
+      "id": "mem-fact-002",
+      "layer": "memory-native",
+      "kind": "Fact",
+      "label": "苏天晴前世已死亡",
+      "candidate": true,
+      "truthOwner": "memory",
+      "confidence": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-07",
+        "ch001-evidence-08",
+        "ch001-evidence-26"
+      ],
+      "briefRefs": [
+        "$.events[1].summary",
+        "$.events[1].knowledgeChanges[0]",
+        "$.knowledgeReveals[0].content"
+      ],
+      "data": {
+        "knower": "ch001-entity-01",
+        "kind": "past-event",
+        "coordinateStatus": "no-story-instant-in-brief; tick/instant null; host must assign"
+      }
+    },
+    {
+      "id": "mem-fact-003",
+      "layer": "memory-native",
+      "kind": "Fact",
+      "label": "苏天晴确认新身体触感真实",
+      "candidate": true,
+      "truthOwner": "memory",
+      "confidence": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-09",
+        "ch001-evidence-10"
+      ],
+      "briefRefs": [
+        "$.events[2].summary",
+        "$.events[2].knowledgeChanges[0]"
+      ],
+      "data": {
+        "knower": "ch001-entity-01",
+        "kind": "perception",
+        "coordinateStatus": "no-story-instant-in-brief; tick/instant null; host must assign"
+      }
+    },
+    {
+      "id": "mem-fact-004",
+      "layer": "memory-native",
+      "kind": "Fact",
+      "label": "墨丘利秘典自称来自星空彼岸并指定苏天晴为适格者",
+      "candidate": true,
+      "truthOwner": "memory",
+      "confidence": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-11",
+        "ch001-evidence-12"
+      ],
+      "briefRefs": [
+        "$.events[3].summary",
+        "$.events[3].knowledgeChanges[0]",
+        "$.knowledgeReveals[1].content"
+      ],
+      "data": {
+        "knower": "ch001-entity-01",
+        "kind": "identity-reveal",
+        "coordinateStatus": "no-story-instant-in-brief; tick/instant null; host must assign"
+      }
+    },
+    {
+      "id": "mem-fact-005",
+      "layer": "memory-native",
+      "kind": "Fact",
+      "label": "苏天晴口头同意与墨丘利秘典签订契约",
+      "candidate": true,
+      "truthOwner": "memory",
+      "confidence": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-15",
+        "ch001-evidence-16",
+        "ch001-evidence-17"
+      ],
+      "briefRefs": [
+        "$.events[5].summary",
+        "$.events[5].effects[0]",
+        "$.events[5].relationshipChanges[0]"
+      ],
+      "data": {
+        "knower": "ch001-entity-01",
+        "kind": "agreement",
+        "coordinateStatus": "no-story-instant-in-brief; tick/instant null; host must assign"
+      }
+    },
+    {
+      "id": "mem-fact-006",
+      "layer": "memory-native",
+      "kind": "Fact",
+      "label": "契约内容为成为反派魔法少女",
+      "candidate": true,
+      "truthOwner": "memory",
+      "confidence": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-18",
+        "ch001-evidence-19",
+        "ch001-evidence-20",
+        "ch001-evidence-21"
+      ],
+      "briefRefs": [
+        "$.events[6].summary",
+        "$.events[6].knowledgeChanges[0]",
+        "$.knowledgeReveals[2].content"
+      ],
+      "data": {
+        "knower": "ch001-entity-01",
+        "kind": "contract-term",
+        "coordinateStatus": "no-story-instant-in-brief; tick/instant null; host must assign"
+      }
+    },
+    {
+      "id": "mem-fact-007",
+      "layer": "memory-native",
+      "kind": "Fact",
+      "label": "墨丘利秘典绑定成功且契约成立",
+      "candidate": true,
+      "truthOwner": "memory",
+      "confidence": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-22",
+        "ch001-evidence-23",
+        "ch001-evidence-24"
+      ],
+      "briefRefs": [
+        "$.events[6].summary",
+        "$.events[6].effects[0]",
+        "$.events[6].effects[1]",
+        "$.knowledgeReveals[3].content"
+      ],
+      "data": {
+        "knower": "ch001-entity-01",
+        "kind": "binding",
+        "coordinateStatus": "no-story-instant-in-brief; tick/instant null; host must assign"
+      }
+    },
+    {
+      "id": "mem-subject-001",
+      "layer": "memory-native",
+      "kind": "Subject",
+      "label": "苏天晴",
+      "candidate": true,
+      "truthOwner": "memory",
+      "confidence": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-01",
+        "ch001-evidence-03",
+        "ch001-evidence-04",
+        "ch001-evidence-05",
+        "ch001-evidence-06",
+        "ch001-evidence-13",
+        "ch001-evidence-14",
+        "ch001-evidence-25"
+      ],
+      "briefRefs": [
+        "$.entities[0].id",
+        "$.entities[0].name",
+        "$.entities[0].aliases",
+        "$.entities[0].description"
+      ],
+      "data": {
+        "briefEntityId": "ch001-entity-01",
+        "aliases": [
+          "狐狐",
+          "金毛狐女"
+        ],
+        "type": "character",
+        "importance": "primary"
+      }
+    },
+    {
+      "id": "mem-subject-002",
+      "layer": "memory-native",
+      "kind": "Subject",
+      "label": "墨丘利秘典",
+      "candidate": true,
+      "truthOwner": "memory",
+      "confidence": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-02",
+        "ch001-evidence-11",
+        "ch001-evidence-12",
+        "ch001-evidence-16",
+        "ch001-evidence-18",
+        "ch001-evidence-22",
+        "ch001-evidence-23"
+      ],
+      "briefRefs": [
+        "$.entities[1].id",
+        "$.entities[1].name",
+        "$.entities[1].aliases",
+        "$.entities[1].description"
+      ],
+      "data": {
+        "briefEntityId": "ch001-entity-02",
+        "aliases": [
+          "黑色古书",
+          "小破书"
+        ],
+        "type": "item",
+        "importance": "primary"
+      }
+    },
+    {
+      "id": "mem-subject-003",
+      "layer": "memory-native",
+      "kind": "Subject",
+      "label": "太奶",
+      "candidate": true,
+      "truthOwner": "memory",
+      "confidence": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-07",
+        "ch001-evidence-26"
+      ],
+      "briefRefs": [
+        "$.entities[2].id",
+        "$.entities[2].name",
+        "$.entities[2].description"
+      ],
+      "data": {
+        "briefEntityId": "ch001-entity-03",
+        "aliases": [],
+        "type": "character",
+        "importance": "minor"
+      }
+    },
+    {
+      "id": "mem-subject-004",
+      "layer": "memory-native",
+      "kind": "Subject",
+      "label": "造物主",
+      "candidate": true,
+      "truthOwner": "memory",
+      "confidence": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-19"
+      ],
+      "briefRefs": [
+        "$.entities[3].id",
+        "$.entities[3].name",
+        "$.entities[3].description"
+      ],
+      "data": {
+        "briefEntityId": "ch001-entity-04",
+        "aliases": [],
+        "type": "character",
+        "importance": "minor"
+      }
+    },
+    {
+      "id": "world-subject-candidate-001",
+      "layer": "world-projection",
+      "kind": "WorldSubjectCandidate",
+      "label": "墨丘利秘典契约",
+      "candidate": true,
+      "truthOwner": "world",
+      "confidence": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-15",
+        "ch001-evidence-17",
+        "ch001-evidence-22",
+        "ch001-evidence-23"
+      ],
+      "briefRefs": [
+        "$.worldCandidates[0].subjectId",
+        "$.worldCandidates[0].name",
+        "$.worldCandidates[0].initialState",
+        "$.worldCandidates[0].keyChanges"
+      ],
+      "data": {
+        "briefWorldId": "ch001-world-01",
+        "type": "concept",
+        "reasonToTrack": "契约已成立，后续将引导主角成为反派魔法少女，任务与身份状态需持续追踪",
+        "initialState": "古书提出契约，苏天晴口头同意",
+        "keyChanges": "墨丘利秘典绑定成功，契约成立",
+        "coordinateStatus": "no-story-instant-in-brief; tick/instant null; host must assign"
+      }
+    },
+    {
+      "id": "world-subject-candidate-002",
+      "layer": "world-projection",
+      "kind": "WorldSubjectCandidate",
+      "label": "造物主",
+      "candidate": true,
+      "truthOwner": "world",
+      "confidence": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-19"
+      ],
+      "briefRefs": [
+        "$.worldCandidates[1].subjectId",
+        "$.worldCandidates[1].name",
+        "$.worldCandidates[1].initialState",
+        "$.worldCandidates[1].keyChanges"
+      ],
+      "data": {
+        "briefWorldId": "ch001-world-02",
+        "type": "character",
+        "reasonToTrack": "被古书称为任务定制者，身份与目的未知，可能影响后续剧情",
+        "initialState": "仅被墨丘利秘典提及，未登场",
+        "keyChanges": "暂无",
+        "coordinateStatus": "no-story-instant-in-brief; tick/instant null; host must assign"
+      }
+    },
+    {
+      "id": "plot-chapter-candidate-001",
+      "layer": "plot-projection",
+      "kind": "PlotChapterCandidate",
+      "label": "第一章 反派魔法少女",
+      "candidate": true,
+      "truthOwner": "plot",
+      "confidence": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-01",
+        "ch001-evidence-02",
+        "ch001-evidence-03",
+        "ch001-evidence-04",
+        "ch001-evidence-05",
+        "ch001-evidence-06",
+        "ch001-evidence-07",
+        "ch001-evidence-08",
+        "ch001-evidence-09",
+        "ch001-evidence-10",
+        "ch001-evidence-11",
+        "ch001-evidence-12",
+        "ch001-evidence-13",
+        "ch001-evidence-14",
+        "ch001-evidence-15",
+        "ch001-evidence-16",
+        "ch001-evidence-17",
+        "ch001-evidence-18",
+        "ch001-evidence-19",
+        "ch001-evidence-20",
+        "ch001-evidence-21",
+        "ch001-evidence-22",
+        "ch001-evidence-23",
+        "ch001-evidence-24"
+      ],
+      "briefRefs": [
+        "$.source.chapterTitle",
+        "$.overview.chapterFunction",
+        "$.plot.chapterGoal",
+        "$.plot.openingHook",
+        "$.plot.endingHook"
+      ],
+      "data": {
+        "chapterNumber": 1,
+        "chapterTitle": "反派魔法少女",
+        "chapterGoal": "让主角重生为金毛狐女并与墨丘利秘典签订契约，确立反派魔法少女身份",
+        "openingHook": "主角在昏暗房间醒来，面对漂浮的黑色古书和陌生的金毛狐女身体",
+        "endingHook": "墨丘利秘典绑定成功，契约成立，主角被要求走上反派魔法少女的道路",
+        "purpose": null,
+        "needsAuthorConfirm": true
+      }
+    },
+    {
+      "id": "plot-scene-candidate-001",
+      "layer": "plot-projection",
+      "kind": "PlotSceneCandidate",
+      "label": "重生与契约",
+      "candidate": true,
+      "truthOwner": "plot",
+      "confidence": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-01",
+        "ch001-evidence-02",
+        "ch001-evidence-03",
+        "ch001-evidence-04",
+        "ch001-evidence-05",
+        "ch001-evidence-06",
+        "ch001-evidence-07",
+        "ch001-evidence-08",
+        "ch001-evidence-09",
+        "ch001-evidence-10",
+        "ch001-evidence-11",
+        "ch001-evidence-12",
+        "ch001-evidence-13",
+        "ch001-evidence-14",
+        "ch001-evidence-15",
+        "ch001-evidence-16",
+        "ch001-evidence-17",
+        "ch001-evidence-18",
+        "ch001-evidence-19",
+        "ch001-evidence-20",
+        "ch001-evidence-21",
+        "ch001-evidence-22",
+        "ch001-evidence-23",
+        "ch001-evidence-24"
+      ],
+      "briefRefs": [
+        "$.scenes[0].id",
+        "$.scenes[0].title",
+        "$.scenes[0].summary",
+        "$.scenes[0].pov",
+        "$.scenes[0].location",
+        "$.scenes[0].time"
+      ],
+      "data": {
+        "sceneId": "ch001-scene-01",
+        "order": 1,
+        "pov": "苏天晴（第三人称限知）",
+        "location": "昏暗的房间（床边/落地镜前）",
+        "time": "白天（窗帘缝隙洒入阳光）",
+        "purpose": null,
+        "outcomeType": null,
+        "pacingRole": null,
+        "needsAuthorConfirm": true
+      }
+    },
+    {
+      "id": "plot-thread-candidate-001",
+      "layer": "plot-projection",
+      "kind": "PlotThreadCandidate",
+      "label": "墨丘利秘典与造物主的真实目的",
+      "candidate": true,
+      "truthOwner": "plot",
+      "confidence": "inferred",
+      "evidenceIds": [
+        "ch001-evidence-11",
+        "ch001-evidence-19"
+      ],
+      "briefRefs": [
+        "$.plot.threadCandidates[0]"
+      ],
+      "data": {
+        "sourceBriefCandidate": "墨丘利秘典与造物主的真实目的",
+        "promise": null,
+        "needsAuthorConfirm": true
+      }
+    },
+    {
+      "id": "plot-thread-candidate-002",
+      "layer": "plot-projection",
+      "kind": "PlotThreadCandidate",
+      "label": "反派魔法少女的具体任务",
+      "candidate": true,
+      "truthOwner": "plot",
+      "confidence": "inferred",
+      "evidenceIds": [
+        "ch001-evidence-18",
+        "ch001-evidence-19"
+      ],
+      "briefRefs": [
+        "$.plot.threadCandidates[1]"
+      ],
+      "data": {
+        "sourceBriefCandidate": "反派魔法少女的具体任务",
+        "promise": null,
+        "needsAuthorConfirm": true
+      }
+    },
+    {
+      "id": "plot-thread-candidate-003",
+      "layer": "plot-projection",
+      "kind": "PlotThreadCandidate",
+      "label": "前世死亡与太奶出现的关联",
+      "candidate": true,
+      "truthOwner": "plot",
+      "confidence": "inferred",
+      "evidenceIds": [
+        "ch001-evidence-07",
+        "ch001-evidence-08",
+        "ch001-evidence-26"
+      ],
+      "briefRefs": [
+        "$.plot.threadCandidates[2]"
+      ],
+      "data": {
+        "sourceBriefCandidate": "前世死亡与太奶出现的关联",
+        "promise": null,
+        "needsAuthorConfirm": true
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-mem-001",
+      "layer": "memory-native",
+      "kind": "Fact",
+      "source": "mem-subject-001",
+      "target": "mem-subject-001",
+      "label": "重生为金毛狐女",
+      "candidate": true,
+      "truthOwner": "memory",
+      "confidence": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-03",
+        "ch001-evidence-04",
+        "ch001-evidence-05",
+        "ch001-evidence-06"
+      ],
+      "briefRefs": [
+        "$.events[0].knowledgeChanges[0]",
+        "$.knowledgeReveals[0].content"
+      ],
+      "data": {
+        "factId": "mem-fact-001",
+        "relationType": "self-identity-change",
+        "coordinateStatus": "no-story-instant-in-brief; tick/instant null; host must assign"
+      }
+    },
+    {
+      "id": "edge-mem-002",
+      "layer": "memory-native",
+      "kind": "Fact",
+      "source": "mem-subject-001",
+      "target": "mem-subject-003",
+      "label": "前世死亡前听到太奶说话",
+      "candidate": true,
+      "truthOwner": "memory",
+      "confidence": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-07",
+        "ch001-evidence-08",
+        "ch001-evidence-26"
+      ],
+      "briefRefs": [
+        "$.events[1].summary",
+        "$.events[1].participants"
+      ],
+      "data": {
+        "factId": "mem-fact-002",
+        "relationType": "witnessed-before-death",
+        "coordinateStatus": "no-story-instant-in-brief; tick/instant null; host must assign"
+      }
+    },
+    {
+      "id": "edge-mem-003",
+      "layer": "memory-native",
+      "kind": "Fact",
+      "source": "mem-subject-001",
+      "target": "mem-subject-002",
+      "label": "得知墨丘利秘典身份与来意",
+      "candidate": true,
+      "truthOwner": "memory",
+      "confidence": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-11",
+        "ch001-evidence-12"
+      ],
+      "briefRefs": [
+        "$.events[3].summary",
+        "$.events[3].knowledgeChanges[0]",
+        "$.knowledgeReveals[1].content"
+      ],
+      "data": {
+        "factId": "mem-fact-004",
+        "relationType": "knows-about",
+        "coordinateStatus": "no-story-instant-in-brief; tick/instant null; host must assign"
+      }
+    },
+    {
+      "id": "edge-mem-004",
+      "layer": "memory-native",
+      "kind": "Fact",
+      "source": "mem-subject-001",
+      "target": "mem-subject-002",
+      "label": "口头同意签订契约",
+      "candidate": true,
+      "truthOwner": "memory",
+      "confidence": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-15",
+        "ch001-evidence-16",
+        "ch001-evidence-17"
+      ],
+      "briefRefs": [
+        "$.events[5].summary",
+        "$.events[5].relationshipChanges[0]"
+      ],
+      "data": {
+        "factId": "mem-fact-005",
+        "relationType": "agreed-to-contract",
+        "coordinateStatus": "no-story-instant-in-brief; tick/instant null; host must assign"
+      }
+    },
+    {
+      "id": "edge-mem-005",
+      "layer": "memory-native",
+      "kind": "Fact",
+      "source": "mem-subject-001",
+      "target": "mem-subject-002",
+      "label": "契约内容为反派魔法少女",
+      "candidate": true,
+      "truthOwner": "memory",
+      "confidence": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-18",
+        "ch001-evidence-19",
+        "ch001-evidence-20",
+        "ch001-evidence-21"
+      ],
+      "briefRefs": [
+        "$.events[6].knowledgeChanges[0]",
+        "$.knowledgeReveals[2].content"
+      ],
+      "data": {
+        "factId": "mem-fact-006",
+        "relationType": "contract-term",
+        "coordinateStatus": "no-story-instant-in-brief; tick/instant null; host must assign"
+      }
+    },
+    {
+      "id": "edge-mem-006",
+      "layer": "memory-native",
+      "kind": "Fact",
+      "source": "mem-subject-001",
+      "target": "mem-subject-002",
+      "label": "墨丘利秘典绑定成功且契约成立",
+      "candidate": true,
+      "truthOwner": "memory",
+      "confidence": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-22",
+        "ch001-evidence-23",
+        "ch001-evidence-24"
+      ],
+      "briefRefs": [
+        "$.events[6].summary",
+        "$.events[6].effects[0]",
+        "$.events[6].effects[1]",
+        "$.knowledgeReveals[3].content"
+      ],
+      "data": {
+        "factId": "mem-fact-007",
+        "relationType": "bound-contract",
+        "coordinateStatus": "no-story-instant-in-brief; tick/instant null; host must assign"
+      }
+    },
+    {
+      "id": "edge-mem-007",
+      "layer": "memory-native",
+      "kind": "Fact",
+      "source": "mem-subject-001",
+      "target": "mem-subject-004",
+      "label": "得知造物主定制任务",
+      "candidate": true,
+      "truthOwner": "memory",
+      "confidence": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-19"
+      ],
+      "briefRefs": [
+        "$.events[6].knowledgeChanges[1]",
+        "$.knowledgeReveals[2].content"
+      ],
+      "data": {
+        "factId": "mem-fact-006",
+        "relationType": "knows-about",
+        "coordinateStatus": "no-story-instant-in-brief; tick/instant null; host must assign"
+      }
+    },
+    {
+      "id": "edge-mem-008",
+      "layer": "memory-native",
+      "kind": "Fact",
+      "source": "mem-subject-002",
+      "target": "mem-subject-004",
+      "label": "造物主为苏天晴定制任务",
+      "candidate": true,
+      "truthOwner": "memory",
+      "confidence": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-19"
+      ],
+      "briefRefs": [
+        "$.entities[3].description",
+        "$.events[6].knowledgeChanges[1]"
+      ],
+      "data": {
+        "factId": "mem-fact-006",
+        "relationType": "task-customizer",
+        "coordinateStatus": "no-story-instant-in-brief; tick/instant null; host must assign"
+      }
+    },
+    {
+      "id": "edge-mem-009",
+      "layer": "memory-native",
+      "kind": "Fact",
+      "source": "mem-subject-001",
+      "target": "mem-subject-002",
+      "label": "苏天晴对魔法少女职业的认知吐槽",
+      "candidate": true,
+      "truthOwner": "memory",
+      "confidence": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-20",
+        "ch001-evidence-21"
+      ],
+      "briefRefs": [
+        "$.events[6].summary"
+      ],
+      "data": {
+        "factId": "mem-fact-006",
+        "relationType": "attitude",
+        "coordinateStatus": "no-story-instant-in-brief; tick/instant null; host must assign"
+      }
+    },
+    {
+      "id": "edge-world-001",
+      "layer": "world-projection",
+      "kind": "WorldSubjectCandidate",
+      "source": "world-subject-candidate-001",
+      "target": "mem-subject-001",
+      "label": "契约主体：苏天晴",
+      "candidate": true,
+      "truthOwner": "world",
+      "confidence": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-15",
+        "ch001-evidence-17",
+        "ch001-evidence-22",
+        "ch001-evidence-23"
+      ],
+      "briefRefs": [
+        "$.worldCandidates[0].subjectId",
+        "$.worldCandidates[0].name"
+      ],
+      "data": {
+        "relationType": "contract-party",
+        "coordinateStatus": "no-story-instant-in-brief; tick/instant null; host must assign"
+      }
+    },
+    {
+      "id": "edge-world-002",
+      "layer": "world-projection",
+      "kind": "WorldSubjectCandidate",
+      "source": "world-subject-candidate-001",
+      "target": "mem-subject-002",
+      "label": "契约主体：墨丘利秘典",
+      "candidate": true,
+      "truthOwner": "world",
+      "confidence": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-15",
+        "ch001-evidence-17",
+        "ch001-evidence-22",
+        "ch001-evidence-23"
+      ],
+      "briefRefs": [
+        "$.worldCandidates[0].subjectId",
+        "$.worldCandidates[0].name"
+      ],
+      "data": {
+        "relationType": "contract-party",
+        "coordinateStatus": "no-story-instant-in-brief; tick/instant null; host must assign"
+      }
+    },
+    {
+      "id": "edge-world-003",
+      "layer": "world-projection",
+      "kind": "WorldSubjectCandidate",
+      "source": "world-subject-candidate-002",
+      "target": "mem-subject-004",
+      "label": "锚定造物主主体",
+      "candidate": true,
+      "truthOwner": "world",
+      "confidence": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-19"
+      ],
+      "briefRefs": [
+        "$.worldCandidates[1].subjectId",
+        "$.worldCandidates[1].name"
+      ],
+      "data": {
+        "relationType": "anchors-to-memory-subject",
+        "coordinateStatus": "no-story-instant-in-brief; tick/instant null; host must assign"
+      }
+    },
+    {
+      "id": "edge-plot-001",
+      "layer": "plot-projection",
+      "kind": "PlotChapterCandidate",
+      "source": "plot-chapter-candidate-001",
+      "target": "plot-scene-candidate-001",
+      "label": "包含场景",
+      "candidate": true,
+      "truthOwner": "plot",
+      "confidence": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-01",
+        "ch001-evidence-02",
+        "ch001-evidence-03",
+        "ch001-evidence-04",
+        "ch001-evidence-05",
+        "ch001-evidence-06",
+        "ch001-evidence-07",
+        "ch001-evidence-08",
+        "ch001-evidence-09",
+        "ch001-evidence-10",
+        "ch001-evidence-11",
+        "ch001-evidence-12",
+        "ch001-evidence-13",
+        "ch001-evidence-14",
+        "ch001-evidence-15",
+        "ch001-evidence-16",
+        "ch001-evidence-17",
+        "ch001-evidence-18",
+        "ch001-evidence-19",
+        "ch001-evidence-20",
+        "ch001-evidence-21",
+        "ch001-evidence-22",
+        "ch001-evidence-23",
+        "ch001-evidence-24"
+      ],
+      "briefRefs": [
+        "$.plot.sceneOrder[0]",
+        "$.scenes[0].id"
+      ],
+      "data": {
+        "relationType": "contains-scene"
+      }
+    },
+    {
+      "id": "edge-plot-002",
+      "layer": "plot-projection",
+      "kind": "PlotThreadCandidate",
+      "source": "plot-chapter-candidate-001",
+      "target": "plot-thread-candidate-001",
+      "label": "开启线索：墨丘利秘典与造物主的真实目的",
+      "candidate": true,
+      "truthOwner": "plot",
+      "confidence": "inferred",
+      "evidenceIds": [
+        "ch001-evidence-11",
+        "ch001-evidence-19"
+      ],
+      "briefRefs": [
+        "$.plot.threadCandidates[0]"
+      ],
+      "data": {
+        "relationType": "opens-thread",
+        "needsAuthorConfirm": true
+      }
+    },
+    {
+      "id": "edge-plot-003",
+      "layer": "plot-projection",
+      "kind": "PlotThreadCandidate",
+      "source": "plot-chapter-candidate-001",
+      "target": "plot-thread-candidate-002",
+      "label": "开启线索：反派魔法少女的具体任务",
+      "candidate": true,
+      "truthOwner": "plot",
+      "confidence": "inferred",
+      "evidenceIds": [
+        "ch001-evidence-18",
+        "ch001-evidence-19"
+      ],
+      "briefRefs": [
+        "$.plot.threadCandidates[1]"
+      ],
+      "data": {
+        "relationType": "opens-thread",
+        "needsAuthorConfirm": true
+      }
+    },
+    {
+      "id": "edge-plot-004",
+      "layer": "plot-projection",
+      "kind": "PlotThreadCandidate",
+      "source": "plot-chapter-candidate-001",
+      "target": "plot-thread-candidate-003",
+      "label": "开启线索：前世死亡与太奶出现的关联",
+      "candidate": true,
+      "truthOwner": "plot",
+      "confidence": "inferred",
+      "evidenceIds": [
+        "ch001-evidence-07",
+        "ch001-evidence-08",
+        "ch001-evidence-26"
+      ],
+      "briefRefs": [
+        "$.plot.threadCandidates[2]"
+      ],
+      "data": {
+        "relationType": "opens-thread",
+        "needsAuthorConfirm": true
+      }
+    },
+    {
+      "id": "edge-plot-005",
+      "layer": "plot-projection",
+      "kind": "PlotSceneCandidate",
+      "source": "plot-scene-candidate-001",
+      "target": "mem-episode-ch001-scene-01",
+      "label": "锚定场景对应记忆 Episode",
+      "candidate": true,
+      "truthOwner": "plot",
+      "confidence": "explicit",
+      "evidenceIds": [
+        "ch001-evidence-01",
+        "ch001-evidence-02",
+        "ch001-evidence-03",
+        "ch001-evidence-04",
+        "ch001-evidence-05",
+        "ch001-evidence-06",
+        "ch001-evidence-07",
+        "ch001-evidence-08",
+        "ch001-evidence-09",
+        "ch001-evidence-10",
+        "ch001-evidence-11",
+        "ch001-evidence-12",
+        "ch001-evidence-13",
+        "ch001-evidence-14",
+        "ch001-evidence-15",
+        "ch001-evidence-16",
+        "ch001-evidence-17",
+        "ch001-evidence-18",
+        "ch001-evidence-19",
+        "ch001-evidence-20",
+        "ch001-evidence-21",
+        "ch001-evidence-22",
+        "ch001-evidence-23",
+        "ch001-evidence-24"
+      ],
+      "briefRefs": [
+        "$.scenes[0].id",
+        "$.scenes[0].eventIds"
+      ],
+      "data": {
+        "relationType": "anchors-to-episode"
+      }
+    }
+  ],
+  "projections": {
+    "memory": {
+      "episodeId": "mem-episode-ch001-scene-01",
+      "factIds": [
+        "mem-fact-001",
+        "mem-fact-002",
+        "mem-fact-003",
+        "mem-fact-004",
+        "mem-fact-005",
+        "mem-fact-006",
+        "mem-fact-007"
+      ],
+      "subjectIds": [
+        "mem-subject-001",
+        "mem-subject-002",
+        "mem-subject-003",
+        "mem-subject-004"
+      ],
+      "stateIds": []
+    },
+    "world": {
+      "subjectCandidateIds": [
+        "world-subject-candidate-001",
+        "world-subject-candidate-002"
+      ],
+      "sliceCandidateIds": [],
+      "blockedIds": [
+        "blocked-world-slice-001"
+      ]
+    },
+    "plot": {
+      "chapterId": "plot-chapter-candidate-001",
+      "sceneIds": [
+        "plot-scene-candidate-001"
+      ],
+      "threadCandidateIds": [
+        "plot-thread-candidate-001",
+        "plot-thread-candidate-002",
+        "plot-thread-candidate-003"
+      ],
+      "promiseCandidateIds": []
+    }
+  },
+  "blocked": [
+    {
+      "id": "blocked-world-slice-001",
+      "targetLayer": "world-projection",
+      "reason": "brief 没有可解析的项目日历/时间戳；无法生成 WorldSliceCandidate 或 WorldPatchCandidate。",
+      "missing": "story-instant",
+      "evidenceIds": [
+        "ch001-evidence-01",
+        "ch001-evidence-02",
+        "ch001-evidence-03",
+        "ch001-evidence-04",
+        "ch001-evidence-05",
+        "ch001-evidence-06",
+        "ch001-evidence-07",
+        "ch001-evidence-08",
+        "ch001-evidence-09",
+        "ch001-evidence-10",
+        "ch001-evidence-11",
+        "ch001-evidence-12",
+        "ch001-evidence-13",
+        "ch001-evidence-14",
+        "ch001-evidence-15",
+        "ch001-evidence-16",
+        "ch001-evidence-17",
+        "ch001-evidence-18",
+        "ch001-evidence-19",
+        "ch001-evidence-20",
+        "ch001-evidence-21",
+        "ch001-evidence-22",
+        "ch001-evidence-23",
+        "ch001-evidence-24"
+      ],
+      "briefRefs": [
+        "$.scenes[0].time",
+        "$.overview.openingState",
+        "$.overview.closingState"
+      ]
+    }
+  ],
+  "rejected": [],
+  "invariants": [
+    "所有节点与边均为候选（candidate=true），未写入真实 NeuroBook 数据库。",
+    "memory-native 层只记录 brief 中发生过的事件、谁知道什么、可检索证据；不复制 world/plot 长文本。",
+    "Fact 关联两个以上 Subject 时本身即关系边，不另造关系实体。",
+    "同一信息只指定一个 truthOwner：memory=发生过/谁知道什么/可检索证据；world=动态状态；plot=剧情组织。",
+    "world-projection 只投影会随时间变化且后续可能读取的主体状态；没有可解析项目日历时不生成虚假 slice/patch。",
+    "身份揭晓/读者知道什么留在 memory，不当作 World Engine 上帝视角静态字段。",
+    "plot-projection 的 purpose/outcomeType/pacingRole/Promise 属作者意图，证据不足时置 null 或 needsAuthorConfirm=true。",
+    "tick/instant 由宿主分配；本输出不猜数字，统一使用 null 并说明 coordinateStatus。",
+    "所有 briefRefs 均为 JSON 路径数组，指向输入 brief 中存在的字段。"
+  ]
+}

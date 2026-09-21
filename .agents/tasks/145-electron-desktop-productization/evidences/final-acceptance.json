@@ -1,0 +1,255 @@
+{
+    "schema": "nbook.task-145-final-acceptance/v2",
+    "updatedAt": "2026-08-12",
+    "scope": "当前最终包单一证据；历史 checkpoint 只保留在 walkthrough 时间线。路径使用逻辑 locator 或仓库相对路径，不含本机用户名与 Secret。",
+    "source": {
+        "revision": "2892f6482f2cf8e97c6d372fba7a12f6bd9dd45e7f0ba31c3c2e5e05e1731d693",
+        "sourceDigest": "sha256:82f587334c8a2049eaa4842783c037d5b58e72f2ad669ea5cb0c034fa4177517",
+        "lockfileSha256": "sha256:2fe27b0edf74c1738aa657fcbb9d797d6122daf356dbd17b8d6c6e8e50fea922",
+        "dirty": false,
+        "note": "Product image built from the clean code-freeze tree at 2892f648 (MSVC runtime DLLs vendored into scripts/build/inputs/msvc-runtime; later workflow/test commits do not change the image)"
+    },
+    "product": {
+        "imageId": "sha256:df2f481299ec0968eb5e46739a30e0cf7c942f11406171e1d16651c8123a0741",
+        "treeDigest": "sha256:164b646db065efc657fb61f1caccd3e159a0417189456f7a7c7270f38d608757",
+        "shapeDigest": "sha256:c8d5b7aaa1d8cd77a00be6238f05b8c816471fb48aed1bdad89b83ccdf0c71fc",
+        "contractSchema": "nbook.product-runtime-contract/v5",
+        "files": 3250,
+        "bytes": 136634228,
+        "builds": 2,
+        "identityStable": true,
+        "manifestEqualIgnoringCreatedAt": true,
+        "independentOpenSelfVerified": true,
+        "productStartWrapper": "server/commands/product-start.mjs",
+        "msvcRuntime": {
+            "dlls": ["vcruntime140.dll", "vcruntime140_1.dll", "msvcp140.dll"],
+            "targets": 3,
+            "files": 9,
+            "bytes": 2616720
+        }
+    },
+    "portable": {
+        "electronPortableZip": {
+            "name": "neuro-book-electron-portable-win-x64.zip",
+            "bytes": 390489189,
+            "sha256": "sha256:7ac0c9159ea6887b9e5a199c8996d80ac2083acd5252739a17677fb14a53118d"
+        },
+        "desktopDepotZip": {
+            "name": "neuro-book-desktop-depot-win-x64.zip",
+            "bytes": 387870766,
+            "sha256": "sha256:cf7f2b2c156e744c395fa4418c339d906bc7f55817cbf792361ed4e0aa59eab3"
+        },
+        "channel": "canary",
+        "fixedInputs": {
+            "managerBundleSha256": "sha256:3182ba993454d43f0bf498a5e22aa07faf6063777371156eb51aeba4920964a5",
+            "electronMainSha256": "sha256:71137d559d53d523186b0bda207bfbd188a9c59f1ee16d18e32f8a74f4e232c4",
+            "managerMainSha256": "sha256:cfcf4693dc1230b2b644a96b1acda9a94f00ee91afeb0c99049ea7bbb346f80b",
+            "bunSha256": "sha256:0187f68d843f825a72ada4a7eca60db896ed753759a7f8252edcd31ac1bf1b9c",
+            "bunVersion": "1.3.14",
+            "electronVersion": "43.2.0"
+        },
+        "repeatPackaging": {
+            "runs": 2,
+            "sameVerifiedProductImage": true,
+            "fixedPayloadFilesByteIdentical": true,
+            "archivesByteIdentical": true,
+            "note": "Re-packaged on 2026-08-12 with the MSVC-runtime Product image, BOM-fixed install scripts and long-path-safe Manager bundle"
+        },
+        "tauri": {
+            "status": "contract-and-history-only",
+            "visibleUi": "not-run",
+            "productionRepackage": "not-run"
+        }
+    },
+    "portableAcceptance": {
+        "extractedRoot": "C:\\Users\\Public\\Documents\\NeuroBookAcceptance\\t145-339853fb",
+        "ancestorWithoutNodeModules": true,
+        "hostileNodePath": true,
+        "isolatedLocalAppData": true,
+        "openSelfVerified": true,
+        "headlessGraceful": {
+            "exitCode": 0,
+            "shutdown": "graceful",
+            "elapsedMs": 13512.12,
+            "portAndProcessClosed": true
+        },
+        "headlessForced": {
+            "exitCode": 0,
+            "shutdown": "forced",
+            "elapsedMs": 4202.86,
+            "portAndProcessClosed": true
+        },
+        "managerGuiHeadless": {
+            "exitCode": 0,
+            "ready": "manager-gui-ready"
+        }
+    },
+    "hostMachine": {
+        "stateRoot": {
+            "locator": "local-app-data/NeuroBook/data",
+            "bootConfigSha256": "F104B5E7CA77E9F2A0630A6B152BB03620B6DA4DEECED8D6E97AD4D7D68CB975",
+            "preservedAcrossAllPhases": true
+        },
+        "uninstallOldMachine": {
+            "installationId": "727f8652-c25c-4396-9791-7f9c7efdcc09",
+            "scope": "machine",
+            "uac": "approved",
+            "exitCode": 0,
+            "programRootRemoved": true,
+            "hklmUninstallRemoved": true,
+            "protocolRemoved": true,
+            "publicShortcutRemoved": true,
+            "launcherRootRemoved": true,
+            "manifestRemoved": true,
+            "stateRootPreserved": true
+        },
+        "installCurrentDepot": {
+            "installationId": "e9ccfc62-b325-4e9d-9276-10106f148b67",
+            "scope": "machine",
+            "uac": "approved",
+            "manifestSchema": "nbook.desktop-installation/v3",
+            "locatorSchema": "nbook.desktop-installation-runtime/v1",
+            "programRoot": "Program Files/NeuroBook",
+            "hklmUninstallCreated": true,
+            "startMenuCreated": true,
+            "publicShortcutCreated": true,
+            "protocolRegistered": true,
+            "migration": "checked",
+            "health": "ready",
+            "managerInstanceRegistered": true,
+            "stateRootReused": true,
+            "bootConfigUnchanged": true,
+            "productReceipt": {
+                "imageId": "sha256:c5f208754125491af2a0d7f61c53144df3dee79e489f55be373eed9f5c0f30dc",
+                "applicationSha256": "sha256:1360f1b2d7cff2ba415bda91fa77ab695ab51328321c3605522852b2d9772fb2"
+            }
+        },
+        "installedHeadless": {
+            "gracefulFirstStart": {
+                "exitCode": 0,
+                "shutdown": "graceful",
+                "elapsedMs": 25699.07,
+                "note": "cold start includes full verify/migration/health probe with one reconnect wait"
+            },
+            "gracefulWarmStart": {
+                "exitCode": 0,
+                "shutdown": "graceful",
+                "elapsedMs": 4718.07
+            },
+            "forced": {
+                "exitCode": 0,
+                "shutdown": "forced",
+                "elapsedMs": 4097.05
+            },
+            "portAndProcessClosed": true
+        },
+        "visibleCdp": {
+            "titleBar": {
+                "y": 0,
+                "height": 36
+            },
+            "pageRootTop": 36,
+            "oldHeaders": 0,
+            "backdropFilter": "none",
+            "bridge": "object",
+            "quitGraceful": true,
+            "exitCode": 0
+        },
+        "singleInstance": {
+            "secondExitCode": 0,
+            "protocolRequest": true,
+            "argumentCount": 1,
+            "eventObserved": "electron-second-instance"
+        },
+        "repair": {
+            "locatorRemoved": true,
+            "repairPageShown": true,
+            "repairPageUrl": "file:///.../app.asar/startup.html",
+            "repairPageText": "Installed Desktop 缺少 runtime-locators.json，请通过 Manager Repair 修复。",
+            "noPortableFallback": true,
+            "repairUac": "approved",
+            "locatorRestoredSha256": "D52F628A8AAEDF9CFA4C1F974085C6995DA551931237264CF1B81F6A08ED7244",
+            "restartAfterRepair": "passed"
+        },
+        "uninstallCurrentMachine": {
+            "uac": "approved",
+            "exitCode": 0,
+            "programRootRemoved": true,
+            "hklmUninstallRemoved": true,
+            "protocolRemoved": true,
+            "publicShortcutRemoved": true,
+            "launcherRootRemoved": true,
+            "runRootRemoved": true,
+            "manifestRemoved": true,
+            "stateRootPreserved": true,
+            "bootConfigUnchanged": true,
+            "residue": "empty Start Menu Programs/NeuroBook directory remains; uninstall removes .lnk files but not the empty directory"
+            ,
+            "imageIdNote": "Host-machine chain was verified against the pre-fix Product image sha256:c5f208... (UAC/repair/single-instance/tray paths unchanged by the MSVC runtime and uninstall-host fixes); the final image df2f4812... (content-identical to e7b804f9, same shape digest) is covered by the sandbox acceptance below for install/migration/Provider/headless/delete-data uninstall"
+        }
+    },
+    "sandbox": {
+        "schema": "nbook.task-145-sandbox-acceptance/v1",
+        "ok": true,
+        "evidence": "docs/tasks/145-electron-desktop-productization/evidence/t145-sandbox-acceptance.json",
+        "depotSha256": "sha256:cf7f2b2c156e744c395fa4418c339d906bc7f55817cbf792361ed4e0aa59eab3",
+        "runContext": "Store Windows Sandbox via wsb.exe CLI, exec --run-as System (no interactive user session; UAC host delegation cannot run there, product deletion executed by the real Host script which the CLI schedules)",
+        "machineInstall": "passed",
+        "providerSmoke": "passed (fake /models discovery, api key not leaked, config written)",
+        "headlessStart": "passed (exit 0)",
+        "deleteDataUninstall": "passed",
+        "checksAllTrue": true
+    },
+    "provider": {
+        "scope": "local loopback fake /models service",
+        "testProvider": {
+            "ok": true,
+            "status": 200,
+            "discoverySupported": true,
+            "models": ["fake-model-a", "fake-model-b"]
+        },
+        "configureProvider": {
+            "providerId": "fake-local",
+            "modelKey": "fake-local/fake-model-a",
+            "target": "State Root/workspace/.nbook/config.json"
+        },
+        "secretHygiene": {
+            "apiKeyNotInArgv": true,
+            "apiKeyNotInEnv": true,
+            "apiKeyNotInLogs": true,
+            "apiKeyOnlyInStateRootConfig": true
+        }
+    },
+    "gates": {
+        "managerTests": {
+            "filesPassed": 41,
+            "filesSkipped": 1,
+            "testsPassed": 327,
+            "testsSkipped": 3
+        },
+        "managerReleaseContract": {
+            "filesPassed": 1,
+            "testsPassed": 1
+        },
+        "desktopContract": {
+            "filesPassed": 16,
+            "testsPassed": 57
+        },
+        "managerTypecheck": "passed",
+        "rootTypecheck": "passed",
+        "electronBundle": "passed",
+        "packagingSecurityAudit": "passed",
+        "gitDiffCheck": "passed"
+    },
+    "notCovered": [
+        "真实外部 Provider 成功连接",
+        "Windows Snap Layout 展开面板",
+        "可见的 Windows 文件选择器选择操作",
+        "Tauri 可见 UI",
+        "远端 Desktop",
+        "macOS app bundle",
+        "公开代码签名",
+        "后台 updater",
+        "文件扩展名关联"
+    ]
+}

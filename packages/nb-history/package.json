@@ -1,0 +1,25 @@
+{
+    "name": "@notnotype/nb-history",
+    "version": "0.1.0",
+    "private": true,
+    "description": "Workspace 操作日志与文件历史模块:append-only 事件溯源 + 内容寻址快照(SQLite/libsql)",
+    "type": "module",
+    "module": "src/index.ts",
+    "exports": {
+        ".": "./src/index.ts"
+    },
+    "scripts": {
+        "test": "bun test",
+        "typecheck": "tsc --noEmit",
+        "demo": "bun scripts/demo.ts"
+    },
+    "dependencies": {
+        "@libsql/client": "^0.17.4",
+        "diff": "^9.0.0"
+    },
+    "devDependencies": {
+        "@types/bun": "^1.3.14",
+        "@types/node": "^26.1.0",
+        "typescript": "^6.0.3"
+    }
+}

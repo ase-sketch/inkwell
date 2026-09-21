@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="llmlint 评测实验室：把「有没有 AI 味」变成可盲测、可计分的对照实验——背景科普、方法、战绩与两条铁律。">
+<title>llmlint 评测实验室 · 「AI 味」上秤了</title>
+<style>
+    /* ── 与 packages/llmlint/web/app/utils/theme/theme-tokens.ts 同源的漫画印刷体系 ── */
+    :root {
+        --paper: #fbfcfd;
+        --bg-main: #eef2f5;
+        --ink: #172126;
+        --teal: #0f9f92;
+        --teal-deep: #08766d;
+        --coral: #e85d75;
+        --coral-deep: #c24058;
+        --gold: #e8aa23;
+        --muted: #4a5960;
+        --dot: rgba(23, 33, 38, 0.10);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+        color: var(--ink);
+        background-color: var(--bg-main);
+        background-image: radial-gradient(var(--dot) 1.2px, transparent 1.2px);
+        background-size: 14px 14px;
+        line-height: 1.65;
+    }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 28px; }
+    section { padding: 64px 0; }
+
+    .card {
+        background: var(--paper);
+        border: 3px solid var(--ink);
+        box-shadow: 8px 8px 0 var(--ink);
+        padding: 28px;
+    }
+    .kicker {
+        display: inline-block;
+        background: var(--ink);
+        color: var(--paper);
+        font-weight: 800;
+        font-size: 14px;
+        letter-spacing: .35em;
+        padding: 4px 14px 4px 17px;
+        margin-bottom: 18px;
+    }
+    h2 { font-size: 34px; font-weight: 900; line-height: 1.25; margin-bottom: 10px; }
+    h2 .hl { color: var(--coral-deep); }
+    .sub { color: var(--muted); font-size: 16px; margin-bottom: 30px; }
+
+    /* ── HERO ── */
+    .hero { position: relative; padding: 88px 0 72px; overflow: hidden; }
+    .hero-badge {
+        display: inline-block;
+        border: 3px solid var(--ink);
+        background: rgba(15, 159, 146, .16);
+        color: var(--teal-deep);
+        font-weight: 900;
+        padding: 6px 18px;
+        transform: rotate(-2deg);
+        box-shadow: 5px 5px 0 var(--ink);
+        margin-bottom: 26px;
+        letter-spacing: .12em;
+    }
+    .hero h1 {
+        font-size: clamp(48px, 8vw, 88px);
+        font-weight: 900;
+        line-height: 1.12;
+    }
+    .hero h1 .vs {
+        color: var(--paper);
+        background: var(--coral);
+        border: 3px solid var(--ink);
+        box-shadow: 6px 6px 0 var(--ink);
+        display: inline-block;
+        padding: 0 18px;
+        transform: rotate(-3deg);
+        margin: 0 6px;
+    }
+    .hero p.lead { font-size: 21px; margin-top: 22px; max-width: 640px; font-weight: 600; }
+    .hero p.lead b { color: var(--teal-deep); }
+    .stamp {
+        position: absolute;
+        right: 40px; top: 84px;
+        border: 4px double var(--teal-deep);
+        color: var(--teal-deep);
+        font-weight: 900;
+        font-size: 22px;
+        letter-spacing: .3em;
+        padding: 14px 20px 14px 26px;
+        transform: rotate(9deg);
+        opacity: .92;
+        background: rgba(251, 252, 253, .72);
+        writing-mode: vertical-rl;
+    }
+
+    /* ── 卡片组 ── */
+    .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+    .trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+    .model-card h3 { font-size: 19px; font-weight: 900; margin-bottom: 6px; }
+    .model-card .verdict {
+        display: inline-block;
+        font-weight: 900;
+        font-size: 13px;
+        letter-spacing: .2em;
+        border: 2px solid var(--ink);
+        padding: 2px 10px;
+        margin-bottom: 12px;
+        transform: rotate(-1.5deg);
+    }
+    .v-good { background: rgba(15, 159, 146, .16); color: var(--teal-deep); }
+    .v-bad { background: rgba(232, 93, 117, .16); color: var(--coral-deep); }
+    .v-meh { background: rgba(232, 170, 35, .22); color: var(--ink); }
+    .model-card p { font-size: 14.5px; color: var(--muted); }
+    .model-card p b { color: var(--ink); }
+    .punch {
+        margin-top: 30px;
+        border-left: 10px solid var(--teal);
+        background: var(--paper);
+        border-top: 3px solid var(--ink);
+        border-right: 3px solid var(--ink);
+        border-bottom: 3px solid var(--ink);
+        padding: 20px 24px;
+        font-size: 19px;
+        font-weight: 800;
+    }
+    .punch b { color: var(--teal-deep); }
+
+    /* ── 数据面板 ── */
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+    .stat { text-align: center; padding: 26px 12px; }
+    .stat .num { font-size: 44px; font-weight: 900; color: var(--teal-deep); line-height: 1.1; }
+    .stat .num small { font-size: 18px; }
+    .stat .lbl { font-size: 14px; font-weight: 700; margin-top: 8px; }
+    .footnote { margin-top: 22px; font-size: 13px; color: var(--muted); border-top: 2px dashed var(--ink); padding-top: 12px; }
+
+    /* ── 角色卡 ── */
+    .roles { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 22px; }
+    .role { position: relative; padding-top: 34px; }
+    .role .tag {
+        position: absolute; top: -16px; left: 20px;
+        background: var(--ink); color: var(--paper);
+        font-weight: 900; letter-spacing: .25em;
+        padding: 4px 14px 4px 17px; font-size: 13px;
+    }
+    .role:nth-child(2) .tag { background: rgba(232, 93, 117, .16); color: var(--coral-deep); }
+    .role:nth-child(3) .tag { background: rgba(15, 159, 146, .16); color: var(--teal-deep); }
+    .role h3 { font-size: 21px; font-weight: 900; margin-bottom: 8px; }
+    .role p { font-size: 15px; color: var(--muted); }
+    .role p b { color: var(--ink); }
+
+    /* ── 打脸陈列馆 ── */
+    .face {
+        position: relative; padding-top: 38px;
+    }
+    .face .myth {
+        position: absolute; top: -16px; left: 20px;
+        background: var(--gold); color: var(--ink);
+        border: 2px solid var(--ink);
+        font-weight: 900; font-size: 13px; letter-spacing: .1em;
+        padding: 3px 12px;
+        transform: rotate(-2deg);
+    }
+    .face h3 { font-size: 19px; font-weight: 900; margin-bottom: 8px; }
+    .face h3 .nope { color: var(--coral-deep); }
+    .face p { font-size: 14.5px; color: var(--muted); }
+    .face p b { color: var(--ink); }
+
+    /* ── 铁律 ── */
+    .law { border-left: 10px solid var(--coral); }
+    .law.alt { border-left-color: var(--teal); }
+    .law h3 { font-size: 20px; font-weight: 900; margin-bottom: 8px; }
+    .law p { font-size: 15px; color: var(--muted); }
+    .law p b { color: var(--ink); }
+
+    /* ── CTA ── */
+    .btn-row { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; }
+    .btn {
+        display: inline-block;
+        border: 3px solid var(--ink);
+        box-shadow: 6px 6px 0 var(--ink);
+        font-weight: 900;
+        font-size: 18px;
+        padding: 14px 34px;
+        text-decoration: none;
+        color: var(--ink);
+        background: var(--paper);
+        transition: transform .06s ease;
+    }
+    .btn:hover { transform: translate(-2px, -2px); box-shadow: 8px 8px 0 var(--ink); }
+    .btn-primary { background: var(--coral-deep); color: #fff; }
+    .btn-note { font-size: 13px; color: var(--muted); }
+
+    footer { padding: 34px 0 60px; }
+    .disclaim { font-size: 12.5px; color: var(--muted); border-top: 3px solid var(--ink); padding-top: 18px; }
+    .disclaim li { margin-bottom: 4px; list-style: none; }
+    .disclaim li::before { content: "※ "; font-weight: 900; }
+
+    /* ── 动画演示 ── */
+    .reveal { opacity: 0; transform: translateY(22px); transition: opacity .55s ease, transform .55s ease; }
+    .reveal.in { opacity: 1; transform: none; }
+    @keyframes vs-tilt { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(-1.2deg) scale(1.04); } }
+    .hero h1 .vs { animation: vs-tilt 4.5s ease-in-out infinite; }
+
+    a:focus-visible { outline: 3px dashed var(--teal-deep); outline-offset: 3px; }
+
+    @media (prefers-reduced-motion: reduce) {
+        * { transition: none !important; }
+        .hero h1 .vs { animation: none !important; }
+        .btn:hover { transform: none; }
+    }
+
+    @media (max-width: 860px) {
+        .trio, .stats, .roles, .duo { grid-template-columns: 1fr; }
+        .stamp { display: none; }
+    }
+
+    @media (max-width: 480px) {
+        section { padding: 44px 0; }
+        .hero { padding: 60px 0 48px; }
+        .wrap { padding: 0 16px; }
+        .hero h1 { font-size: 34px; }
+        .hero h1 .vs { font-size: .62em; padding: 0 10px; margin: 0 2px; box-shadow: 4px 4px 0 var(--ink); }
+        .card { padding: 20px; box-shadow: 5px 5px 0 var(--ink); }
+        h2 { font-size: 26px; }
+    }
+</style>
+</head>
+<body>
+
+<!-- 第一幕 · HERO -->
+<header class="hero">
+    <div class="wrap" style="position:relative;">
+        <div class="hero-badge">llmlint 评测实验室 · 第一章 · 内部已跑通</div>
+        <h1>吵了三百楼的<br>「AI 味」，<span class="vs">上秤</span>了</h1>
+        <p class="lead">网友为「这段像不像 AI 写的」能吵到天亮，因为没人带秤。<b>评测实验室</b>就是那杆秤：真人范文和 AI 同题作文捉对盲测，规则库当考生，第三方检测器当监考——分数说话，不服重跑。</p>
+        <div class="stamp">战报陆续整理</div>
+    </div>
+</header>
+
+<main>
+
+<!-- 第〇幕 · 新手村 -->
+<section id="intro">
+    <div class="wrap">
+        <span class="kicker">先补背景 · 五分钟入门</span>
+        <h2>完全没接触过？<span class="hl">从这四张卡开始</span></h2>
+        <p class="sub">这一页假设你昨天才第一次听说这件事。先花五分钟搞懂四个词：</p>
+        <div class="duo">
+            <div class="card model-card">
+                <h3>① AI 代笔已经是日常</h3>
+                <span class="verdict v-meh">现状</span>
+                <p>你手机里的聊天机器人（ChatGPT、DeepSeek 这类<b>大语言模型</b>）都能一口气吐出三千字小说。网文作者拿它打底稿、工作室用它量产，已是公开的秘密。</p>
+            </div>
+            <div class="card model-card">
+                <h3>② 预设 ＝ AI 的剧本说明书</h3>
+                <span class="verdict v-meh">关键词</span>
+                <p>直接命令「写个故事」，AI 写得千篇一律。于是社区把经验打包成<b>预设</b>：角色怎么立住、文风学谁、禁用哪些词、节奏怎么控。同一个 AI，喂不同预设，判若两人。预设作者是一个真实存在的创作圈子，互相分享、暗中较劲。</p>
+            </div>
+            <div class="card model-card">
+                <h3>③ 但这个江湖没有点评平台</h3>
+                <span class="verdict v-bad">痛点</span>
+                <p>哪个预设好用？作者自称天下第一，用户跟着感觉走，吵三百楼也吵不出结果。就像满街餐馆却没有任何点评网站——<b>好不好吃，全看老板嗓门大。</b></p>
+            </div>
+            <div class="card model-card">
+                <h3>④ 「AI 味」＝机器的流水线味</h3>
+                <span class="verdict v-good">靶子</span>
+                <p>机器写的字自带一股怪味：排比句成瘾、「不是 A 而是 B」张口就来、每段结尾强行升华、比喻华丽但空洞。读者三行识破、直接弃文。<b>消灭 AI 味，就是整个项目的靶心。</b></p>
+            </div>
+        </div>
+        <div class="punch">评测实验室做的事只有一件：<b>给这个没有裁判的江湖，装一块所有人服气的计分板。</b>下面讲这块计分板是怎么造、怎么校、考出了什么分。</div>
+    </div>
+</section>
+
+<!-- 第二幕 · 为什么需要秤 -->
+<section id="why">
+    <div class="wrap">
+        <span class="kicker">为什么需要秤</span>
+        <h2>你觉得油，他觉得香——<span class="hl">没秤，全是口味</span></h2>
+        <p class="sub">关于「AI 味」，社区日常出现的三种僵局：</p>
+        <div class="trio">
+            <div class="card model-card">
+                <h3>纯口味之争</h3>
+                <span class="verdict v-meh">无解</span>
+                <p>「我说油，他说香。」个人感受无法复现、无法汇总，吵三百楼也选不出赢家。</p>
+            </div>
+            <div class="card model-card">
+                <h3>单一工具说了算</h3>
+                <span class="verdict v-bad">偏科</span>
+                <p>任何一个单独的检测器都会漏报、误伤。只信一家，不是得到真相，是换了个教主。</p>
+            </div>
+            <div class="card model-card">
+                <h3>那就放弃客观？</h3>
+                <span class="verdict v-good">有解</span>
+                <p>把「有没有 AI 味」改写成一道可盲测的分类题：<b>遮住出处，猜哪篇是人写的。</b>猜得准不准，可以算分。</p>
+            </div>
+        </div>
+        <div class="punch">玄学变考题，是整个实验室的第一块地基：<b>凡是能出成考卷的东西，就逃不掉被打分。</b></div>
+    </div>
+</section>
+
+<!-- 第三幕 · 认识裁判 -->
+<section id="meet">
+    <div class="wrap">
+        <span class="kicker">认识裁判</span>
+        <h2>裁判不是空气，是<span class="hl">一个较真的工具</span></h2>
+        <p class="sub">造新秤之前，先介绍已经上岗的家底——llmlint 本体：</p>
+        <div class="trio">
+            <div class="card model-card">
+                <h3>一本 360 条的坏习惯图鉴</h3>
+                <span class="verdict v-good">家底</span>
+                <p>每条规则锁定一种机器写作毛病：哪些词出现太勤、哪种句式又在复读、哪类结构太工整。默认 <b>266 条在岗</b>，覆盖 50 多个门类。</p>
+            </div>
+            <div class="card model-card">
+                <h3>四种手法翻你的稿子</h3>
+                <span class="verdict v-good">手段</span>
+                <p><b>查词形</b>：套话一抓一个准；<b>算频率</b>：「程度副词每千字 12 次」这种账算得清；<b>跑算法</b>：段落节奏、篇幅比例交给程序量；<b>判语义</b>：规则写不死的，请 AI 结合上下文现场裁。</p>
+            </div>
+            <div class="card model-card">
+                <h3>体检报告，不是判决书</h3>
+                <span class="verdict v-meh">边界</span>
+                <p>分数高 ≠ 文章该死。它负责把可疑之处标出来、附上证据；改不改、怎么改由人决定，而且改动必须通过下面的两条铁律验收。</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 第四幕 · 造秤三步 -->
+<section id="how">
+    <div class="wrap">
+        <span class="kicker">造秤三步</span>
+        <h2>一道考题的<span class="hl">三种原料</span></h2>
+        <p class="sub">秤不是拍脑袋造的，每个环节都有规矩和理由：</p>
+        <div class="roles">
+            <div class="card role">
+                <span class="tag">原料一</span>
+                <h3>出卷</h3>
+                <p>真人范文做参考，AI 按<b>同样的命题</b>现写作文，一篇对一篇配成考题。轻小说、武侠、宫斗、无限流……题材铺开——只在一种文体上考出来的成绩不算数，换个题材可能就翻车。</p>
+            </div>
+            <div class="card role">
+                <span class="tag">原料二</span>
+                <h3>盲考</h3>
+                <p>遮掉作者信息，让规则库指认哪篇是 AI。<b>练习归练习、高考归高考</b>：调规则用一批卷，正式计分用另一批考前封存的卷——防止考生背题刷分。</p>
+            </div>
+            <div class="card role">
+                <span class="tag">原料三</span>
+                <h3>监考</h3>
+                <p>请<b>第三方神经网络检测器</b>独立再测一遍，作为另一把参照尺：两边各自报告，结论不一致时正好暴露盲区——任何一边都不当最终判决。</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 第五幕 · 战绩 -->
+<section id="score">
+    <div class="wrap">
+        <span class="kicker">最新战报</span>
+        <h2>这杆秤，目前长这样</h2>
+        <p class="sub">下面四个数，全部来自仓库里可查证的内部对照实验记录：</p>
+        <div class="stats">
+            <div class="card stat">
+                <div class="num">360<small> 条</small></div>
+                <div class="lbl">中文正文规则库<br>266 条默认在岗</div>
+            </div>
+            <div class="card stat">
+                <div class="num">0.966</div>
+                <div class="lbl">本轮实验的分辨得分*<br>满分 1</div>
+            </div>
+            <div class="card stat">
+                <div class="num">2.47 <small>vs</small> 8.86</div>
+                <div class="lbl">套话密度中位数*<br>人写 vs 机写（越高越油）</div>
+            </div>
+            <div class="card stat">
+                <div class="num">0.870</div>
+                <div class="lbl">第三方 AI 检测器*<br>另一把参照尺</div>
+            </div>
+        </div>
+        <div class="punch" style="font-size:17px;">怎么读这四个数：随机抽一篇人写的、一篇机写的，这杆秤有 <b>96.6%</b> 的把握指认正确；人写稿件的套话密度不到 AI 稿的三分之一；独立的外援检测器另有一把参照尺（<b>0.870</b>）——两把尺子各自报告、互不当对方的判决，不一致的地方就是盲区清单。</div>
+        <p class="footnote">* 以上为内部小样本机器互测实验结果，没有人类评审参与，样本量有限。它证明的是「这杆秤能测量」，不是「什么是好文章」——那是下一章的事。</p>
+    </div>
+</section>
+
+<!-- 第六幕 · 打脸陈列馆 -->
+<section id="faces">
+    <div class="wrap">
+        <span class="kicker">打脸陈列馆</span>
+        <h2>这个实验室，<span class="hl">连自己都打</span></h2>
+        <p class="sub">下面四个「大家本来都这么以为」，全是被实验亲手推翻的——这也是它存在的意义：</p>
+        <div class="duo">
+            <div class="card face">
+                <span class="myth">曾经以为</span>
+                <h3>起点最差的，进步空间最大 <span class="nope">×</span></h3>
+                <p>某模型裸稿 AI 味全场最高（0.969），按理最有下降空间，注入写作约束后实测收益却是<b>零</b>，篇幅还倒砍 26%。起点高只说明「测得出来」，不承诺「一定进步」。</p>
+            </div>
+            <div class="card face">
+                <span class="myth">曾经以为</span>
+                <h3>一套约束，处处灵验 <span class="nope">×</span></h3>
+                <p>同一套写作约束：在这个模型上 AI 味浓度实打实下降（0.896 → 0.776），换个模型零收益，再换个判不了。<b>收益必须逐模型实测，推不出来。</b></p>
+            </div>
+            <div class="card face">
+                <span class="myth">曾经以为</span>
+                <h3>平均分代表一切 <span class="nope">×</span></h3>
+                <p>把多个模型的数据搅在一起算，表格一片飘绿、像是全面胜利；按模型拆开一看，信号几乎全来自其中一个。<b>合并的大数字会撒谎，结论必须分层看。</b></p>
+            </div>
+            <div class="card face">
+                <span class="myth">曾经以为</span>
+                <h3>骗过检测器 = 没 AI 味 <span class="nope">×</span></h3>
+                <p>有的模型检测分低得贴地，套话密度却照样爆表——躲开神经网和不写套话是<b>两种本事</b>。所以秤有两面，分开测、都报告。</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 第七幕 · 两条铁律 -->
+<section id="laws">
+    <div class="wrap">
+        <span class="kicker">尺子的使用说明</span>
+        <h2>两条铁律，<span class="hl">防自己人作弊</span></h2>
+        <p class="sub">用这杆秤宣布「变好了」之前，必须先过这两关：</p>
+        <div class="duo">
+            <div class="card law">
+                <h3>铁律一 · 「变好」要两个人签字</h3>
+                <p>机器说检测分降了，<b>还不算数</b>——真人读者也得说文章没变差。两票全同意才能宣称「修好了」；缺人评的时候，一律按「未验收」挂起。没有这条，会出现「检测分漂亮、读者看完骂街」的假胜利。</p>
+            </div>
+            <div class="card law alt">
+                <h3>铁律二 · 不许靠删字清零</h3>
+                <p>命中减少了、也没冒出新命中，但整篇短了三分之一？<b>不算过。</b>改动幅度超出原文 ±20% 直接判无效——专治「把字全删了就没有 AI 味了」的邪道通关。</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 第八幕 · 下一章 -->
+<section id="next">
+    <div class="wrap">
+        <span class="kicker">第一章 · 完</span>
+        <h2>尺子造好了，<span class="hl">该放蛐蛐进场了</span></h2>
+        <p class="sub">评测实验室负责量「尺子准不准、约束灵不灵」；至于让谁的写作管线一路打到终点站排行榜——那是第二章的事。</p>
+        <div class="btn-row">
+            <a class="btn btn-primary" href="../evolution-lab/index.html">下一章 · 进化实验室：赛博斗蛐蛐</a>
+            <a class="btn" href="https://github.com/notnotype/neuro-book">GitHub · 看方法与公开记录</a>
+            <span class="btn-note">数字口径与实验记录整理在仓库文档中；正文语料含版权内容，不随仓库公开。</span>
+        </div>
+    </div>
+</section>
+
+</main>
+
+<footer>
+    <div class="wrap">
+        <ul class="disclaim">
+            <li>文中「AI 味浓度 / 套话密度 / 人机分辨得分」为内部小样本机器互测实验（round-06 基线，对应 docPAi / docScore / AUC 口径）结果，无人类评审参与，样本量有限，不构成「什么是好文章」的定义。</li>
+            <li>各模型对同一套写作约束的反应差异巨大，本页不构成任何「注入必变好」的使用建议。</li>
+            <li>评测语料包含受版权保护的文本：正文语料不入 git，仓库历史已做清理；「可测量」不等于「可公开」。</li>
+            <li>下一章的进化实验室处于提案与规范阶段（Accepted 边界规范已定，实现未开始）。</li>
+        </ul>
+    </div>
+</footer>
+
+<script>
+(function () {
+    "use strict";
+    var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var targets = document.querySelectorAll("main .card, main .punch, main .honor, main .firstblood, main .example, main .recycle, main .edges li, main .parts-list li");
+    targets.forEach(function (el) { el.classList.add("reveal"); });
+    if (reduced || !("IntersectionObserver" in window)) {
+        targets.forEach(function (el) { el.classList.add("in"); });
+        return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+            if (en.isIntersecting) { en.target.classList.add("in"); io.unobserve(en.target); }
+        });
+    }, { threshold: 0.12 });
+    targets.forEach(function (el) { io.observe(el); });
+
+    // 兜底：IO 异常时用节流 scroll/resize 完成同样的入场（可见即显示，与 IO 幂等）
+    function fallbackCheck() {
+        targets.forEach(function (el) {
+            if (el.classList.contains("in")) return;
+            var r = el.getBoundingClientRect();
+            if (r.top < window.innerHeight + 60 && r.bottom > -60) el.classList.add("in");
+        });
+    }
+    var fbPending = false;
+    function onFallback() {
+        if (fbPending) return;
+        fbPending = true;
+        window.setTimeout(function () { fbPending = false; fallbackCheck(); }, 160);
+    }
+    window.addEventListener("scroll", onFallback, { passive: true });
+    window.addEventListener("resize", onFallback);
+    fallbackCheck();
+
+    function firstNumberNode(el) {
+        var all = (el.textContent.match(/\d+(\.\d+)?/g) || []);
+        if (all.length !== 1) return null;
+        for (var i = 0; i < el.childNodes.length; i++) {
+            var n = el.childNodes[i];
+            if (n.nodeType === 3 && /\d/.test(n.nodeValue)) return n;
+        }
+        return null;
+    }
+    var counters = document.querySelectorAll(".stat .num");
+    if (!counters.length || !("IntersectionObserver" in window)) return;
+    var cio = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+            if (!en.isIntersecting) return;
+            cio.unobserve(en.target);
+            var node = firstNumberNode(en.target);
+            if (!node) return;
+            var original = node.nodeValue, m = original.match(/[\d.]+/);
+            var target = parseFloat(m[0]), dec = (m[0].split(".")[1] || "").length, start = null;
+            function frame(ts) {
+                if (start === null) start = ts;
+                var p = Math.min((ts - start) / 1100, 1), eased = 1 - Math.pow(1 - p, 3);
+                node.nodeValue = original.replace(m[0], (target * eased).toFixed(dec));
+                if (p < 1) requestAnimationFrame(frame); else node.nodeValue = original;
+            }
+            requestAnimationFrame(frame);
+        });
+    }, { threshold: 0.4 });
+    counters.forEach(function (el) { cio.observe(el); });
+})();
+</script>
+</body>
+</html>

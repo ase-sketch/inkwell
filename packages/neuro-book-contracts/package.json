@@ -1,0 +1,37 @@
+{
+    "name": "@notnotype/neuro-book-contracts",
+    "private": true,
+    "version": "0.1.0",
+    "type": "module",
+    "exports": {
+        ".": "./src/index.ts",
+        "./source": "./src/source.ts",
+        "./platform": "./src/platform.ts",
+        "./release": "./src/release.ts",
+        "./product-runtime": "./src/product-runtime.ts",
+        "./desktop": "./src/desktop.ts",
+        "./desktop-uac": "./src/desktop-uac.ts",
+        "./provider-config": "./src/provider-config.ts",
+        "./environment": "./src/environment.ts",
+        "./shutdown": "./src/shutdown.ts",
+        "./installation": "./src/installation.ts",
+        "./desktop-aggregate-depot": "./src/desktop-aggregate-depot.ts",
+        "./desktop-uninstall": "./src/desktop-uninstall.ts"
+    },
+    "dependencies": {
+        "semver": "^7.8.5",
+        "typebox": "^1.1.38",
+        "yaml": "^2.8.2"
+    },
+    "scripts": {
+        "typecheck": "tsc --noEmit -p tsconfig.json",
+        "test": "vitest run --config vitest.config.ts"
+    },
+    "devDependencies": {
+        "@notnotype/neuro-book-test-support": "file:../neuro-book-test-support",
+        "@types/bun": "^1.3.14",
+        "@types/node": "^25.6.0",
+        "typescript": "^5.9.3",
+        "vitest": "^4.1.2"
+    }
+}

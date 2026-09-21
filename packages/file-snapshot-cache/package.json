@@ -1,0 +1,26 @@
+{
+    "name": "@notnotype/file-snapshot-cache",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "exports": {
+        ".": "./src/index.ts"
+    },
+    "imports": {
+        "#cache/*": "./src/*.ts",
+        "#test/*": "./tests/*.ts"
+    },
+    "scripts": {
+        "test": "vitest run --config vitest.config.ts",
+        "typecheck": "tsc --noEmit -p tsconfig.json",
+        "benchmark": "node --expose-gc --import tsx benchmarks/run.ts",
+        "benchmark:bun": "bun --expose-gc benchmarks/run.ts"
+    },
+    "devDependencies": {
+        "@types/node": "^25.6.0",
+        "tsx": "^4.23.1",
+        "typescript": "^5.9.3",
+        "vitest": "^4.1.2",
+        "@notnotype/neuro-book-test-support": "workspace:*"
+    }
+}

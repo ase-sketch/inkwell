@@ -1,0 +1,40 @@
+Task 00155 Leader role prompt final verification
+
+baseline revision: 02b1d1e70b0d69484b0862969368bfdc4d595e4e
+verification target: baseline revision + current uncommitted Task 00155 diff (no independent revision)
+
+Formal required window started at 2026-08-24T14:23:40Z:
+
+- `bun run docs:check`: exit code 0; `failures: []`; `checkedFiles: 5246`.
+- `bun run governance:check`: exit code 0; `failures: []`; `warnings: []`.
+- `bun x vitest run --config scripts/vitest.config.ts --testTimeout=15000 scripts/ci/agent-governance.test.ts`: exit code 0; Test Files 1 passed; Tests 38 passed; Duration 20.44s.
+- `git diff --check -- .`: exit code 0; no output.
+
+Review evidence:
+
+- Fresh-context adversarial review cycle 1: 5 substantive findings; all addressed.
+- Fresh-context adversarial review cycle 2: 5 substantive findings; all addressed.
+- Fresh-context adversarial review cycle 3: `overall_correctness: correct`; `confidence: 0.97`; no remaining substantive finding.
+- Requested cross-model command: `claude -p --model opus5 --permission-mode plan --tools "" --no-session-persistence`.
+- Cross-model result: exit code 1; `There's an issue with the selected model (opus5). It may not exist or you may not have access to it. Run --model to pick a different model.` No cross-model review result was produced.
+
+Final required window after Task closeout records, started at 2026-08-24T14:27:05Z–14:27:06Z:
+
+- `bun run docs:check`: exit code 0; `failures: []`; `checkedFiles: 5247`.
+- `bun run governance:check`: exit code 0; `failures: []`; `warnings: []`.
+- `bun x vitest run --config scripts/vitest.config.ts --testTimeout=15000 scripts/ci/agent-governance.test.ts`: exit code 0; Test Files 1 passed; Tests 38 passed; Duration 20.60s.
+- `git diff --check -- .`: exit code 0; no output.
+- This window covered the completed Task README, updated context, both existing walkthroughs, formal evidence, and the Leader contract as they existed before the 2026-08-24T14:37:41Z advisor follow-up.
+
+Required window after the 2026-08-24T14:37:41Z advisor follow-up, started at 2026-08-24T14:39:12Z:
+
+- `bun run docs:check`: exit code 0; `failures: []`; `checkedFiles: 5248`.
+- `bun run governance:check`: exit code 0; `failures: []`; `warnings: []`.
+- `bun x vitest run --config scripts/vitest.config.ts --testTimeout=15000 scripts/ci/agent-governance.test.ts`: exit code 0; Test Files 1 passed; Tests 38 passed; Duration 24.44s.
+- `git diff --check -- .`: exit code 0; no output.
+- This window covered the stricter branch/worktree/checkout permission contract, PM/Leader boundary, commit + push authorization record, walkthrough 003, and the appended 14:27 formal evidence. The evidence append containing this 14:39 result is followed by one final unchanged-worktree required run before commit.
+
+Not run:
+
+- Product build, product test suite, browser acceptance, real Provider/Model, release and deployment checks were not run; this Task changes only the repository Leader role contract and does not require them.
+- As of the 2026-08-24T14:23:40Z and 2026-08-24T14:27:05Z–14:27:06Z verification windows, commit, push, PR, merge, release and deployment had not been executed. The developer later authorized this Task's commit + push only; PR, merge, release and deployment remain unauthorized.

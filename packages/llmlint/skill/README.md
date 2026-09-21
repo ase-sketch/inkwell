@@ -1,0 +1,187 @@
+# llmlint
+
+> 为 LLM 生成的中文文本做 lint 与润色 —— 用规则稳定定位 AI 味，再交给人/Agent 结合语境判断修复。
+
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](./LICENSE)
+[![Runtime: Node.js or Bun](https://img.shields.io/badge/Runtime-Node.js%20or%20Bun-green.svg)](#运行要求)
+[![Version](https://img.shields.io/badge/version-3.0.0-green.svg)](./package.json)
+
+**中文 · [English](./README.en.md)**
+
+---
+
+## llmlint 是什么
+
+**llmlint** 是面向 LLM 输出的中文文本 lint 工具。它定位套路化表达、AI 写作痕迹、空泛总结、节奏单调等规则驱动的风格问题，再帮你修复 —— 同时不把作者或角色本来的声音磨平。
+
+它由两层协作组成：
+
+| 层 | 职责 |
+| --- | --- |
+| **CLI**（本仓库 `bin/llmlint.ts`） | 用 regex、density 与 handler 做**稳定、可复现的静态检查**，给出位置候选或统计指纹。 |
+| **Agent Skill**（`SKILL.md`） | 由 LLM/Agent 结合**语境**复核候选、给文本评分、生成修复计划，并*在你审批之后*才改写。 |
+
+核心理念：**命中只是候选，不是判决。** CLI 永远不会自动改写正文。只有无需判断的机械清理（零宽字符、省略号/破折号尾部清理）才由 `fix` 处理；所有语义级修复都交给人/Agent。
+
+## 为什么需要它
+
+LLM 的中文输出有可识别的"味道"：填充开场（其实、值得注意的是）、机械过渡（首先…其次…最后）、二元对比脚手架（不是…而是…）、商务黑话（赋能、抓手、闭环）、渲染性强调（深刻的影响、前所未有）、谄媚助手腔（好问题、希望这对你有帮助）等等。它们大多能被正则*稳定定位*，但*该不该删*要看语境 —— 一句对白、一份技术文档、或一个刻意的修辞，都可能合理地保留它们。
+
+llmlint 把这两件事拆开：确定性定位（CLI）+ 语境判断（Agent）。
+
+## 运行要求
+
+- **Bun**（原生运行 TypeScript，无需构建）或 **Node.js + [`tsx`](https://github.com/privatenumber/tsx)**（`npx tsx bin/llmlint.ts …`）。CLI 源码用无扩展名的 TS 相对导入，Node 自带的类型剥离不解析这类导入，需用 `tsx`（或自行构建）跑；Bun 则直接支持。
+- 依赖：`commander`、`picocolors`、`tinyglobby`（均为极轻量纯 JS 库，无原生编译）。
+
+## 安装
+
+**推荐（作为 Agent Skill）** —— 用开放的 [`skills`](https://skills.sh) CLI 一条命令装进任意支持的 Agent（Claude Code、Codex、Cursor 等）：
+
+```bash
+npx skills add notnotype/llmlint --skill llmlint --full-depth
+```
+
+它会把 skill 文件复制 / 链接进 Agent 的 skills 目录，并按 `SKILL.md` 驱动 CLI。
+
+**独立 CLI 使用** —— 克隆后用 Bun 安装依赖；CLI 运行时仍支持 Bun 或 Node + `tsx`：
+
+```bash
+git clone https://github.com/notnotype/llmlint.git
+cd llmlint/skill
+bun install --frozen-lockfile
+```
+
+直接运行（Bun 原生跑 TS；Node 见[运行要求](#运行要求)）：
+
+```bash
+bun bin/llmlint.ts check <文件>     # Node：npx tsx bin/llmlint.ts check <文件>
+```
+
+或把 `llmlint` 注册到 PATH（`package.json` 已声明 `bin`）：`bun link` 后 `llmlint check <文件>`。
+
+> `SKILL.md` / `references/` 使用 `<skill-root>` 占位符。Agent 优先使用 SkillCatalog 给出的绝对 `root`；宿主只提供 `SKILL.md` 的绝对位置时使用其父目录。独立使用时当前目录就是 skill 根，可直接运行 `bun bin/llmlint.ts …`。
+
+## 快速开始
+
+```bash
+# 写之前：输出写作约束要点（markdown），可注入系统提示词或存成文风预设
+bun bin/llmlint.ts guide
+bun bin/llmlint.ts guide --tier full            # 带上全部逐词替换与删除词表
+
+# 检查文件（或目录，递归 .md/.markdown/.txt）中的静态候选
+bun bin/llmlint.ts check manuscript/chapter-01.md
+bun bin/llmlint.ts check manuscript/
+
+# 长文件先看中高等级
+bun bin/llmlint.ts check chapter.md --min-level medium
+
+# 小文件 / 人类阅读：显示完整命中行，用 <mark> 标出命中片段
+bun bin/llmlint.ts check chapter.md --show-lines
+
+# 检视规则库；语义规则展开完整判定说明与示例
+bun bin/llmlint.ts rules
+bun bin/llmlint.ts rules --detector semantic
+
+# 确定性机械修复（零宽字符、省略号/破折号尾部清理）—— 默认 dry-run
+bun bin/llmlint.ts fix manuscript/             # 仅预览（有待修项时退出码 1）
+bun bin/llmlint.ts fix manuscript/ --write     # 写回原文件
+
+# JSON 输出，供工具消费
+bun bin/llmlint.ts check chapter.md --format json
+```
+
+对 Markdown，`check` / `fix` 默认跳过代码块 / frontmatter / 行内代码 / 链接等结构区，避免把代码、URL 当正文误杀；`--scan-all` 关闭遮罩、扫描全部内容。
+
+## 三个独立维度
+
+每条规则有三条互相独立的轴，不要混为一谈：
+
+- **`level`** —— `high` / `medium` / `low`。只表严重度，决定 `--min-level` 过滤和退出码。
+- **`review`** —— `agent` / `human` / `none`。*审查受众*：一条命中默认给谁看。`check` 默认 `--review agent`，把破折号、比喻、泛词形副词等更偏作者偏好的命中放进 `human` 桶、机械命中放进 `none` 桶。用 `--review human` / `--review all` 查看其它桶。
+- **`fixability`** —— `auto` / `candidate` / `manual`。机械修复能力。`fix` 只应用 `auto` 规则。
+
+默认规则集中只有 2 条无需语境判断的机械规则是 `auto`，没有默认 `candidate`，其余规则均为 `manual`。用户仍可在配置中把明确选中的 regex `replace` 规则提升为 `candidate`，供逐条人工确认。规则数据里的 `action.replace` 只是替换模板，**不代表允许直接应用**；最终权限始终由 materialize 后的 `fixability` 决定。
+
+`review`（受众）和 `detector`（判据类别）是**两个不同概念**：
+
+- **`detector`** 决定判据是什么性质：`regex` 词法、`density` 统计、`handler` 算法由 `check` 静态扫描命中；`semantic` 没有可稳定定位的特征，靠 `rules --detector semantic` 交给 Agent 读全文判断。
+- **`review`** 决定一条静态命中*默认给谁看*。它**只管审查期**——`human` 表示「置信度不足，别让 Agent 自动改」，不表示这条规则在写作期不该提。写作期的取舍是 `guide --tier`。
+
+一次完整审查要同时跑 `check`（给 Agent 的静态命中）和 `rules --detector semantic`（语义规则）。
+
+每条规则还带作者定义的扫描域 `scope.layer`：`narrative` 只看引号外叙述，`quoted` 只看同一行内成对的 `「」` / `『』` / `“”` / `‘’` / `【】`（含分隔符），`all` 同时看两层。省略 scope 等于 `all`；项目配置不能覆盖它。ASCII 直引号、未闭合或跨行分隔符不进入 `quoted`。
+
+Web 的本地扫描与服务端 MachineScan 当前只执行 regex+handler span；density 仍在规则目录展示，但不进入 Web `hitsJson` / `docScore`。完整 regex+density+handler 静态检查由 CLI `check` 与 Agent `lint_check` 提供。
+
+## 配置
+
+多数项目**不需要任何配置** —— 不放 `llmlint.config.ts` 时默认加载 `builtin/default` 和一套调好的命名空间策略。需要定制时，在目录树任意上层放一个 `llmlint.config.ts`（从 cwd 向上自动查找）：
+
+```typescript
+export default {
+    rulesets: ["builtin/default"],
+    namespaces: {
+        "vocabulary.r18": "off",          // 普通项目关闭成人词汇规则
+        "商务黑话": "off",                  // 中文 alias → jargon.business
+        "jargon.engineer": {review: "agent"}, // 把某个桶移进 agent 视图
+    },
+    rules: {
+        "filler-word-actually": "warn",
+        "firstly-secondly": "error",
+        "filler-lets": "off",
+    },
+    output: "stylish",
+};
+```
+
+- **覆盖优先级：** rule id > namespace > ruleset > rule 默认。
+- **字符串简写**是对象 patch 的语法糖：`off` = `{enabled:false}`，`warn` = `{enabled:true, level:"medium"}`，`error` = `{enabled:true, level:"high"}`，`low`/`medium`/`high` 直接设级别。对象形态 `{enabled?, level?, review?, fixability?}` 只覆盖你显式设置的字段 —— 想启用一条默认禁用的规则必须显式写 `enabled: true`。
+- **命名空间**接受稳定英文 key 和内置中文 alias（如 `商务黑话` → `jargon.business`）。
+
+完整带注释示例见 [`llmlint.config.example.ts`](./llmlint.config.example.ts)。
+
+## 内置规则集：`builtin/default`
+
+官方推荐规则集 —— 360 条规则（默认启用 266 条）、覆盖 71 个命名空间，由人工维护的 anti-AI-slop 规则与中文规则样本（`shuorenhua` 说人话 / `avoid-ai-writing` / `humanizer`）策展合并而来。运行 `llmlint rules --format json` 可查看当前配置下的实时统计。
+
+- **agent 桶（默认展示）：** `filler`、`opening.cliche`、`inflation.significance`、`transition.summary`、`attribution.vague`、`cliche.uplift`、`sycophantic`、`jargon.business`……
+- **human 桶（高误杀 / 作者偏好）：** `punctuation.dash`、`metaphor`、`modifier`、`jargon.engineer`、`jargon.social`、`translationese`、`structure.fragment`……
+- **none 桶（机械类）：** `punctuation.dedup`、`mechanical.zero-width`。
+- **`mechanical.*`（语言无关、高精度）：** 零宽字符、同形字、残留的 `{{占位符}}`、复制 AI 输出带进来的角标（`:contentReference`、`oaicite`……）。
+
+内置已包含 R18 / 成人词汇规则；普通项目用 `namespaces: {"vocabulary.r18": "off"}` 关闭即可，不必手改规则文件。
+
+## 退出码
+
+- `0` —— 未发现问题，或只有 `low`/`medium` 级别可见。
+- `1` —— 存在可见的 `high` 问题、CLI 执行失败，或（`fix` dry-run 下）存在待修复项。
+
+退出码跟随**当前可见视图**：被 `--review` / `--min-level` 隐藏的命中不计入。需要让所有 high 命中都参与判定（如 CI 门禁「禁止零宽字符入库」）时用 `--review all --min-level low`。
+
+## 作为 Agent Skill 使用
+
+本仓库同时是一个自包含的 **Agent Skill**。`SKILL.md` 定义了“首次 install 依赖门 + 五步本地闭环”：`status` 初始化 → `check + detect` → 合成报告 → 审批后按删/压/换修复并复测一轮 → 台账与本地学习建议。
+
+推荐用 [`skills`](https://skills.sh) CLI 安装 —— `npx skills add notnotype/llmlint --skill llmlint --full-depth` —— 它会在仓库中递归发现 `skill/` 下的 `llmlint`，并把文件装进对应 Agent 的 skills 目录（如 `.claude/skills/llmlint/` 或 NeuroBook 的 `.nbook/agent/skills/llmlint/`）。也可手动复制仓库里的 `skill/` 目录，并在目标 skills 目录中命名为 `llmlint/`。首次启用时，Agent 必须先在 SkillCatalog 给出的 skill 根目录运行 `bun install --cwd "<skill-root>" --frozen-lockfile`；安装成功后才进入 `status` 初始化门。后续只要依赖字段与 `bun.lock` 合同有效且 `node_modules` 存在就直接复用，版本、提示词、规则或源码更新不触发重装。Skill 版本真相源是 `package.json.version`，不写入 `SKILL.md` frontmatter。
+
+## 数据共享与隐私
+
+`contribute` 和 `detect` 是两条独立链路。`contribute` 只把按档裁剪的记录写进本机 `~/.llmlint/outbox/`，当前版本不登录、不联网、不上传；`fragments` / `full` 只保留轮目录内的安全快照名，不写原始绝对路径，`stats` 连文件名和自由文本都不保存。只有完整 output 快照集合才会产生 `outputHash` 或进入 `full` 正文；不完整时降级为 fragments 并记录 `degradedReason`。可用 `contribute --list` 查看，删除条目或整个 outbox 即撤回。
+
+`detect` 则会把缓存未命中的正文块 POST 到配置的外部检测服务，默认是 HF Space；请求不含文件名或项目路径。远端日志和保留策略不受 llmlint 控制，`sharing.off` 只关闭本地贡献记录，不会关闭 `detect`。不希望正文离机时不要运行 `detect`。
+
+## 文档
+
+- [`SKILL.md`](./SKILL.md) —— Agent Skill 清单与工作流契约
+- [`references/cli-usage.md`](./references/cli-usage.md) —— CLI 完整参考（参数、输出格式、JSON schema）
+- [`references/patterns.md`](./references/patterns.md) —— 中文文本模式库（每条规则查什么、何时该保留）
+- [`references/workflow.md`](./references/workflow.md) —— 依赖门 + 五步本地闭环详解
+
+## 许可证
+
+[GNU Affero General Public License v3.0（仅此版本）](./LICENSE)，SPDX 标识为 `AGPL-3.0-only`。允许使用、研究、修改、分发和商业使用；分发修改版或通过网络向用户提供修改版服务时，需要依照 AGPLv3 提供对应源代码。Copyright © 2026 notnotype。
+
+---
+
+> English version: **[README.en.md](./README.en.md)**

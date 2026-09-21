@@ -1,0 +1,148 @@
+diff --git a/dist/runtime/internal/error/dev.mjs b/dist/runtime/internal/error/dev.mjs
+index 57f80bf5592470ebc1bea24c489d549c9c9309ef..7ef640271cc4f6739f6a2009795c01c65c1825e4 100644
+--- a/dist/runtime/internal/error/dev.mjs
++++ b/dist/runtime/internal/error/dev.mjs
+@@ -97,28 +97,56 @@ export async function loadStackTrace(error) {
+   if (!(error instanceof Error)) {
+     return;
+   }
+-  const parsed = await new ErrorParser().defineSourceLoader(sourceLoader).parse(error);
++  const consumerCache = /* @__PURE__ */ new Map();
++  let parsed;
++  try {
++    parsed = await new ErrorParser().defineSourceLoader((frame) => sourceLoader(frame, consumerCache)).parse(error);
++  } finally {
++    for (const consumer of consumerCache.values()) {
++      await consumer.then((value) => value?.destroy()).catch(() => {
++      });
++    }
++  }
+   const stack = error.message + "\n" + parsed.frames.map((frame) => fmtFrame(frame)).join("\n");
+   Object.defineProperty(error, "stack", { value: stack });
+   if (error.cause) {
+     await loadStackTrace(error.cause).catch(consola.error);
+   }
+ }
+-async function sourceLoader(frame) {
++async function loadConsumer(fileName, cache) {
++  const cached = cache.get(fileName);
++  if (cached) {
++    return cached;
++  }
++  const promise = (async () => {
++    const rawSourceMap = await readFile(`${fileName}.map`, "utf8").catch(() => {
++    });
++    if (!rawSourceMap) {
++      return;
++    }
++    return new SourceMapConsumer(rawSourceMap);
++  })().catch(() => void 0);
++  cache.set(fileName, promise);
++  return promise;
++}
++async function sourceLoader(frame, consumerCache) {
+   if (!frame.fileName || frame.fileType !== "fs" || frame.type === "native") {
+     return;
+   }
+   if (frame.type === "app") {
+-    const rawSourceMap = await readFile(`${frame.fileName}.map`, "utf8").catch(() => {
+-    });
+-    if (rawSourceMap) {
+-      const consumer = await new SourceMapConsumer(rawSourceMap);
+-      const originalPosition = consumer.originalPositionFor({ line: frame.lineNumber, column: frame.columnNumber });
+-      if (originalPosition.source && originalPosition.line) {
+-        frame.fileName = resolve(dirname(frame.fileName), originalPosition.source);
+-        frame.lineNumber = originalPosition.line;
+-        frame.columnNumber = originalPosition.column || 0;
++    const bundleFileName = frame.fileName;
++    try {
++      const consumer = await loadConsumer(bundleFileName, consumerCache);
++      if (consumer) {
++        const originalPosition = consumer.originalPositionFor({ line: frame.lineNumber, column: frame.columnNumber });
++        if (originalPosition.source && originalPosition.line) {
++          frame.fileName = resolve(dirname(bundleFileName), originalPosition.source);
++          frame.lineNumber = originalPosition.line;
++          frame.columnNumber = originalPosition.column || 0;
++        }
+       }
++    } catch {
++      // Source map 增强失败时保留原始栈帧，不能覆盖真正的服务端错误。
+     }
+   }
+   const contents = await readFile(frame.fileName, "utf8").catch(() => {
+diff --git a/dist/core/index.mjs b/dist/core/index.mjs
+--- a/dist/core/index.mjs
++++ b/dist/core/index.mjs
+@@ -1579,6 +1579,21 @@ async function generateFSTree(dir, options = {}) {
+   return treeText;
+ }
+ 
++function buildDate() {
++  const sourceDateEpoch = process.env.SOURCE_DATE_EPOCH;
++  if (sourceDateEpoch === void 0) {
++    return (/* @__PURE__ */ new Date()).toJSON();
++  }
++  if (!/^\d+$/.test(sourceDateEpoch)) {
++    throw new Error("SOURCE_DATE_EPOCH must be a non-negative integer number of seconds");
++  }
++  const seconds = Number(sourceDateEpoch);
++  const date = new Date(seconds * 1e3);
++  if (!Number.isSafeInteger(seconds) || Number.isNaN(date.getTime())) {
++    throw new Error("SOURCE_DATE_EPOCH is outside the supported date range");
++  }
++  return date.toJSON();
++}
+ async function buildProduction(nitro, rollupConfig) {
+   await scanHandlers(nitro);
+   await writeTypes(nitro);
+@@ -1595,7 +1610,7 @@ async function buildProduction(nitro, rollupConfig) {
+   }
+   const buildInfoPath = resolve(nitro.options.output.dir, "nitro.json");
+   const buildInfo = {
+-    date: (/* @__PURE__ */ new Date()).toJSON(),
++    date: buildDate(),
+     preset: nitro.options.preset,
+     framework: nitro.options.framework,
+     versions: {
+@@ -2769,7 +2784,7 @@ class DevServer {
+   writeBuildInfo(_worker, addr) {
+     const buildInfoPath = resolve(this.nitro.options.buildDir, "nitro.json");
+     const buildInfo = {
+-      date: (/* @__PURE__ */ new Date()).toJSON(),
++      date: buildDate(),
+       preset: this.nitro.options.preset,
+       framework: this.nitro.options.framework,
+       versions: {
+diff --git a/dist/rollup/index.mjs b/dist/rollup/index.mjs
+--- a/dist/rollup/index.mjs
++++ b/dist/rollup/index.mjs
+@@ -1258,7 +1258,7 @@ function publicAssets(nitro) {
+               type: nitro._prerenderMeta?.[assetId]?.contentType || mimeType,
+               encoding,
+               etag,
+-              mtime: stat.mtime.toJSON(),
++              mtime: process.env.SOURCE_DATE_EPOCH === void 0 ? stat.mtime.toJSON() : void 0,
+               size: stat.size,
+               path: relative(nitro.options.output.serverDir, fullPath),
+               data: nitro.options.serveStatic === "inline" ? assetData.toString("base64") : void 0
+@@ -1280,7 +1280,10 @@ function publicAssets(nitro) {
+             }
+           }
+         }
+-        return `export default ${JSON.stringify(assets, null, 2)};`;
++        const sortedAssets = Object.fromEntries(
++          Object.entries(assets).sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)
++        );
++        return `export default ${JSON.stringify(sortedAssets, null, 2)};`;
+       },
+       // #nitro-internal-virtual/public-assets-node
+       "#nitro-internal-virtual/public-assets-node": () => {
+@@ -1496,7 +1499,7 @@ function serverAssets(nitro) {
+               type += "; charset=utf-8";
+             }
+             const etag = createEtag(await promises.readFile(fsPath));
+-            const mtime = await promises.stat(fsPath).then((s) => s.mtime.toJSON());
++            const mtime = process.env.SOURCE_DATE_EPOCH === void 0 ? await promises.stat(fsPath).then((s) => s.mtime.toJSON()) : void 0;
+             assets[id].meta = { type, etag, mtime };
+           }
+         }

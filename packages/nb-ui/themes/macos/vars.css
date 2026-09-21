@@ -1,0 +1,252 @@
+/*
+ * macos —— Apple Liquid Glass（WWDC 2025 / iOS 26 / macOS 26 Tahoe）。
+ *
+ * 本主题是**格式天花板**的证据：新增变量（带 fallback）、自带亮暗两套配色、
+ * 带 SVG 资源、覆盖一个组件，把每个扩展点都压满。
+ *
+ * 不是「更透明的毛玻璃」。与旧式 vibrancy（NSVisualEffectView / 单纯 backdrop blur）
+ * 的区别是 Apple 反复强调的一条：旧材料把背景**均匀散焦**，Liquid Glass 会在边缘
+ * **弯曲、挤压并集中光线**（lensing / refraction），轮廓由折射和镜面高光画出来，
+ * 不是由一条固定白边画出来。中心保持高度通透，越靠近边缘折射越强。
+ *
+ * 层级规则同样是硬的：Liquid Glass 是**导航 / 控件层**的材料，浮在内容之上，内容从下面滚过。
+ * Apple 明确不建议用在内容层——页面背景、卡片、表格、正文面板、普通输入框都不该套玻璃，
+ * 也不该出现 glass-on-glass。所以这套主题里：工具栏 / 侧栏 / 菜单 / 对话框是玻璃，
+ * 内容面板和输入框是实心的。
+ *
+ * 三处边界写在明处：
+ * · 边缘折射靠 SVG feDisplacementMap 进 backdrop-filter，**只有 Chromium 支持**
+ *   （WebKit bug 245510 / Firefox 均不支持），因此是 @supports 渐进增强，退化后仍有镜面高光。
+ * · backdrop-filter 糊不到操作系统桌面。要糊真桌面得由桌面壳开窗体级 vibrancy
+ *   （Electron 的 `vibrancy` / `backgroundMaterial`，Tauri 的 `window-vibrancy`），纯 Web 拿不到。
+ * · Apple 没有公开 blur 半径、圆角、折射率的具体数值。下面的取值是视觉近似，不是官方参数。
+ */
+
+:root[data-nb-theme="macos"] {
+    --font-ui: -apple-system, "SF Pro Text", "Helvetica Neue", "PingFang SC", system-ui, sans-serif;
+    --font-display: var(--font-ui);
+    --font-mono: "SF Mono", ui-monospace, Menlo, monospace;
+
+    --text-2xs: 10px;
+    --text-xs: 11px;
+    --text-sm: 13px;
+    --text-md: 13px;
+    --text-lg: 15px;
+    --text-xl: 19px;
+    --leading-tight: 1.25;
+    --leading-ui: 1.35;
+    --tracking-ui: -0.006em;
+
+    --control-h-sm: 26px;
+    --control-h-md: 32px;
+    --control-h-lg: 40px;
+    --control-px: 14px;
+    --panel-p: 16px;
+    --stack-gap: 16px;
+
+    /* Tahoe 把圆角放大了一档，且大控件走 capsule（半径 = 高度的一半）。
+       内嵌形状按同心律取值：子半径 = 父半径 − padding；菜单另取较小的一档。 */
+    --radius-control: 10px;
+    --radius-control-lg: var(--radius-pill);
+    --radius-panel: 18px;
+    --radius-menu: 12px;
+    --radius-pill: 999px;
+    --border-w: 1px;
+
+    /* ── Liquid Glass 材料 ───────────────────────────────────────────────── */
+    /* regular 变体：blur + 提亮 + 提饱和，用于有文字的导航面 */
+    --glass-blur: blur(22px) saturate(180%) brightness(1.06);
+    /* 更大的容器折射更明显、散射更柔和——菜单和对话框走这档 */
+    --glass-blur-strong: blur(32px) saturate(190%) brightness(1.08);
+    /* 带边缘折射的完整配方，只在 Chromium 的 @supports 分支里生效 */
+    --glass-lens: url("#nb-lens-sm") blur(22px) saturate(180%) brightness(1.06);
+    --glass-lens-strong: url("#nb-lens") blur(32px) saturate(190%) brightness(1.08);
+
+    /* 镜面高光：左上最亮的一道 + 沿轮廓的一圈，替代「固定白边」。
+       固定白边在浅底上会消失、在深底上会过亮，也表达不了光源方向。
+
+       用法有一条硬规矩：它只能画在**整块玻璃的轮廓**上（窗口、菜单、对话框），
+       不能画在贴合在里面的分区上（工具栏、侧栏）。分区自身圆角是 0，而宿主往往是
+       大圆角 + overflow: hidden，方角高光会在圆角处被斜切成一段。 */
+    --glass-rim:
+        radial-gradient(120% 80% at 16% -10%, rgb(255 255 255 / 0.6), transparent 42%),
+        linear-gradient(118deg, rgb(255 255 255 / 0.42) 0%, transparent 22%, transparent 74%, rgb(255 255 255 / 0.22) 100%);
+    --glass-rim-inset:
+        inset 0 1px 0 rgb(255 255 255 / 0.55),
+        inset 1px 0 0 rgb(255 255 255 / 0.2),
+        inset 0 -1px 0 rgb(0 0 0 / 0.12);
+    /* 交互时抬起：Apple 的说法是控件会 flex / lift / 短暂浮起，光从触点扩散 */
+    --glass-lift: translateY(-1px) scale(1.015);
+
+    /* 窗体底纹＝这套主题自带的「桌面壁纸」。全部由配色变量派生，任意配色下自动跟着变。
+       没有它，折射和磨砂作用在一片纯色上，等于零效果。 */
+    --window-backdrop:
+        radial-gradient(58% 46% at 12% 2%, color-mix(in srgb, var(--accent-main) 34%, transparent) 0%, transparent 72%),
+        radial-gradient(48% 40% at 88% 0%, color-mix(in srgb, var(--status-info) 30%, transparent) 0%, transparent 70%),
+        radial-gradient(62% 52% at 76% 98%, color-mix(in srgb, var(--status-success) 22%, transparent) 0%, transparent 74%),
+        radial-gradient(52% 42% at 20% 92%, color-mix(in srgb, var(--accent-main) 20%, transparent) 0%, transparent 72%);
+
+    /*
+     * 窗口左上角那一格判给**侧栏**。这一句就是 macOS 窗口和 Windows 窗口最主要的布局差异：
+     * 侧栏从窗口顶端一路通到底（交通灯坐在它的左上角），工具栏只盖住内容区；
+     * 而默认是标题栏拉一条全宽横带、侧栏从横带下面开始。
+     *
+     * 判给侧栏还有一层材料上的理由：这套主题的侧栏是玻璃，被一条标题栏横切一刀就断了，
+     * 连成一整块才有「一片玻璃浮在桌面上」的观感。
+     *
+     * 换的是同一份 DOM 的归属，不是另一套 DOM——区有哪些、各区放什么仍由产品定死。
+     */
+    --chrome-surface: var(--sidebar-surface);
+    --chrome-seam: 1px 0 0 var(--divider);
+
+    /* 角色映射：玻璃只给导航层，内容层是实心的 */
+    --sidebar-surface: color-mix(in srgb, var(--bg-sidebar) 26%, transparent);
+    --toolbar-surface: color-mix(in srgb, var(--bg-panel) 34%, transparent);
+    --overlay-surface: color-mix(in srgb, var(--bg-panel) 46%, transparent);
+    /* 真组件的浮层从这里取磨砂；镜面只由大块 surface 的显式 modifier 消费。 */
+    --overlay-blur: var(--glass-blur-strong);
+    --overlay-sheen: var(--glass-rim);
+    --strip-surface: color-mix(in srgb, var(--bg-subtle) 38%, transparent);
+    --panel-surface: var(--bg-panel);
+    --panel-outline: color-mix(in srgb, var(--text-main) 10%, transparent);
+
+    --divider: color-mix(in srgb, var(--text-main) 9%, transparent);
+
+    /*
+     * 控件实心：按钮不透明 + 上亮下暗微渐变，输入框从面上**抬起**而不是挖下去。
+     *
+     * 这里不写 var(--bg-input)（那本来就是库的默认值）。原因是实测出来的：暗色下
+     * --bg-input 一旦比窗体底还暗，输入框就成了挖在面板上的黑洞，读起来跟没上样式的
+     * 原生控件一模一样。取一层半透明的前景色则与配色无关——换任何一套配色，
+     * 输入框都是从它所在的面上抬起 7%，不会再撞上某套配色把 --bg-input 调得过暗。
+     */
+    --control-surface: color-mix(in srgb, var(--text-main) 7%, transparent);
+    --control-outline: color-mix(in srgb, var(--text-main) 16%, transparent);
+    --button-surface: var(--bg-panel);
+    --button-outline: color-mix(in srgb, var(--text-main) 13%, transparent);
+
+    --surface-raise: linear-gradient(180deg, rgb(255 255 255 / 0.16), rgb(255 255 255 / 0.02) 55%, rgb(0 0 0 / 0.035));
+    --inset-shadow: inset 0 1px 1.5px color-mix(in srgb, var(--shadow-color) 16%, transparent);
+
+    /* 阴影是层级机制不是装饰：玻璃浮在内容之上，尺寸越大压得越重 */
+    --elevation-raised:
+        inset 0 1px 0 rgb(255 255 255 / 0.28),
+        0 1px 2px color-mix(in srgb, var(--shadow-color) 20%, transparent);
+    --elevation-popover:
+        0 2px 6px color-mix(in srgb, var(--shadow-color) 18%, transparent),
+        0 16px 40px color-mix(in srgb, var(--shadow-color) 30%, transparent);
+    --elevation-dialog:
+        0 4px 12px color-mix(in srgb, var(--shadow-color) 22%, transparent),
+        0 40px 88px color-mix(in srgb, var(--shadow-color) 38%, transparent);
+
+    --focus-ring:
+        0 0 0 1px color-mix(in srgb, var(--accent-main) 35%, transparent),
+        0 0 0 3.5px color-mix(in srgb, var(--accent-main) 18%, transparent),
+        0 1px 6px color-mix(in srgb, var(--accent-main) 22%, transparent);
+    --focus-outline: color-mix(in srgb, var(--accent-main) 80%, var(--control-outline));
+
+    --motion-fast: 90ms;
+    --motion-base: 140ms;
+    --motion-enter: 180ms;
+    --ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+/*
+ * 浮层的边缘折射。与对照页里 .sc-glass--strong 的 @supports 分支同一条规矩：
+ * `backdrop-filter: url(#...)` 只有 Chromium 认，而 @supports 只测「声明是否被接受」，
+ * 测不出渲染是否正确，所以基线必须留住——不支持时上面那条纯 blur 的 --overlay-blur 仍成立。
+ *
+ * 不接这一条，**真组件（菜单 / 下拉 / 对话框 / 滚轮）拿到的玻璃就比对照页里手写的那块少一层**。
+ * 那正是这轮要消灭的毛病，参照实现不该自己留着。
+ */
+@supports (backdrop-filter: url("#nb-lens")) {
+    :root[data-nb-theme="macos"] {
+        --overlay-blur: var(--glass-lens-strong);
+    }
+}
+
+/*
+ * 减少动效：库只把三个时长归零（`src/tokens.css`，带 !important），它不知道 --glass-lift 存在。
+ * 主题自己新增的动效变量必须由主题自己关掉——这是「新增变量」这个能力的配套义务。
+ */
+@media (prefers-reduced-motion: reduce) {
+    :root[data-nb-theme="macos"] {
+        --glass-lift: none;
+    }
+}
+
+/*
+ * 可访问性兜底。Apple 自己给 Liquid Glass 配了 Reduce Transparency / Increase Contrast
+ * 两个系统开关（iOS 26 早期正是因为通透过头挨了可读性批评），Web 侧只抄视觉不抄这两条，
+ * 等于只复制了表面。
+ *
+ * 放在主题包自己的文件里、写在主题块之后：同特异性靠源码顺序取胜，而同一个文件的顺序
+ * 是确定的。放到库里反而要跟第三方主题比特异性，没有稳赢的写法。
+ *
+ * 注意 prefers-reduced-transparency 的浏览器覆盖不如 prefers-reduced-motion，
+ * 真要交付还得在产品里自带一个开关——这里先把 CSS 侧的合同立住。
+ */
+@media (prefers-reduced-transparency: reduce) {
+    :root[data-nb-theme="macos"] {
+        --glass-blur: none;
+        --glass-blur-strong: none;
+        --glass-lens: none;
+        --glass-lens-strong: none;
+        --glass-rim: none;
+        --window-backdrop: none;
+        --sidebar-surface: var(--bg-sidebar);
+        --toolbar-surface: var(--bg-panel);
+        --overlay-surface: var(--bg-panel);
+        --overlay-blur: none;
+    }
+}
+
+@media (prefers-contrast: more) {
+    :root[data-nb-theme="macos"] {
+        --glass-blur: none;
+        --glass-blur-strong: none;
+        --glass-lens: none;
+        --glass-lens-strong: none;
+        --glass-rim: none;
+        --glass-rim-inset: none;
+        --sidebar-surface: var(--bg-sidebar);
+        --toolbar-surface: var(--bg-panel);
+        --overlay-surface: var(--bg-panel);
+        --overlay-blur: none;
+        --panel-outline: var(--border-strong);
+        --control-outline: var(--border-strong);
+        --button-outline: var(--border-strong);
+        --divider: var(--border-strong);
+    }
+}
+
+/*
+ * 暗色下的玻璃配方（上一轮实测查出的洞：整套配方只按亮色调过）。
+ *
+ * 三处方向是反的：Apple 的暗色 Liquid Glass 是**压暗**不是提亮；白色镜面高光在暗底上
+ * 会过曝成一圈灰边；面的透明度要收一点，否则暗底透暗底等于什么都看不见。
+ *
+ * 挂 [data-nb-appearance] 而不是 [data-nb-colorway="dark"]：主题必须响应配色的**明暗属性**，
+ * 绑配色身份对用户自定义的暗色配色一律失效。
+ */
+:root[data-nb-theme="macos"][data-nb-appearance="dark"] {
+    --glass-blur: blur(24px) saturate(150%) brightness(0.82);
+    --glass-blur-strong: blur(34px) saturate(160%) brightness(0.78);
+    --glass-lens: url("#nb-lens-sm") blur(24px) saturate(150%) brightness(0.82);
+    --glass-lens-strong: url("#nb-lens") blur(34px) saturate(160%) brightness(0.78);
+
+    --glass-rim:
+        radial-gradient(120% 80% at 16% -10%, rgb(255 255 255 / 0.22), transparent 42%),
+        linear-gradient(118deg, rgb(255 255 255 / 0.14) 0%, transparent 22%, transparent 74%, rgb(255 255 255 / 0.08) 100%);
+    --glass-rim-inset:
+        inset 0 1px 0 rgb(255 255 255 / 0.16),
+        inset 1px 0 0 rgb(255 255 255 / 0.06),
+        inset 0 -1px 0 rgb(0 0 0 / 0.3);
+
+    --sidebar-surface: color-mix(in srgb, var(--bg-sidebar) 52%, transparent);
+    --toolbar-surface: color-mix(in srgb, var(--bg-panel) 58%, transparent);
+    --overlay-surface: color-mix(in srgb, var(--bg-panel) 68%, transparent);
+    --strip-surface: color-mix(in srgb, var(--bg-subtle) 60%, transparent);
+
+    --surface-raise: linear-gradient(180deg, rgb(255 255 255 / 0.07), rgb(255 255 255 / 0.01) 55%, rgb(0 0 0 / 0.1));
+}

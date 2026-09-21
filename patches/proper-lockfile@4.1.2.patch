@@ -1,0 +1,106 @@
+diff --git a/lib/lockfile.js b/lib/lockfile.js
+index 97b66373d5c5057de38884bb870ee68134e5a7ee..d2e95ff40f08f6249ca380383cd6d0ce19cae3d8 100644
+--- a/lib/lockfile.js
++++ b/lib/lockfile.js
+@@ -231,6 +231,10 @@ function lock(file, options, callback) {
+ 
+         operation.attempt(() => {
+             acquireLock(file, options, (err, mtime, mtimePrecision) => {
++                if (err && err.precisionUnsupported) {
++                    return callback(err);
++                }
++
+                 if (operation.retry(err)) {
+                     return;
+                 }
+diff --git a/lib/mtime-precision.js b/lib/mtime-precision.js
+index b82a3ce01c933ad6df96e03cda90156ce62faf64..afa42fca258bc7977d33d599b8ca198202d4d581 100644
+--- a/lib/mtime-precision.js
++++ b/lib/mtime-precision.js
+@@ -1,52 +1,54 @@
+ 'use strict';
+ 
+-const cacheSymbol = Symbol();
++const PRECISIONS = [1, 1000, 2000];
+ 
+ function probe(file, fs, callback) {
+-    const cachedPrecision = fs[cacheSymbol];
+-
+-    if (cachedPrecision) {
+-        return fs.stat(file, (err, stat) => {
+-            /* istanbul ignore if */
+-            if (err) {
+-                return callback(err);
+-            }
++    probePrecision(file, fs, 0, callback);
++}
+ 
+-            callback(null, stat.mtime, cachedPrecision);
+-        });
++function probePrecision(file, fs, index, callback) {
++    if (index >= PRECISIONS.length) {
++        return callback(Object.assign(
++            new Error('Lock filesystem does not preserve supported mtime precision'),
++            {code: 'ENOTSUP', precisionUnsupported: true},
++        ));
+     }
+ 
+-    // Set mtime by ceiling Date.now() to seconds + 5ms so that it's "not on the second"
+-    const mtime = new Date((Math.ceil(Date.now() / 1000) * 1000) + 5);
++    const precision = PRECISIONS[index];
++    const t1 = new Date(Math.ceil(Date.now() / 2000) * 2000);
+ 
+-    fs.utimes(file, mtime, mtime, (err) => {
+-        /* istanbul ignore if */
+-        if (err) {
+-            return callback(err);
+-        }
++    fs.utimes(file, t1, t1, (err) => {
++        if (err) return callback(err);
+ 
+         fs.stat(file, (err, stat) => {
+-            /* istanbul ignore if */
+-            if (err) {
+-                return callback(err);
++            if (err) return callback(err);
++            if (stat.mtime.getTime() !== t1.getTime()) {
++                return probePrecision(file, fs, index + 1, callback);
+             }
+ 
+-            const precision = stat.mtime.getTime() % 1000 === 0 ? 's' : 'ms';
+-
+-            // Cache the precision in a non-enumerable way
+-            Object.defineProperty(fs, cacheSymbol, { value: precision });
+-
+-            callback(null, stat.mtime, precision);
++            const t2 = new Date(Math.max(
++                t1.getTime() + precision,
++                Math.ceil(Date.now() / 2000) * 2000 + precision,
++            ));
++            fs.utimes(file, t2, t2, (err) => {
++                if (err) return callback(err);
++
++                fs.stat(file, (err, stat) => {
++                    if (err) return callback(err);
++                    if (stat.mtime.getTime() !== t2.getTime()) {
++                        return probePrecision(file, fs, index + 1, callback);
++                    }
++
++                    callback(null, stat.mtime, precision);
++                });
++            });
+         });
+     });
+ }
+ 
+ function getMtime(precision) {
+-    let now = Date.now();
+-
+-    if (precision === 's') {
+-        now = Math.ceil(now / 1000) * 1000;
+-    }
++    const normalizedPrecision = precision === 's' ? 1000 : precision === 'ms' ? 1 : precision;
++    const now = Math.ceil(Date.now() / normalizedPrecision) * normalizedPrecision;
+ 
+     return new Date(now);
+ }

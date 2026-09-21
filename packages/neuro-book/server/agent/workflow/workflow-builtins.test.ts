@@ -1,0 +1,167 @@
+import {testHostPath} from "@notnotype/neuro-book-test-support/test-path";
+import {cp, rm} from "node:fs/promises";
+import {resolve} from "node:path";
+import {afterAll, beforeAll, describe, expect, test} from "vitest";
+import {WorkflowCatalog} from "nbook/server/agent/workflow/workflow-catalog";
+import {
+    MemorySessionStore,
+    MockAgentPort,
+    WorkflowRunner,
+    createMemoryWorkspace,
+    parseActivityParamsObject,
+    type JsonValue,
+    type AgentWorkflowDefinition,
+    type WorkflowEvent,
+} from "@notnotype/nb-workflow";
+
+/**
+ * 内置 workflow 的无模型运行级回归：catalog 真编译 Type 注入源码，MockAgentPort 执行真实控制流。
+ */
+describe("bundled workflows", () => {
+    const installRoot = testHostPath("tmp", "workflow-builtins-install");
+    let catalog: WorkflowCatalog;
+    beforeAll(async () => {
+        await rm(installRoot, {recursive: true, force: true});
+        await cp(resolve("assets", "workspace", ".nbook", "agent", "workflows"), installRoot, {recursive: true});
+        catalog = new WorkflowCatalog(installRoot);
+    });
+    afterAll(async () => {
+        await rm(installRoot, {recursive: true, force: true});
+    });
+    async function workflow(key: string): Promise<AgentWorkflowDefinition> {
+        const item = await catalog.get(key);
+        if (!item) throw new Error(`测试所需 workflow 不存在：${key}`);
+        return item.def;
+    }
+
+    /** 所有内置参与者都应走 adhoc，而不是借用职责不匹配的正式 profile。 */
+    function expectAdhocParticipants(journal: {kind: string; fingerprint: string; params?: string}[], count: number): void {
+        const creates = journal.filter((record) => record.kind === "agents.create");
+        expect(creates).toHaveLength(count);
+        for (const record of creates) {
+            const params = parseActivityParamsObject(record);
+            expect(params?.profileKey).toBe("adhoc");
+            expect(params?.ephemeral).toBe(true);
+            expect(params?.initial).toMatchObject({outputSchema: {type: "object"}});
+        }
+    }
+
+    test("split-book 真读 Project 文件、并发提取结构化章节摘要并汇总", async () => {
+        const sessions = new MemorySessionStore();
+        const agents = new MockAgentPort(sessions);
+        const events: WorkflowEvent[] = [];
+        agents.register("adhoc", (turn): {message: string; data: JsonValue} => {
+            if (turn.message?.startsWith("请分析以下逐章摘要")) {
+                return {
+                    message: "全书分析完成",
+                    data: {
+                        theme: "选择",
+                        genre: "幻想",
+                        plotStages: ["启程", "对抗"],
+                        characterArcs: ["主角学会承担"],
+                        openHooks: ["失落钥匙"],
+                    },
+                };
+            }
+            return {
+                message: "章节摘要完成",
+                data: {summary: "章节概括", events: ["关键事件"], characters: ["阿青"]},
+            };
+        });
+        const runner = new WorkflowRunner({sessions, agents}, {
+            workspace: createMemoryWorkspace({
+                "manuscript/book.md": "# 第一章\n阿青出发。\n# 第二章\n阿青遇敌。",
+            }),
+            onEvent: (event) => events.push(event),
+        });
+
+        const view = await runner.start(await workflow("split-book"), {path: "manuscript/book.md", maxChapters: 2});
+
+        expect(view.status).toBe("completed");
+        expect(view.result).toMatchObject({
+            path: "manuscript/book.md",
+            chapterCount: 2,
+            briefs: [
+                {chapter: "ch1", heading: "第一章", brief: {summary: "章节概括"}},
+                {chapter: "ch2", heading: "第二章", brief: {summary: "章节概括"}},
+            ],
+            analysis: {theme: "选择", genre: "幻想"},
+        });
+        expectAdhocParticipants(view.journal, 3);
+        const tokens = events.flatMap((event) => event.type === "chart" && event.op.op === "enter"
+            && event.op.token.startsWith("ch") ? [event.op.token] : []);
+        expect(tokens).toEqual(expect.arrayContaining(["ch1", "ch2"]));
+    });
+
+    test("split-book 空书稿在创建任何 Agent 前失败", async () => {
+        const sessions = new MemorySessionStore();
+        const agents = new MockAgentPort(sessions);
+        let invokes = 0;
+        agents.register("adhoc", () => {
+            invokes++;
+            return {message: "不应调用"};
+        });
+        const runner = new WorkflowRunner({sessions, agents}, {
+            workspace: createMemoryWorkspace({"manuscript/empty.md": "  \n"}),
+        });
+
+        const view = await runner.start(await workflow("split-book"), {path: "manuscript/empty.md"});
+
+        expect(view).toMatchObject({status: "failed", error: "书稿为空：manuscript/empty.md"});
+        expect(invokes).toBe(0);
+        expect(view.journal.some((record) => record.kind === "agents.create")).toBe(false);
+    });
+
+    test("parallel-brainstorm 真跑结构化并发分支与汇总，顺序保持输入顺序", async () => {
+        const sessions = new MemorySessionStore();
+        const agents = new MockAgentPort(sessions);
+        const events: WorkflowEvent[] = [];
+        agents.register("adhoc", (turn): {message: string; data: JsonValue} => {
+            if (turn.message?.startsWith("汇总议题")) {
+                return {
+                    message: "综合方案完成",
+                    data: {
+                        candidates: ["候选甲", "候选乙"],
+                        recommendation: ["候选甲"],
+                        tradeoffs: ["新颖性与成本"],
+                        nextSteps: ["先做小样"],
+                    },
+                };
+            }
+            return {
+                message: "角度脑暴完成",
+                data: {ideas: [
+                    {idea: "想法一", value: "价值一", risk: "风险一"},
+                    {idea: "想法二", value: "价值二", risk: "风险二"},
+                    {idea: "想法三", value: "价值三", risk: "风险三"},
+                ]},
+            };
+        });
+        const runner = new WorkflowRunner({sessions, agents}, {onEvent: (event) => events.push(event)});
+
+        const view = await runner.start(await workflow("parallel-brainstorm"), {
+            topic: "测试议题",
+            angles: ["角度甲", "角度乙", "角度丙"],
+            concurrency: 2,
+        });
+
+        expect(view.status).toBe("completed");
+        expect(view.result).toMatchObject({
+            topic: "测试议题",
+            angles: ["角度甲", "角度乙", "角度丙"],
+            perspectives: [
+                {angle: "角度甲", ideas: expect.arrayContaining([expect.objectContaining({idea: "想法一"})])},
+                {angle: "角度乙", ideas: expect.arrayContaining([expect.objectContaining({idea: "想法一"})])},
+                {angle: "角度丙", ideas: expect.arrayContaining([expect.objectContaining({idea: "想法一"})])},
+            ],
+            synthesis: {recommendation: ["候选甲"]},
+        });
+        expectAdhocParticipants(view.journal, 4);
+        const branchTokens = events.flatMap((event) => event.type === "chart" && event.op.op === "enter"
+            && event.op.token.startsWith("angle-") ? [event.op.token] : []);
+        expect(branchTokens).toEqual(expect.arrayContaining(["angle-1", "angle-2", "angle-3"]));
+        const mergeEdges = events.flatMap((event) => event.type === "chart" && event.op.op === "edge"
+            && event.op.to === "merge" ? [event.op.from] : []);
+        expect(mergeEdges).toEqual(expect.arrayContaining(["angle-1", "angle-2", "angle-3"]));
+    });
+});

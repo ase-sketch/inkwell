@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="llmlint 进化实验室（规划中）：让你的写作管线当蛐蛐同题厮杀，真人盲评当裁判——背景科普、赛制、路线图与报名方式。">
+<title>llmlint 进化实验室 · 赛博斗蛐蛐，开赛前夜</title>
+<style>
+    /* ── 与 packages/llmlint/web/app/utils/theme/theme-tokens.ts 同源的漫画印刷体系 ── */
+    :root {
+        --paper: #fbfcfd;
+        --bg-main: #eef2f5;
+        --ink: #172126;
+        --teal: #0f9f92;
+        --teal-deep: #08766d;
+        --coral: #e85d75;
+        --coral-deep: #c24058;
+        --gold: #e8aa23;
+        --muted: #4a5960;
+        --dot: rgba(23, 33, 38, 0.10);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+        color: var(--ink);
+        background-color: var(--bg-main);
+        background-image: radial-gradient(var(--dot) 1.2px, transparent 1.2px);
+        background-size: 14px 14px;
+        line-height: 1.65;
+    }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 28px; }
+    section { padding: 64px 0; }
+
+    .card {
+        background: var(--paper);
+        border: 3px solid var(--ink);
+        box-shadow: 8px 8px 0 var(--ink);
+        padding: 28px;
+    }
+    .kicker {
+        display: inline-block;
+        background: var(--ink);
+        color: var(--paper);
+        font-weight: 800;
+        font-size: 14px;
+        letter-spacing: .35em;
+        padding: 4px 14px 4px 17px;
+        margin-bottom: 18px;
+    }
+    h2 { font-size: 34px; font-weight: 900; line-height: 1.25; margin-bottom: 10px; }
+    h2 .hl { color: var(--coral-deep); }
+    .sub { color: var(--muted); font-size: 16px; margin-bottom: 30px; }
+
+    /* ── HERO ── */
+    .hero { position: relative; padding: 88px 0 72px; overflow: hidden; }
+    .hero-badge {
+        display: inline-block;
+        border: 3px solid var(--ink);
+        background: var(--gold);
+        font-weight: 900;
+        padding: 6px 18px;
+        transform: rotate(-2deg);
+        box-shadow: 5px 5px 0 var(--ink);
+        margin-bottom: 26px;
+        letter-spacing: .12em;
+    }
+    .hero h1 {
+        font-size: clamp(52px, 9vw, 96px);
+        font-weight: 900;
+        line-height: 1.08;
+        letter-spacing: .01em;
+    }
+    .hero h1 .vs {
+        color: var(--paper);
+        background: var(--coral);
+        border: 3px solid var(--ink);
+        box-shadow: 6px 6px 0 var(--ink);
+        display: inline-block;
+        padding: 0 18px;
+        transform: rotate(-3deg);
+        margin: 0 6px;
+    }
+    .hero p.lead { font-size: 21px; margin-top: 22px; max-width: 640px; font-weight: 600; }
+    .hero p.lead b { color: var(--teal-deep); }
+    .stamp {
+        position: absolute;
+        right: 40px; top: 84px;
+        border: 4px double var(--coral-deep);
+        color: var(--coral-deep);
+        font-weight: 900;
+        font-size: 22px;
+        letter-spacing: .3em;
+        padding: 14px 20px 14px 26px;
+        transform: rotate(9deg);
+        opacity: .92;
+        background: rgba(251, 252, 253, .72);
+        writing-mode: vertical-rl;
+    }
+
+    /* ── 卡片组 ── */
+    .trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+    .model-card h3 { font-size: 19px; font-weight: 900; margin-bottom: 6px; }
+    .model-card .verdict {
+        display: inline-block;
+        font-weight: 900;
+        font-size: 13px;
+        letter-spacing: .2em;
+        border: 2px solid var(--ink);
+        padding: 2px 10px;
+        margin-bottom: 12px;
+        transform: rotate(-1.5deg);
+    }
+    .v-good { background: rgba(15, 159, 146, .16); color: var(--teal-deep); }
+    .v-bad { background: rgba(232, 93, 117, .16); color: var(--coral-deep); }
+    .v-meh { background: rgba(232, 170, 35, .22); color: var(--ink); }
+    .model-card p { font-size: 14.5px; color: var(--muted); }
+    .model-card p b { color: var(--ink); }
+    .punch {
+        margin-top: 30px;
+        border-left: 10px solid var(--teal);
+        background: var(--paper);
+        border-top: 3px solid var(--ink);
+        border-right: 3px solid var(--ink);
+        border-bottom: 3px solid var(--ink);
+        padding: 20px 24px;
+        font-size: 19px;
+        font-weight: 800;
+    }
+    .punch b { color: var(--teal-deep); }
+
+    /* ── 数据面板 ── */
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+    .stat { text-align: center; padding: 26px 12px; }
+    .stat .num { font-size: 44px; font-weight: 900; color: var(--teal-deep); line-height: 1.1; }
+    .stat .num small { font-size: 18px; }
+    .stat .lbl { font-size: 14px; font-weight: 700; margin-top: 8px; }
+    .footnote { margin-top: 22px; font-size: 13px; color: var(--muted); border-top: 2px dashed var(--ink); padding-top: 12px; }
+
+    /* ── 赛制角色 ── */
+    .roles { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 22px; }
+    .role { position: relative; padding-top: 34px; }
+    .role .tag {
+        position: absolute; top: -16px; left: 20px;
+        background: var(--ink); color: var(--paper);
+        font-weight: 900; letter-spacing: .25em;
+        padding: 4px 14px 4px 17px; font-size: 13px;
+    }
+    .role:nth-child(2) .tag { background: var(--coral-deep); color: var(--paper); }
+    .role:nth-child(3) .tag { background: rgba(15, 159, 146, .16); color: var(--teal-deep); }
+    .role h3 { font-size: 21px; font-weight: 900; margin-bottom: 8px; }
+    .role p { font-size: 15px; color: var(--muted); }
+    .role p b { color: var(--ink); }
+    .honor {
+        margin-top: 30px;
+        border: 3px dashed var(--ink);
+        background: rgba(232, 170, 35, .16);
+        padding: 18px 24px;
+        font-weight: 800;
+        font-size: 16.5px;
+    }
+    .honor b { color: var(--teal-deep); }
+
+    /* ── 温情条款 ── */
+    .niche-card { display: flex; gap: 26px; align-items: center; }
+    .niche-card .big { font-size: 58px; font-weight: 900; color: var(--gold); -webkit-text-stroke: 2.5px var(--ink); flex-shrink: 0; }
+    .niche-card p { font-size: 17px; font-weight: 600; }
+    .niche-card p b { color: var(--coral-deep); }
+
+    /* ── 赛程 ── */
+    .track { position: relative; margin-left: 14px; border-left: 4px solid var(--ink); padding-left: 34px; }
+    .station { position: relative; padding-bottom: 30px; }
+    .station::before {
+        content: "";
+        position: absolute; left: -46px; top: 4px;
+        width: 18px; height: 18px;
+        background: var(--paper);
+        border: 3px solid var(--ink);
+    }
+    .station.now::before { background: var(--teal); box-shadow: 0 0 0 4px rgba(15,159,146,.25); }
+    .station.end::before { background: var(--gold); }
+    .station h3 { font-size: 19px; font-weight: 900; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .station h3 .st-no { color: var(--muted); font-size: 14px; letter-spacing: .1em; }
+    .station p { font-size: 14.5px; color: var(--muted); max-width: 720px; }
+    .chip-now {
+        background: rgba(15, 159, 146, .16); color: var(--teal-deep); font-size: 12.5px; font-weight: 900;
+        padding: 2px 10px; border: 2px solid var(--ink); transform: rotate(-2deg); letter-spacing: .15em;
+    }
+    .chip-end {
+        background: var(--gold); color: var(--ink); font-size: 12.5px; font-weight: 900;
+        padding: 2px 10px; border: 2px solid var(--ink); transform: rotate(2deg); letter-spacing: .15em;
+    }
+    .firstblood {
+        margin-top: 8px; border: 3px solid var(--ink); background: var(--paper);
+        box-shadow: 6px 6px 0 var(--ink); padding: 16px 22px; font-weight: 800; font-size: 16px;
+    }
+    .firstblood small { display: block; font-weight: 600; color: var(--muted); margin-top: 4px; }
+
+    /* ── CTA ── */
+    .cta-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-bottom: 34px; }
+    .cta-card h3 { font-size: 19px; font-weight: 900; margin-bottom: 8px; }
+    .cta-card .who { font-size: 12.5px; font-weight: 900; letter-spacing: .25em; color: var(--paper); background: var(--ink); display: inline-block; padding: 2px 10px 2px 13px; margin-bottom: 12px; }
+    .cta-card:nth-child(2) .who { background: rgba(232, 93, 117, .16); color: var(--coral-deep); }
+    .cta-card:nth-child(3) .who { background: rgba(15, 159, 146, .16); color: var(--teal-deep); }
+    .cta-card p { font-size: 14.5px; color: var(--muted); }
+    .btn-row { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; }
+    .btn {
+        display: inline-block;
+        border: 3px solid var(--ink);
+        box-shadow: 6px 6px 0 var(--ink);
+        font-weight: 900;
+        font-size: 18px;
+        padding: 14px 34px;
+        text-decoration: none;
+        color: var(--ink);
+        background: var(--paper);
+        transition: transform .06s ease;
+    }
+    .btn:hover { transform: translate(-2px, -2px); box-shadow: 8px 8px 0 var(--ink); }
+    .btn-primary { background: var(--teal-deep); color: #fff; }
+    .btn-note { font-size: 13px; color: var(--muted); }
+
+    footer { padding: 34px 0 60px; }
+    .disclaim { font-size: 12.5px; color: var(--muted); border-top: 3px solid var(--ink); padding-top: 18px; }
+    .disclaim li { margin-bottom: 4px; list-style: none; }
+    .disclaim li::before { content: "※ "; font-weight: 900; }
+
+    /* ── 动画演示 ── */
+    .reveal { opacity: 0; transform: translateY(22px); transition: opacity .55s ease, transform .55s ease; }
+    .reveal.in { opacity: 1; transform: none; }
+    @keyframes chip-pulse { 0%, 100% { transform: rotate(-2deg) scale(1); } 50% { transform: rotate(-2deg) scale(1.1); } }
+    .chip-now { animation: chip-pulse 2.2s ease-in-out infinite; }
+
+    a:focus-visible { outline: 3px dashed var(--teal-deep); outline-offset: 3px; }
+
+    @media (prefers-reduced-motion: reduce) {
+        * { transition: none !important; }
+        .chip-now { animation: none !important; }
+        .btn:hover { transform: none; }
+    }
+
+    @media (max-width: 860px) {
+        .trio, .stats, .roles, .cta-grid { grid-template-columns: 1fr; }
+        .stamp { display: none; }
+    }
+
+    @media (max-width: 480px) {
+        section { padding: 44px 0; }
+        .hero { padding: 60px 0 48px; }
+        .wrap { padding: 0 16px; }
+        .hero h1 { font-size: 34px; }
+        .hero h1 .vs { font-size: .62em; padding: 0 10px; margin: 0 2px; box-shadow: 4px 4px 0 var(--ink); }
+        .card { padding: 20px; box-shadow: 5px 5px 0 var(--ink); }
+        h2 { font-size: 26px; }
+    }
+</style>
+</head>
+<body>
+
+<!-- 第一幕 · HERO -->
+<header class="hero">
+    <div class="wrap" style="position:relative;">
+        <div class="hero-badge">llmlint 进化实验室 · 第二章 · 众筹预热期</div>
+        <h1>赛博斗蛐蛐<span class="vs">VS</span><br>你的预设敢下场吗？</h1>
+        <p class="lead">「赛博斗蛐蛐」，就是让 AI 写作管线当蛐蛐、在同一个坑里捉对互搏。<b>进化实验室（规划中）</b>要把社区里千千万万的预设请进场：同一道命题捉对厮杀，真人读者盲评当裁判——终点站是公开排行榜。</p>
+        <div class="stamp">招募首批参赛者</div>
+    </div>
+    <div class="wrap" style="margin-top:18px;">
+        <p class="btn-note">本章是第二章。没看过第一章的，先去<a href="../eval-lab/index.html" style="color:var(--teal-deep);font-weight:800;">评测实验室：看看那杆秤是怎么造的</a>。</p>
+    </div>
+</header>
+
+<main>
+
+<!-- 第二幕 · 新手衔接 -->
+<section id="recap">
+    <div class="wrap">
+        <span class="kicker">新来的？先补三句</span>
+        <h2>三十分钟前<span class="hl">刚听说这事</span>也能看懂</h2>
+        <p class="sub">三个词，一分钟一个：</p>
+        <div class="trio">
+            <div class="card model-card">
+                <h3>① 预设是什么</h3>
+                <span class="verdict v-good">关键词</span>
+                <p>给 AI 的<b>写作剧本包</b>：角色人设、文风口吻、禁用词表、节奏控制全在里面。换一套预设，同一个 AI 立刻换了个灵魂。写手圈把它当硬通货互相传。</p>
+            </div>
+            <div class="card model-card">
+                <h3>② AI 味是什么</h3>
+                <span class="verdict v-bad">敌人</span>
+                <p>机器稿的流水线味：排比成瘾、「不是 A 而是 B」张口就来、逢段必升华。读者一眼假，直接弃文——所有 AI 写作者的头号公敌。</p>
+            </div>
+            <div class="card model-card">
+                <h3>③ 现状卡在哪</h3>
+                <span class="verdict v-meh">僵局</span>
+                <p>同一套预设换个模型就变样，可全网没有权威评分处：作者宣传靠嗓门，用户挑选靠玄学。<b>缺的是一个不讲情面的评测机构。</b></p>
+            </div>
+        </div>
+        <div class="punch">我们的解法分两步：<b>先造秤</b>（第一章评测实验室，内部已跑通），<b>再开赛场</b>（本页进化实验室，规划中）——让预设别再吵，下场打。</div>
+    </div>
+</section>
+
+<!-- 第三幕 · 痛点 -->
+<section id="pain">
+    <div class="wrap">
+        <span class="kicker">为什么需要裁判</span>
+        <h2>同一份预设，换个模型<span class="hl">就是另一种命</span></h2>
+        <p class="sub">这不是嘴仗。我们把同一套写作约束喂给三个模型做了对照实验，验出三份报告：</p>
+        <div class="trio">
+            <div class="card model-card">
+                <h3>deepseek-v4-flash</h3>
+                <span class="verdict v-good">有效</span>
+                <p>「AI 味浓度」（外部检测器给整篇打的像-AI 分，越低越像人）从 <b>0.896 降到 0.776</b>：26 组对照，纯属巧合的概率约 1%。连没提前透题的规矩也少踩了——不是背题绕考官，篇幅也没缩水。</p>
+            </div>
+            <div class="card model-card">
+                <h3>gemini-3.1-pro</h3>
+                <span class="verdict v-bad">白给</span>
+                <p>三项质量指标全都没动，篇幅中位数倒被砍了 <b>-757 字（-26%）</b>——巧合概率远小于千分之一：规矩没让它少点 AI 味，就让它少写了。</p>
+            </div>
+            <div class="card model-card">
+                <h3>mimo-v2.5-pro</h3>
+                <span class="verdict v-meh">存疑</span>
+                <p>它确实照着规矩改了写法，可 AI 味浓度纹丝不动（跟掷硬币分不出差别）。26 组样本<b>下不了结论</b>，不硬判。</p>
+            </div>
+        </div>
+        <div class="punch">收益必须逐模型实测，推不出来。——所以「哪个预设好用」这件事，需要一个不讲情面的评测机构。</div>
+    </div>
+</section>
+
+<!-- 第四幕 · 裁判已就位 -->
+<section id="judge">
+    <div class="wrap">
+        <span class="kicker">裁判已就位</span>
+        <h2>吹牛之前，先看家底</h2>
+        <p class="sub">进化实验室不是 PPT——裁判手里的尺子早就造好了（详细原理见第一章）：</p>
+        <div class="stats">
+            <div class="card stat">
+                <div class="num">360<small> 条</small></div>
+                <div class="lbl">中文正文规则库<br>266 条默认在岗</div>
+            </div>
+            <div class="card stat">
+                <div class="num">0.966</div>
+                <div class="lbl">本轮实验的分辨得分*<br>满分 1</div>
+            </div>
+            <div class="card stat">
+                <div class="num">2.47 <small>vs</small> 8.86</div>
+                <div class="lbl">套话密度中位数*<br>人写 vs 机写（越高越油）</div>
+            </div>
+            <div class="card stat">
+                <div class="num">0.870</div>
+                <div class="lbl">第三方 AI 检测器*<br>另一把参照尺</div>
+            </div>
+        </div>
+        <p class="footnote">* 以上为内部小样本机器互测实验结果，没有人类评审参与，样本量有限。它证明的是「这把尺子能测量」，不是「什么是好文章」——好文章的定义权，永远归下面的真人评委。</p>
+    </div>
+</section>
+
+<!-- 第五幕 · 赛制 -->
+<section id="rules">
+    <div class="wrap">
+        <span class="kicker">赛制章程</span>
+        <h2>三个角色，一场<span class="hl">有武德的残酷</span></h2>
+        <p class="sub">你要带的东西，提案里都留好了位置：</p>
+        <div class="roles">
+            <div class="card role">
+                <span class="tag">选手</span>
+                <h3>Author 蛐蛐</h3>
+                <p><b>主笔模型 + 修订助手 + 文风预设 + 下笔规矩 + 参数</b> 的组合体。一只蛐蛐 = 一整条写作管线，野路子配置也收。</p>
+            </div>
+            <div class="card role">
+                <span class="tag">裁判</span>
+                <h3>Reviewer 评分器</h3>
+                <p>模仿特定人类评分口味的独立评分器。上岗前必须先考一场封存的真人盲评卷子，考不过只能影子待岗、没有编制。</p>
+            </div>
+            <div class="card role">
+                <span class="tag">裁判的裁判</span>
+                <h3>真人读者</h3>
+                <p>匿名盲评，只打两项分：<b>「AI 味」和「想继续读」</b>。蛐蛐能不能活命只看真人的想读分——全场唯一算数的真值。</p>
+            </div>
+        </div>
+        <div class="honor"><b>武德条款：</b>AI 评分永远不能冒充人类判定写入真值；选手池和裁判池交替更新、禁止串通——防止蛐蛐学会讨好裁判、裁判学会偏袒蛐蛐，最后一起飘离真人口味。</div>
+    </div>
+</section>
+
+<!-- 第六幕 · 温情条款 -->
+<section id="niche">
+    <div class="wrap">
+        <span class="kicker">温情条款</span>
+        <div class="card niche-card">
+            <div class="big">保送</div>
+            <p>淘汰是真残酷，但讲武德：总分前排之外，<b>每种题材赛道各留几个前排保送名额</b>，再配抽签野卡。「小众但稳定的口味」不被平均分绞死——只在一条赛道封神的候选会拿到「偏科大神」称号，而不是失败者盖章。</p>
+        </div>
+    </div>
+</section>
+
+<!-- 第七幕 · 赛程 -->
+<section id="roadmap">
+    <div class="wrap">
+        <span class="kicker">赛程表</span>
+        <h2>从集结到开擂：<span class="hl">六站路线图</span></h2>
+        <p class="sub">众筹阶段的诚实声明：以下是规划路线，不是已交付功能。</p>
+        <div class="track">
+            <div class="station now">
+                <h3><span class="st-no">第〇站</span> 立规矩、搭实验台 <span class="chip-now">当前位置 · 集结中</span></h3>
+                <p>参赛报名表怎么填、每场生成怎么记账、考卷怎么封存切分——先把规矩钉死；之后每个结果都能凭存档编号查到出处。</p>
+            </div>
+            <div class="station">
+                <h3><span class="st-no">第一站</span> 最小生成链</h3>
+                <p>命题进、初稿和修订稿出；计划把每一场的花费与耗时记入台账，做到任何一场都能原样重跑。</p>
+            </div>
+            <div class="station">
+                <h3><span class="st-no">第二站</span> 私有竞技场协议</h3>
+                <p>比赛章程 + 匿名发卷机制。内测盲评间 /style-review 已在跑双轴打分实验——但它还是固定题库的内测间，不是公开擂台。</p>
+            </div>
+            <div class="station">
+                <h3><span class="st-no">第三站</span> AI 裁判影子上岗</h3>
+                <p>每位 AI 裁判都有版本档案；它打的分单独记一本账、永不混进真人评分。它最拿不准的题，优先请真人复核。</p>
+            </div>
+            <div class="station">
+                <h3><span class="st-no">第四站</span> 作者候选筛选</h3>
+                <p>生死簿由真人评分执笔，AI 裁判只做廉价的初筛。三种活法：总分前排、各赛道前排、抽签野卡。</p>
+            </div>
+            <div class="station end">
+                <h3><span class="st-no">第五站</span> 交替进化 + 开放竞技场 <span class="chip-end">终点站 · 排行榜</span></h3>
+                <p>自动变异、公共题库、面向用户的排行榜。挂牌提示：排行榜会改变参与者行为，审计、隐私、防作弊压测全过之后才开放。</p>
+            </div>
+        </div>
+        <div class="firstblood">开局第一枪已备好弹：10 道命题 × 3 只参赛蛐蛐 × 每只写 3 篇 = 90 篇正文，同题捉对厮杀。<small>成功标准不是选出冠军，而是每一环都能重跑、经得起追问、欢迎被打脸。</small></div>
+    </div>
+</section>
+
+<!-- 第八幕 · CTA -->
+<section id="cta">
+    <div class="wrap">
+        <span class="kicker">入 场 方 式</span>
+        <h2>开赛前，你想坐哪个位置？</h2>
+        <p class="sub">三个位置都在招人，从围观到下场任选：</p>
+        <div class="cta-grid">
+            <div class="card cta-card">
+                <span class="who">围观党</span>
+                <h3>占坑等开赛</h3>
+                <p>star / watch 仓库，赛程推进、实验战报第一时间看到。吃瓜免费。</p>
+            </div>
+            <div class="card cta-card">
+                <span class="who">参战党</span>
+                <h3>自带蛐蛐报名</h3>
+                <p>你调教的主笔、裁判、修订助手（Author / Reviewer / Critic），首轮开放后都能带进实验室同台。现在报名占位，看看是你的调教强，还是别人的野路子强。</p>
+            </div>
+            <div class="card cta-card">
+                <span class="who">预设作者</span>
+                <h3>交预设当种子选手</h3>
+                <p>先预约：开赛就把你舍不得公开吹的预设放进第一轮。赢了有实锤战绩，打完就能拿逐模型诊断报告回去改——这正是评测机构欠你的东西。</p>
+            </div>
+        </div>
+        <div class="btn-row">
+            <a class="btn btn-primary" href="https://github.com/notnotype/neuro-book">GitHub · star 占坑</a>
+            <a class="btn" href="./mechanism.html">赛制细则手册 · 先看机制</a>
+            <a class="btn" href="https://github.com/notnotype/neuro-book/issues">Issues · 报名参战</a>
+            <span class="btn-note">报名格式（暂定）：你的配置思路 + 想打的赛道 + 你觉得谁是假想敌</span>
+        </div>
+    </div>
+</section>
+
+</main>
+
+<footer>
+    <div class="wrap">
+        <ul class="disclaim">
+            <li>文中「AI 味浓度 / 套话密度 / 人机分辨得分」为内部小样本机器互测实验（round-06 基线，对应 docPAi / docScore / AUC 口径）结果，无人类评审参与，不构成「什么是好文章」的定义。</li>
+            <li>进化实验室处于提案与规范阶段（Accepted 边界规范已定，实现未开始）；排行榜为路线图终点目标，首版不承诺开放。</li>
+            <li>/style-review 当前为私有固定题库的内测盲评间，不是公开竞技场。</li>
+            <li>guide 收益因模型而异：deepseek-v4-flash 有实证、gemini-3.1-pro 实测零收益且篇幅缩短，不存在「注入必变好」。</li>
+        </ul>
+    </div>
+</footer>
+
+<script>
+(function () {
+    "use strict";
+    var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var targets = document.querySelectorAll("main .card, main .punch, main .honor, main .firstblood, main .example, main .recycle, main .edges li, main .parts-list li");
+    targets.forEach(function (el) { el.classList.add("reveal"); });
+    if (reduced || !("IntersectionObserver" in window)) {
+        targets.forEach(function (el) { el.classList.add("in"); });
+        return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+            if (en.isIntersecting) { en.target.classList.add("in"); io.unobserve(en.target); }
+        });
+    }, { threshold: 0.12 });
+    targets.forEach(function (el) { io.observe(el); });
+
+    // 兜底：IO 异常时用节流 scroll/resize 完成同样的入场（可见即显示，与 IO 幂等）
+    function fallbackCheck() {
+        targets.forEach(function (el) {
+            if (el.classList.contains("in")) return;
+            var r = el.getBoundingClientRect();
+            if (r.top < window.innerHeight + 60 && r.bottom > -60) el.classList.add("in");
+        });
+    }
+    var fbPending = false;
+    function onFallback() {
+        if (fbPending) return;
+        fbPending = true;
+        window.setTimeout(function () { fbPending = false; fallbackCheck(); }, 160);
+    }
+    window.addEventListener("scroll", onFallback, { passive: true });
+    window.addEventListener("resize", onFallback);
+    fallbackCheck();
+
+    function firstNumberNode(el) {
+        var all = (el.textContent.match(/\d+(\.\d+)?/g) || []);
+        if (all.length !== 1) return null;
+        for (var i = 0; i < el.childNodes.length; i++) {
+            var n = el.childNodes[i];
+            if (n.nodeType === 3 && /\d/.test(n.nodeValue)) return n;
+        }
+        return null;
+    }
+    var counters = document.querySelectorAll(".stat .num");
+    if (!counters.length || !("IntersectionObserver" in window)) return;
+    var cio = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+            if (!en.isIntersecting) return;
+            cio.unobserve(en.target);
+            var node = firstNumberNode(en.target);
+            if (!node) return;
+            var original = node.nodeValue, m = original.match(/[\d.]+/);
+            var target = parseFloat(m[0]), dec = (m[0].split(".")[1] || "").length, start = null;
+            function frame(ts) {
+                if (start === null) start = ts;
+                var p = Math.min((ts - start) / 1100, 1), eased = 1 - Math.pow(1 - p, 3);
+                node.nodeValue = original.replace(m[0], (target * eased).toFixed(dec));
+                if (p < 1) requestAnimationFrame(frame); else node.nodeValue = original;
+            }
+            requestAnimationFrame(frame);
+        });
+    }, { threshold: 0.4 });
+    counters.forEach(function (el) { cio.observe(el); });
+})();
+</script>
+</body>
+</html>

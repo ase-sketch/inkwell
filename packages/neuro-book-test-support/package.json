@@ -1,0 +1,21 @@
+{
+    "name": "@notnotype/neuro-book-test-support",
+    "private": true,
+    "version": "0.1.0",
+    "type": "module",
+    "exports": {
+        "./paths": "./src/paths.ts",
+        "./tmp": "./src/tmp.ts",
+        "./test-path": "./src/test-path.ts",
+        "./vitest": "./src/vitest.ts"
+    },
+    "scripts": {
+        "typecheck": "tsc --noEmit -p tsconfig.json",
+        "test": "vitest run --config vitest.config.ts"
+    },
+    "devDependencies": {
+        "@types/node": "^25.6.0",
+        "typescript": "^5.9.3",
+        "vitest": "^4.1.2"
+    }
+}

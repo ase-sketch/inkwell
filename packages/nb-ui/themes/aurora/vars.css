@@ -1,0 +1,63 @@
+/*
+ * aurora —— 现代精致：大圆角、多层柔阴影、微渐变、双层焦点环。
+ *
+ * 与 macos 的关键区别：aurora 的面是**不透明**的，深度全靠外阴影和环境光，不用磨砂。
+ * 它同样要一层窗体底纹，所以也声明 --window-backdrop——**两套主题都要用的变量，
+ * 按判据本该上升为配色契约的一个角色**；这里先各自 declare，留作阶段 2 收口的证据。
+ */
+
+:root[data-nb-theme="aurora"] {
+    --font-ui: "Inter", "Inter var", system-ui, -apple-system, "PingFang SC", sans-serif;
+    --font-display: var(--font-ui);
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    --text-2xs: 11px;
+    --text-xs: 12px;
+    --text-sm: 13px;
+    --text-md: 14px;
+    --text-lg: 17px;
+    --text-xl: 22px;
+    --leading-tight: 1.3;
+    --leading-ui: 1.5;
+    --tracking-ui: -0.011em;
+
+    --control-h-sm: 28px;
+    --control-h-md: 34px;
+    --control-h-lg: 40px;
+    --control-px: 12px;
+    --panel-p: 18px;
+    --stack-gap: 18px;
+
+    --radius-control: 8px;
+    --radius-panel: 12px;
+    --radius-pill: 999px;
+    --border-w: 1px;
+
+    --surface-raise: linear-gradient(180deg, rgb(255 255 255 / 0.12), rgb(255 255 255 / 0) 55%, rgb(0 0 0 / 0.03));
+    --inset-shadow: none;
+
+    /* 与 macos 的区别：aurora 的面是**不透明**的，深度全靠外阴影和环境光，不用磨砂。
+       上一版这几个阴影的 alpha 太低（18% / 1px），在浅色配色上肉眼为零，等于没有主题。 */
+    --window-backdrop:
+        radial-gradient(72% 48% at 50% -8%, color-mix(in srgb, var(--accent-main) 16%, transparent) 0%, transparent 68%),
+        radial-gradient(46% 36% at 92% 8%, color-mix(in srgb, var(--status-info) 12%, transparent) 0%, transparent 70%);
+    --elevation-raised:
+        0 1px 2px color-mix(in srgb, var(--shadow-color) 22%, transparent),
+        0 6px 16px -6px color-mix(in srgb, var(--shadow-color) 26%, transparent);
+    --elevation-popover:
+        0 16px 40px -8px color-mix(in srgb, var(--shadow-color) 36%, transparent),
+        0 2px 6px color-mix(in srgb, var(--shadow-color) 16%, transparent);
+    --elevation-dialog:
+        0 40px 80px -16px color-mix(in srgb, var(--shadow-color) 44%, transparent),
+        0 4px 12px color-mix(in srgb, var(--shadow-color) 20%, transparent);
+
+    /* 双层环：先用面板底色垫一圈，再套 accent，浮起感来自这一层 */
+    --focus-ring:
+        0 0 0 2px var(--bg-panel),
+        0 0 0 4px color-mix(in srgb, var(--accent-main) 55%, transparent);
+
+    --motion-fast: 100ms;
+    --motion-base: 160ms;
+    --motion-enter: 240ms;
+    --ease-standard: cubic-bezier(0.2, 0.6, 0.2, 1);
+}

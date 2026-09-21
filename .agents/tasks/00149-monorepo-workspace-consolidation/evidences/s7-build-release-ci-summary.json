@@ -1,0 +1,81 @@
+{
+  "schema": "nbook.evidence/v1",
+  "taskId": "00149-monorepo-workspace-consolidation",
+  "phase": "S7-build-release-ci",
+  "status": "blocked",
+  "implementationScope": [
+    ".dockerignore",
+    ".github/workflows/code-baseline.yml",
+    ".github/workflows/community-docs.yml",
+    ".github/workflows/deploy-docs.yml",
+    ".github/workflows/desktop-envelope-contract.yml",
+    ".github/workflows/product-platforms.yml",
+    ".github/workflows/product-runtime-baselines.yml",
+    ".github/workflows/release-container.yml",
+    ".github/workflows/release-manager.yml",
+    ".github/workflows/workspace-packages.yml",
+    "scripts/build/dockerfile-contract.test.ts",
+    "scripts/build/product-runtime-image-builder.ts",
+    "scripts/build/product-runtime-image-builder.test.ts",
+    "scripts/ci/validate-community-files.ts",
+    "scripts/ci/workspace-workflows.test.ts",
+    "scripts/release/manager-release-contract.test.ts",
+    "scripts/release/release-assets.test.ts",
+    "docs/proposals/README.md",
+    "docs/specs/README.md"
+  ],
+  "contracts": {
+    "applicationOwner": "packages/neuro-book",
+    "workspacePackages": [
+      "nb-history",
+      "nb-workflow",
+      "nb-memory",
+      "nb-ui",
+      "neuro-agent-harness",
+      "llmlint"
+    ],
+    "llmlintWebIsland": "packages/llmlint/web",
+    "desktopProductTests": "bun x vitest run --config scripts/vitest.config.ts scripts/build/product-runtime-bundle.test.ts scripts/build/product-build-environment.test.ts",
+    "monorepoBoundarySource": "docs/modules/monorepo-boundaries.md",
+    "forbiddenBoundaryDuplicate": "docs/specs/architecture/monorepo-boundaries.md"
+  },
+  "verification": {
+    "communityWorkflowValidator": "bun scripts/ci/validate-community-files.ts passed: 31 labels, 5 issue forms, 16 YAML files; all nine workflow YAML files are included",
+    "workflowYamlParse": "9 workflow YAML files parsed successfully",
+    "workflowContract": "bun x vitest run --config scripts/vitest.config.ts scripts/ci/workspace-workflows.test.ts: 1 file / 7 passed",
+    "workspaceWorkflowFocused": "the same 7-test suite structurally covers all nine workflow files, trigger paths, owner commands, artifacts, and cache contracts",
+    "productDockerGitlessContract": "bun x vitest run --config scripts/vitest.config.ts scripts/ci/workspace-workflows.test.ts scripts/build/product-runtime-measurement-contract.test.ts scripts/build/dockerfile-contract.test.ts scripts/build/product-runtime-image-builder.test.ts: 4 files / 28 passed",
+    "dockerDataBoundary": "dockerignore excludes server/generated/prisma, packages/**/data.db, packages/**/data.db-*, and packages/**/server/generated/prisma; Git-less source snapshot excludes the same package database, SQLite sidecars, and generated-Prisma paths; behavior test proves changing all four database filenames and Prisma output does not change sourceDigest",
+    "managerReleaseContract": "bun x vitest run --config scripts/release/manager-release-vitest.config.ts: 1 file / 1 passed",
+    "releaseAssetsContract": "bun x vitest run --config scripts/release/release-assets-vitest.config.ts: 4 files / 32 passed",
+    "desktopContract": "bun run test:desktop-contract: 11 files / 37 passed",
+    "scriptsTypecheck": "bun x tsc --noEmit -p scripts/tsconfig.json passed",
+    "docsBuild": "bun run docs:build passed after correcting external canonical targets; VitePress rendering completed with existing chunk-size warning only",
+    "docsExternalTargets": "docs/specs/README.md external targets verified against the worktree: reference/agent/README.md, reference/content/README.md, reference/workspace/TERMS.md, reference/world-engine/README.md, reference/plot/README.md, reference/theme/system.md, reference/media/image-variants.md, docs/modules/character/requirements.md, docs/modules/monorepo-boundaries.md, CONTRIBUTING.md",
+    "governance": "bun run governance:check passed: failures=[], warnings=[]",
+    "diffCheck": "git diff --check exited 0; Windows CRLF conversion warnings were emitted",
+    "sourceImmutability": "prior evidence remains stableEqual=true with differences=0; no source checkout write was performed in this S7 pass"
+  },
+  "resolvedSinceS6Evidence": [
+    "Profile SDK frontmatter dependency boundary",
+    "llmlint verdict fixture failures",
+    "main application full-suite worker error",
+    "docs dead links recorded in the prior S6 evidence"
+  ],
+  "notAccepted": [
+    "manifest-allowlist sibling resync: nb-workflow unresolved=22 and mismatch=39",
+    "canonical target source copy and sync completion",
+    "canonical-root-outside registered worktrees; governance:worktree remains exit code 1 and no prune/remove was authorized",
+    "real Docker smoke and remote deployment",
+    "Windows runner and clean-checkout package:windows-portable",
+    "browser/manual acceptance",
+    "real provider/model",
+    "private corpus",
+    "signed/public release, push, or final green tag"
+  ],
+  "checkpoint": {
+    "status": "blocked; S7 local contracts are verified but runtime/platform and source-sync gates remain open",
+    "workingTree": "will be clean after the evidence commit below; this is not a clean-green checkpoint",
+    "sourceWritePolicy": "source checkouts remain read-only; no fetch, pull, checkout, reset, stash, source commit, merge, worktree mutation, publish, or push was performed in this S7 pass"
+  }
+}

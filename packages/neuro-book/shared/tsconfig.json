@@ -1,0 +1,26 @@
+{
+    "compilerOptions": {
+        "target": "ESNext",
+        "module": "ESNext",
+        "moduleResolution": "Bundler",
+        "strict": true,
+        "skipLibCheck": true,
+        "types": [
+            "node",
+            "bun"
+        ],
+        "baseUrl": "..",
+        "paths": {
+            "nbook/*": [
+                "./*"
+            ]
+        }
+    },
+    "include": [
+        "desktop-contract.ts",
+        "product-runtime-contract.ts",
+        "product-runtime-environment.ts",
+        "product-runtime-image-verifier.ts",
+        "product-runtime-shutdown.ts"
+    ]
+}

@@ -1,0 +1,110 @@
+<script setup lang="ts">
+import type {LowCodeFieldDto, LowCodeJsonValue} from "nbook/shared/dto/low-code-form.dto";
+import {useLowCodeComboboxDropdown} from "nbook/app/components/common/low-code-form/useLowCodeComboboxDropdown";
+
+const props = withDefaults(defineProps<{
+    field: LowCodeFieldDto;
+    modelValue?: LowCodeJsonValue;
+    disabled?: boolean;
+}>(), {
+    modelValue: null,
+    disabled: false,
+});
+const emit = defineEmits<{
+    (e: "update:modelValue", value: LowCodeJsonValue): void;
+}>();
+
+const {
+    rootRef,
+    panelRef,
+    open,
+    query,
+    displayValue,
+    filteredOptions,
+    resolvedDirection,
+    panelStyle,
+    focusInput,
+    toggleOpen,
+    updateQuery,
+    closeAfterSelect,
+} = useLowCodeComboboxDropdown({
+    field: computed(() => props.field),
+    modelValue: computed(() => props.modelValue),
+    disabled: computed(() => props.disabled),
+});
+
+function selectOption(value: LowCodeJsonValue): void {
+    emit("update:modelValue", value);
+    closeAfterSelect();
+}
+</script>
+
+<template>
+    <div ref="rootRef" class="relative">
+        <div
+            class="flex h-7 items-center rounded-md border border-[var(--border-color)] bg-[var(--bg-input)] transition-colors focus-within:border-[var(--accent-main)] focus-within:ring-1 focus-within:ring-[var(--accent-main)]/20"
+            :class="props.disabled ? 'opacity-75' : 'hover:bg-[var(--bg-hover)]'"
+        >
+            <input
+                :value="open ? query : displayValue"
+                type="text"
+                :readonly="props.disabled"
+                :placeholder="props.field.placeholder"
+                class="h-full min-w-0 flex-1 bg-transparent px-2.5 text-xs text-[var(--text-main)] outline-none placeholder:text-[var(--text-muted)]"
+                @focus="focusInput"
+                @click="focusInput"
+                @input="updateQuery(($event.target as HTMLInputElement).value)"
+            >
+            <button type="button" class="flex h-full w-7 items-center justify-center text-[var(--text-muted)]" :disabled="props.disabled" @click.stop="toggleOpen">
+                <span class="i-lucide-chevron-down h-3.5 w-3.5 transition-transform" :class="open ? '-rotate-180' : ''"></span>
+            </button>
+        </div>
+
+        <transition :name="resolvedDirection === 'up' ? 'low-code-combobox-up' : 'low-code-combobox-down'">
+            <div
+                v-if="open && !props.disabled"
+                ref="panelRef"
+                class="absolute left-0 right-0 z-[9200] overflow-y-auto rounded-md border border-[var(--border-color)] bg-[var(--bg-panel)] p-1.5 shadow-xl custom-scrollbar"
+                :class="resolvedDirection === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'"
+                :style="panelStyle"
+            >
+                <button
+                    v-for="option in filteredOptions"
+                    :key="`${typeof option.value}:${String(option.value)}`"
+                    type="button"
+                    class="flex min-h-8 w-full items-center gap-2 rounded-md px-2.5 py-1 text-left text-xs transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-50"
+                    :class="option.value === props.modelValue ? 'bg-[var(--bg-input)] font-medium text-[var(--text-main)]' : 'text-[var(--text-secondary)]'"
+                    :disabled="option.disabled"
+                    @click="selectOption(option.value)"
+                >
+                    <span class="min-w-0 flex-1">
+                        <span class="block truncate">{{ option.label }}</span>
+                        <span v-if="option.description" class="mt-0.5 block truncate text-[10px] font-normal text-[var(--text-muted)]">{{ option.description }}</span>
+                    </span>
+                    <span v-if="option.value === props.modelValue" class="i-lucide-check h-3 w-3 shrink-0 text-[var(--accent-main)]"></span>
+                </button>
+            </div>
+        </transition>
+    </div>
+</template>
+
+<style scoped>
+.low-code-combobox-down-enter-active,
+.low-code-combobox-down-leave-active,
+.low-code-combobox-up-enter-active,
+.low-code-combobox-up-leave-active {
+    transition: all 0.15s ease;
+}
+
+.low-code-combobox-down-enter-from,
+.low-code-combobox-down-leave-to {
+    opacity: 0;
+    transform: translateY(-4px);
+}
+
+.low-code-combobox-up-enter-from,
+.low-code-combobox-up-leave-to {
+    opacity: 0;
+    transform: translateY(4px);
+}
+</style>

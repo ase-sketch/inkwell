@@ -1,0 +1,1794 @@
+{
+  "schema": "nbook.novel-memory/v4-spike",
+  "provenance": {
+    "method": "人工通读手工装填，不是抽取管线输出",
+    "model": "memory-model-v4.md 第 5、6 节",
+    "sourceText": "../t01-novel-understanding-spike/evidences/chapter-001-source-normalized.txt",
+    "sourceNormalization": "chapter-source-normalization/v1，文件第 N 行即第 N 段",
+    "companion": "evidences/chapter-01-beats.json 是同一章的另一半（正文怎么切）。时刻的真源在那个文件里，本文件的 timeRef 按 id 引用它；主体 id 两边必须一致，scripts/build-viewer.ts 会核对",
+    "note": "本文件不构成任何召回率或准确率证据。v2 版本（nbook.novel-memory/v2-spike，8 个 Episode、26 条 Fact）已按 v4 第 11 节 W6 的倾向重建，不是迁移——v2 的 Episode 与 v4 的 Beat 不是同一个尺度，逐条搬运没有意义"
+  },
+  "chapter": 1,
+  "chapterTitle": "反派魔法少女",
+  "paragraphCount": 77,
+  "kinds": [
+    {
+      "id": "K_fox_girl",
+      "name": "狐女",
+      "note": "第 11 段「一只娇小的金毛狐女」",
+      "category": "body"
+    },
+    {
+      "id": "K_codex",
+      "name": "典籍",
+      "note": "第 8 段「这本飘浮在半空中的黑色古书」",
+      "category": "item"
+    },
+    {
+      "id": "K_sapient",
+      "name": "智慧体",
+      "note": "文本从没说过它有自我意识。这个类只能由读者推断挂上去，且按第 5.2 节不能反过来当推理前提",
+      "category": "character"
+    },
+    {
+      "id": "K_candidate",
+      "name": "适格者",
+      "note": "第 30、31 段古书自称在找的那种人",
+      "category": "character"
+    },
+    {
+      "id": "K_star_envoy",
+      "name": "星界使者",
+      "note": "第 45 段古书的自我定位",
+      "category": "character"
+    },
+    {
+      "id": "K_magical_girl",
+      "name": "魔法少女",
+      "note": "第 67 段",
+      "category": "character"
+    },
+    {
+      "id": "K_villain_mg",
+      "name": "反派魔法少女",
+      "note": "第 1 段章标题就出现了，正文第 64 段才由古书说出",
+      "category": "character"
+    },
+    {
+      "id": "K_oudou",
+      "name": "王道系",
+      "note": "第 69 段古书说这一款魔法少女是王道系的",
+      "category": "concept"
+    },
+    {
+      "id": "K_creator",
+      "name": "造物主",
+      "note": "第 67 段，只有古书提过一次",
+      "category": "character"
+    }
+  ],
+  "entities": [
+    {
+      "id": "su_tianqing",
+      "label": "苏天晴",
+      "note": "库内标签不是读者知道的名字。读者知道的名字由 (su_tianqing, 专名) 这个槽在某个叙述位置上求值得到"
+    },
+    {
+      "id": "codex",
+      "label": "黑色古书",
+      "intro": [
+        {
+          "at": 12,
+          "text": "一本浮在半空的黑色古书，能以低沉的声音说话。来历不明。"
+        },
+        {
+          "at": 32,
+          "text": "墨丘利秘典。自称从星空彼岸而来，为寻找它最优秀的适格者。"
+        }
+      ],
+      "note": "第 5.1 节那两条介绍的出处。只存一份全局介绍，读到第 12 段的检索就会泄漏第 30 段才揭晓的专名"
+    },
+    {
+      "id": "body_fox",
+      "label": "这具狐女身体",
+      "intro": [
+        {
+          "at": 8,
+          "text": "镜子里那道陌生的娇小身影。是谁不清楚。"
+        },
+        {
+          "at": 12,
+          "text": "一只娇小的金毛狐女：金色长发、毛茸茸的兽耳、白皙的肌肤、背后一只炸毛的大尾巴。"
+        }
+      ],
+      "note": "身体是主体。苏天晴与这具身体是两个节点，「她居于其中」是一条读者推断，不是默认前提"
+    },
+    {
+      "id": "body_prev",
+      "label": "原来的身体",
+      "note": "第 73 段她想回去的那具。本章只有这一处提及"
+    },
+    {
+      "id": "tainai",
+      "label": "太奶",
+      "note": "第 16 段，猝死前听见她说话。文本没说她是活人还是幻觉"
+    },
+    {
+      "id": "contract",
+      "label": "那份契约"
+    },
+    {
+      "id": "star_beyond",
+      "label": "星空彼岸",
+      "note": "只由古书说出，叙述者一次也没提"
+    },
+    {
+      "id": "room",
+      "label": "昏暗的房间"
+    },
+    {
+      "id": "noodle_stall",
+      "label": "街边面摊"
+    },
+    {
+      "id": "task_set",
+      "label": "那一整套任务"
+    }
+  ],
+  "predicates": [
+    {
+      "id": "P_proper_name",
+      "name": "专名",
+      "cardinality": "single",
+      "volatility": "low",
+      "note": "正式名字。与「称呼」分开，因为查看器要用它当揭晓前后的显示名"
+    },
+    {
+      "id": "P_appellation",
+      "name": "称呼",
+      "cardinality": "multi",
+      "volatility": "low",
+      "note": "文本用来指称它的说法，可以有很多个"
+    },
+    {
+      "id": "P_kind",
+      "name": "类",
+      "cardinality": "multi",
+      "volatility": "low",
+      "note": "值指向一个类。文本说出来的类别才走这里；库内粗分类由 Kind.category 提供"
+    },
+    {
+      "id": "P_voice",
+      "name": "声音",
+      "cardinality": "single",
+      "volatility": "low"
+    },
+    {
+      "id": "P_hair",
+      "name": "发色",
+      "cardinality": "single",
+      "volatility": "low"
+    },
+    {
+      "id": "P_ear",
+      "name": "耳型",
+      "cardinality": "single",
+      "volatility": "low",
+      "note": "第 5.3 节的例子。耳朵当前是耷拉还是竖起不建槽，那个每一拍都在变"
+    },
+    {
+      "id": "P_ear_count",
+      "name": "耳朵数量",
+      "cardinality": "single",
+      "volatility": "low"
+    },
+    {
+      "id": "P_skin",
+      "name": "肤色",
+      "cardinality": "single",
+      "volatility": "low"
+    },
+    {
+      "id": "P_features",
+      "name": "五官",
+      "cardinality": "single",
+      "volatility": "low"
+    },
+    {
+      "id": "P_tail",
+      "name": "尾巴",
+      "cardinality": "multi",
+      "volatility": "low",
+      "note": "基数被迫写成 multi，理由不正当——它只有一条尾巴。写 multi 是为了让第 12 段的外观和第 18 段的触感并存，而不是被判成竞争。见 findings 第 3 条"
+    },
+    {
+      "id": "P_build",
+      "name": "体型",
+      "cardinality": "single",
+      "volatility": "low"
+    },
+    {
+      "id": "P_foot",
+      "name": "脚",
+      "cardinality": "single",
+      "volatility": "low"
+    },
+    {
+      "id": "P_wearing",
+      "name": "穿着",
+      "cardinality": "single",
+      "volatility": "medium",
+      "note": "在小说里穿着换得比发色勤。本章只有一条披露，建槽属于边界判断"
+    },
+    {
+      "id": "P_prev_owner",
+      "name": "原来的主人",
+      "cardinality": "single",
+      "volatility": "low"
+    },
+    {
+      "id": "P_inhabits",
+      "name": "居于哪具身体",
+      "cardinality": "single",
+      "volatility": "low"
+    },
+    {
+      "id": "P_cause_of_death",
+      "name": "死因",
+      "cardinality": "single",
+      "volatility": "low"
+    },
+    {
+      "id": "P_prev_work",
+      "name": "前世的工作状况",
+      "cardinality": "single",
+      "volatility": "medium"
+    },
+    {
+      "id": "P_kin",
+      "name": "亲属",
+      "cardinality": "multi",
+      "volatility": "low"
+    },
+    {
+      "id": "P_locomotion",
+      "name": "行动方式",
+      "cardinality": "single",
+      "volatility": "low"
+    },
+    {
+      "id": "P_origin",
+      "name": "来处",
+      "cardinality": "single",
+      "volatility": "low"
+    },
+    {
+      "id": "P_purpose",
+      "name": "目的",
+      "cardinality": "single",
+      "volatility": "low"
+    },
+    {
+      "id": "P_role_to_su",
+      "name": "对苏天晴的身份",
+      "cardinality": "single",
+      "volatility": "low",
+      "note": "宾语烧进谓词名里，与第 5.4 节的「(爱丽丝, 对罗兰的态度)」同一种写法"
+    },
+    {
+      "id": "P_attitude_feet",
+      "name": "对小脚的态度",
+      "cardinality": "single",
+      "volatility": "low"
+    },
+    {
+      "id": "P_wish_claim",
+      "name": "主张的通用愿望",
+      "cardinality": "multi",
+      "volatility": "low"
+    },
+    {
+      "id": "P_party",
+      "name": "契约相对方",
+      "cardinality": "multi",
+      "volatility": "low"
+    },
+    {
+      "id": "P_content",
+      "name": "契约内容",
+      "cardinality": "single",
+      "volatility": "low"
+    },
+    {
+      "id": "P_state",
+      "name": "契约状态",
+      "cardinality": "single",
+      "volatility": "medium",
+      "note": "整章唯一一个在同一个时刻内部改了值的槽。见 findings 第 2 条"
+    },
+    {
+      "id": "P_task_giver",
+      "name": "任务的定制者",
+      "cardinality": "single",
+      "volatility": "low"
+    },
+    {
+      "id": "P_task_purpose",
+      "name": "任务的用途",
+      "cardinality": "single",
+      "volatility": "low"
+    },
+    {
+      "id": "P_death_rate",
+      "name": "死亡率",
+      "cardinality": "single",
+      "volatility": "low"
+    },
+    {
+      "id": "P_genre_shape",
+      "name": "故事里的走向",
+      "cardinality": "single",
+      "volatility": "low"
+    },
+    {
+      "id": "P_prospect",
+      "name": "在王道故事里的处境",
+      "cardinality": "single",
+      "volatility": "low"
+    }
+  ],
+  "slots": [
+    {
+      "id": "S_su_name",
+      "subject": {
+        "type": "entity",
+        "id": "su_tianqing"
+      },
+      "predicate": "P_proper_name"
+    },
+    {
+      "id": "S_su_voice",
+      "subject": {
+        "type": "entity",
+        "id": "su_tianqing"
+      },
+      "predicate": "P_voice"
+    },
+    {
+      "id": "S_su_kind",
+      "subject": {
+        "type": "entity",
+        "id": "su_tianqing"
+      },
+      "predicate": "P_kind"
+    },
+    {
+      "id": "S_su_inhabits",
+      "subject": {
+        "type": "entity",
+        "id": "su_tianqing"
+      },
+      "predicate": "P_inhabits",
+      "note": "第 7 节那条推断落在这个槽上"
+    },
+    {
+      "id": "S_su_cod",
+      "subject": {
+        "type": "entity",
+        "id": "su_tianqing"
+      },
+      "predicate": "P_cause_of_death"
+    },
+    {
+      "id": "S_su_prev_work",
+      "subject": {
+        "type": "entity",
+        "id": "su_tianqing"
+      },
+      "predicate": "P_prev_work"
+    },
+    {
+      "id": "S_su_kin",
+      "subject": {
+        "type": "entity",
+        "id": "su_tianqing"
+      },
+      "predicate": "P_kin"
+    },
+    {
+      "id": "S_su_feet",
+      "subject": {
+        "type": "entity",
+        "id": "su_tianqing"
+      },
+      "predicate": "P_attitude_feet"
+    },
+    {
+      "id": "S_su_wish",
+      "subject": {
+        "type": "entity",
+        "id": "su_tianqing"
+      },
+      "predicate": "P_wish_claim"
+    },
+    {
+      "id": "S_codex_name",
+      "subject": {
+        "type": "entity",
+        "id": "codex"
+      },
+      "predicate": "P_proper_name"
+    },
+    {
+      "id": "S_codex_appel",
+      "subject": {
+        "type": "entity",
+        "id": "codex"
+      },
+      "predicate": "P_appellation"
+    },
+    {
+      "id": "S_codex_kind",
+      "subject": {
+        "type": "entity",
+        "id": "codex"
+      },
+      "predicate": "P_kind"
+    },
+    {
+      "id": "S_codex_voice",
+      "subject": {
+        "type": "entity",
+        "id": "codex"
+      },
+      "predicate": "P_voice"
+    },
+    {
+      "id": "S_codex_locomotion",
+      "subject": {
+        "type": "entity",
+        "id": "codex"
+      },
+      "predicate": "P_locomotion"
+    },
+    {
+      "id": "S_codex_origin",
+      "subject": {
+        "type": "entity",
+        "id": "codex"
+      },
+      "predicate": "P_origin"
+    },
+    {
+      "id": "S_codex_purpose",
+      "subject": {
+        "type": "entity",
+        "id": "codex"
+      },
+      "predicate": "P_purpose",
+      "note": "全章唯一一处「认识论并存」"
+    },
+    {
+      "id": "S_codex_role",
+      "subject": {
+        "type": "entity",
+        "id": "codex"
+      },
+      "predicate": "P_role_to_su"
+    },
+    {
+      "id": "S_body_appel",
+      "subject": {
+        "type": "entity",
+        "id": "body_fox"
+      },
+      "predicate": "P_appellation"
+    },
+    {
+      "id": "S_body_kind",
+      "subject": {
+        "type": "entity",
+        "id": "body_fox"
+      },
+      "predicate": "P_kind"
+    },
+    {
+      "id": "S_body_hair",
+      "subject": {
+        "type": "entity",
+        "id": "body_fox"
+      },
+      "predicate": "P_hair"
+    },
+    {
+      "id": "S_body_ear",
+      "subject": {
+        "type": "entity",
+        "id": "body_fox"
+      },
+      "predicate": "P_ear"
+    },
+    {
+      "id": "S_body_earcount",
+      "subject": {
+        "type": "entity",
+        "id": "body_fox"
+      },
+      "predicate": "P_ear_count"
+    },
+    {
+      "id": "S_body_skin",
+      "subject": {
+        "type": "entity",
+        "id": "body_fox"
+      },
+      "predicate": "P_skin"
+    },
+    {
+      "id": "S_body_features",
+      "subject": {
+        "type": "entity",
+        "id": "body_fox"
+      },
+      "predicate": "P_features"
+    },
+    {
+      "id": "S_body_tail",
+      "subject": {
+        "type": "entity",
+        "id": "body_fox"
+      },
+      "predicate": "P_tail"
+    },
+    {
+      "id": "S_body_build",
+      "subject": {
+        "type": "entity",
+        "id": "body_fox"
+      },
+      "predicate": "P_build"
+    },
+    {
+      "id": "S_body_foot",
+      "subject": {
+        "type": "entity",
+        "id": "body_fox"
+      },
+      "predicate": "P_foot"
+    },
+    {
+      "id": "S_body_wearing",
+      "subject": {
+        "type": "entity",
+        "id": "body_fox"
+      },
+      "predicate": "P_wearing"
+    },
+    {
+      "id": "S_body_prev_owner",
+      "subject": {
+        "type": "entity",
+        "id": "body_fox"
+      },
+      "predicate": "P_prev_owner"
+    },
+    {
+      "id": "S_bprev_appel",
+      "subject": {
+        "type": "entity",
+        "id": "body_prev"
+      },
+      "predicate": "P_appellation"
+    },
+    {
+      "id": "S_tainai_appel",
+      "subject": {
+        "type": "entity",
+        "id": "tainai"
+      },
+      "predicate": "P_appellation"
+    },
+    {
+      "id": "S_creator_appel",
+      "subject": {
+        "type": "kind",
+        "id": "K_creator"
+      },
+      "predicate": "P_appellation"
+    },
+    {
+      "id": "S_creator_kind",
+      "subject": {
+        "type": "kind",
+        "id": "K_creator"
+      },
+      "predicate": "P_kind"
+    },
+    {
+      "id": "S_contract_appel",
+      "subject": {
+        "type": "entity",
+        "id": "contract"
+      },
+      "predicate": "P_appellation"
+    },
+    {
+      "id": "S_contract_party",
+      "subject": {
+        "type": "entity",
+        "id": "contract"
+      },
+      "predicate": "P_party"
+    },
+    {
+      "id": "S_contract_content",
+      "subject": {
+        "type": "entity",
+        "id": "contract"
+      },
+      "predicate": "P_content"
+    },
+    {
+      "id": "S_contract_state",
+      "subject": {
+        "type": "entity",
+        "id": "contract"
+      },
+      "predicate": "P_state"
+    },
+    {
+      "id": "S_mg_appel",
+      "subject": {
+        "type": "kind",
+        "id": "K_magical_girl"
+      },
+      "predicate": "P_appellation"
+    },
+    {
+      "id": "S_mg_kind",
+      "subject": {
+        "type": "kind",
+        "id": "K_magical_girl"
+      },
+      "predicate": "P_kind"
+    },
+    {
+      "id": "S_mg_death_rate",
+      "subject": {
+        "type": "kind",
+        "id": "K_magical_girl"
+      },
+      "predicate": "P_death_rate"
+    },
+    {
+      "id": "S_vmg_appel",
+      "subject": {
+        "type": "kind",
+        "id": "K_villain_mg"
+      },
+      "predicate": "P_appellation"
+    },
+    {
+      "id": "S_vmg_prospect",
+      "subject": {
+        "type": "kind",
+        "id": "K_villain_mg"
+      },
+      "predicate": "P_prospect"
+    },
+    {
+      "id": "S_oudou_appel",
+      "subject": {
+        "type": "kind",
+        "id": "K_oudou"
+      },
+      "predicate": "P_appellation"
+    },
+    {
+      "id": "S_oudou_shape",
+      "subject": {
+        "type": "kind",
+        "id": "K_oudou"
+      },
+      "predicate": "P_genre_shape"
+    },
+    {
+      "id": "S_star_appel",
+      "subject": {
+        "type": "entity",
+        "id": "star_beyond"
+      },
+      "predicate": "P_appellation"
+    },
+    {
+      "id": "S_room_appel",
+      "subject": {
+        "type": "entity",
+        "id": "room"
+      },
+      "predicate": "P_appellation"
+    },
+    {
+      "id": "S_stall_appel",
+      "subject": {
+        "type": "entity",
+        "id": "noodle_stall"
+      },
+      "predicate": "P_appellation"
+    },
+    {
+      "id": "S_task_appel",
+      "subject": {
+        "type": "entity",
+        "id": "task_set"
+      },
+      "predicate": "P_appellation"
+    },
+    {
+      "id": "S_task_giver",
+      "subject": {
+        "type": "entity",
+        "id": "task_set"
+      },
+      "predicate": "P_task_giver"
+    },
+    {
+      "id": "S_task_purpose",
+      "subject": {
+        "type": "entity",
+        "id": "task_set"
+      },
+      "predicate": "P_task_purpose"
+    }
+  ],
+  "disclosures": [
+    {
+      "id": "D01",
+      "slot": "S_vmg_appel",
+      "value": {
+        "t": "literal",
+        "v": "反派魔法少女"
+      },
+      "source": {
+        "channel": "author",
+        "holder": null,
+        "hedge": "plain"
+      },
+      "at": 1,
+      "timeRef": null,
+      "note": "章标题。故事外的 Beat 照样产生披露——读者在第 1 段就读到了这个词，比第 64 段古书说出契约内容早 63 段。第 8 节第五条的实物"
+    },
+    {
+      "id": "D02",
+      "slot": "S_su_name",
+      "value": {
+        "t": "literal",
+        "v": "苏天晴"
+      },
+      "source": {
+        "channel": "speech",
+        "holder": "su_tianqing",
+        "hedge": "plain"
+      },
+      "at": 6,
+      "timeRef": "M_a",
+      "note": "她自己报的名"
+    },
+    {
+      "id": "D03",
+      "slot": "S_su_voice",
+      "value": {
+        "t": "literal",
+        "v": "清脆悦耳的女声"
+      },
+      "source": {
+        "channel": "narrator",
+        "holder": null,
+        "hedge": "plain"
+      },
+      "at": 7,
+      "timeRef": "M_a"
+    },
+    {
+      "id": "D04",
+      "slot": "S_codex_voice",
+      "value": {
+        "t": "literal",
+        "v": "低沉的、仿佛来自遥远彼方的言语"
+      },
+      "source": {
+        "channel": "narrator",
+        "holder": null,
+        "hedge": "plain"
+      },
+      "at": 7,
+      "timeRef": "M_a"
+    },
+    {
+      "id": "D05",
+      "slot": "S_room_appel",
+      "value": {
+        "t": "literal",
+        "v": "昏暗的房间"
+      },
+      "source": {
+        "channel": "narrator",
+        "holder": null,
+        "hedge": "plain"
+      },
+      "at": 7,
+      "timeRef": "M_a"
+    },
+    {
+      "id": "D06",
+      "slot": "S_su_name",
+      "value": {
+        "t": "literal",
+        "v": "苏天晴"
+      },
+      "source": {
+        "channel": "narrator",
+        "holder": null,
+        "hedge": "plain"
+      },
+      "at": 8,
+      "timeRef": "M_a",
+      "note": "印证 D02：同槽同值，来源通道不同（角色说出口 / 叙述者）。「她自称苏天晴」到「叙述者也这么叫她」是两件事"
+    },
+    {
+      "id": "D07",
+      "slot": "S_codex_appel",
+      "value": {
+        "t": "literal",
+        "v": "黑色古书"
+      },
+      "source": {
+        "channel": "narrator",
+        "holder": null,
+        "hedge": "plain"
+      },
+      "at": 8,
+      "timeRef": "M_a"
+    },
+    {
+      "id": "D08",
+      "slot": "S_codex_kind",
+      "value": {
+        "t": "kind",
+        "id": "K_codex"
+      },
+      "source": {
+        "channel": "narrator",
+        "holder": null,
+        "hedge": "plain"
+      },
+      "at": 8,
+      "timeRef": "M_a"
+    },
+    {
+      "id": "D09",
+      "slot": "S_codex_locomotion",
+      "value": {
+        "t": "literal",
+        "v": "飘浮在半空中"
+      },
+      "source": {
+        "channel": "narrator",
+        "holder": null,
+        "hedge": "plain"
+      },
+      "at": 8,
+      "timeRef": "M_a"
+    },
+    {
+      "id": "D10",
+      "slot": "S_body_appel",
+      "value": {
+        "t": "literal",
+        "v": "一道陌生的娇小身影"
+      },
+      "source": {
+        "channel": "narrator",
+        "holder": null,
+        "hedge": "plain"
+      },
+      "at": 8,
+      "timeRef": "M_a",
+      "note": "「陌生」是这条披露里最有用的一个字：它是第 7 节那条推断的第一处支持"
+    },
+    {
+      "id": "D11",
+      "slot": "S_body_build",
+      "value": {
+        "t": "literal",
+        "v": "娇小"
+      },
+      "source": {
+        "channel": "narrator",
+        "holder": null,
+        "hedge": "plain"
+      },
+      "at": 8,
+      "timeRef": "M_a"
+    },
+    {
+      "id": "D12",
+      "slot": "S_body_hair",
+      "value": {
+        "t": "literal",
+        "v": "灿烂的金色长发，垂落在肩膀后背"
+      },
+      "source": {
+        "channel": "narrator",
+        "holder": null,
+        "hedge": "plain"
+      },
+      "at": 9,
+      "timeRef": "M_a"
+    },
+    {
+      "id": "D13",
+      "slot": "S_body_ear",
+      "value": {
+        "t": "literal",
+        "v": "毛茸茸的耳朵，长在头顶"
+      },
+      "source": {
+        "channel": "narrator",
+        "holder": null,
+        "hedge": "plain"
+      },
+      "at": 9,
+      "timeRef": "M_a",
+      "note": "同一段里的「耷拉」不进这个槽——耳朵姿态每一拍都在变，按第 5.3 节不建槽"
+    },
+    {
+      "id": "D14",
+      "slot": "S_body_features",
+      "value": {
+        "t": "literal",
+        "v": "精致的五官与眼眸"
+      },
+      "source": {
+        "channel": "narrator",
+        "holder": null,
+        "hedge": "plain"
+      },
+      "at": 9,
+      "timeRef": "M_a"
+    },
+    {
+      "id": "D15",
+      "slot": "S_body_skin",
+      "value": {
+        "t": "literal",
+        "v": "白皙"
+      },
+      "source": {
+        "channel": "narrator",
+        "holder": null,
+        "hedge": "plain"
+      },
+      "at": 10,
+      "timeRef": "M_a"
+    },
+    {
+      "id": "D16",
+      "slot": "S_body_kind",
+      "value": {
+        "t": "kind",
+        "id": "K_fox_girl"
+      },
+      "source": {
+        "channel": "narrator",
+        "holder": null,
+        "hedge": "plain"
+      },
+      "at": 11,
+      "timeRef": "M_a"
+    },
+    {
+      "id": "D16b",
+      "slot": "S_body_appel",
+      "value": {
+        "t": "literal",
+        "v": "一只娇小的金毛狐女"
+      },
+      "source": {
+        "channel": "narrator",
+        "holder": null,
+        "hedge": "plain"
+      },
+      "at": 11,
+      "timeRef": "M_a",
+      "note": "与 D16 同一句原文，却是两条披露：一条给称呼，一条给类。读者在这一段之前只有第 8 段那个「一道陌生的娇小身影」，节点在这里当场改名"
+    },
+    {
+      "id": "D17",
+      "slot": "S_body_tail",
+      "value": {
+        "t": "literal",
+        "v": "背后一只正在炸毛的大尾巴"
+      },
+      "source": {
+        "channel": "narrator",
+        "holder": null,
+        "hedge": "plain"
+      },
+      "at": 12,
+      "timeRef": "M_a"
+    },
+    {
+      "id": "D18",
+      "slot": "S_su_prev_work",
+      "value": {
+        "t": "literal",
+        "v": "连续三个夜班后刚下班"
+      },
+      "source": {
+        "channel": "narrator",
+        "holder": null,
+        "hedge": "plain"
+      },
+      "at": 16,
+      "timeRef": "M_nightshifts",
+      "note": "整份数据里最要紧的一条：它所在的 Beat（B05）停在 M_b（面摊那一刻），而它说的那件事发生在 M_nightshifts。Beat.时刻 与 披露.时间指示 在同一个 Beat 上取了不同的值——第 5.7.3 节「两个挂钩，一种节点」的实物"
+    },
+    {
+      "id": "D19",
+      "slot": "S_stall_appel",
+      "value": {
+        "t": "literal",
+        "v": "街边面摊"
+      },
+      "source": {
+        "channel": "narrator",
+        "holder": null,
+        "hedge": "plain"
+      },
+      "at": 16,
+      "timeRef": "M_b"
+    },
+    {
+      "id": "D20",
+      "slot": "S_tainai_appel",
+      "value": {
+        "t": "literal",
+        "v": "太奶"
+      },
+      "source": {
+        "channel": "narrator",
+        "holder": null,
+        "hedge": "plain"
+      },
+      "at": 16,
+      "timeRef": "M_b"
+    },
+    {
+      "id": "D21",
+      "slot": "S_su_kin",
+      "value": {
+        "t": "ref",
+        "id": "tainai"
+      },
+      "source": {
+        "channel": "narrator",
+        "holder": null,
+        "hedge": "plain"
+      },
+      "at": 16,
+      "timeRef": null,
+      "note": "时间指示为空：亲属关系不系于某一刻。文本没说太奶当时是活人还是回光返照，模型也不替它决定"
+    },
+    {
+      "id": "D22",
+      "slot": "S_su_inhabits",
+      "value": {
+        "t": "ref",
+        "id": "body_fox"
+      },
+      "source": {
+        "channel": "reader_inference",
+        "holder": null,
+        "hedge": "plain"
+      },
+      "at": 16,
+      "timeRef": "M_a",
+      "inferredFrom": [
+        "S_body_appel",
+        "S_body_kind",
+        "S_body_tail",
+        "S_su_prev_work"
+      ],
+      "note": "第 7 节那条推断。四处支持横跨三个 Beat（B02、B03、B05），没有一处是直说的：读到第 15 段它还立不住，第 16 段才成立。第 41 段的 S_body_prev_owner 是第五处支持，做梦阶段重跑时会把它一起收进来——推断自指向槽而不是指向披露，就是为了让这种重跑成立"
+    },
+    {
+      "id": "D23",
+      "slot": "S_body_earcount",
+      "value": {
+        "t": "number",
+        "v": 2,
+        "unit": "只"
+      },
+      "source": {
+        "channel": "narrator",
+        "holder": null,
+        "hedge": "plain"
+      },
+      "at": 18,
+      "timeRef": "M_a"
+    },
+    {
+      "id": "D24",
+      "slot": "S_body_tail",
+      "value": {
+        "t": "literal",
+        "v": "触感无比柔顺，被薅时的摩挲拉拽感从尾巴尖直冲天灵盖"
+      },
+      "source": {
+        "channel": "narrator",
+        "holder": null,
+        "hedge": "plain"
+      },
+      "at": 18,
+      "timeRef": "M_a",
+      "note": "与 D17 同槽、同时刻、同来源通道，值却不同。按第 5.6 节那张表这是「竞争」，可它们根本不打架——一条讲外观一条讲触感。见 findings 第 3 条"
+    },
+    {
+      "id": "D25",
+      "slot": "S_su_kind",
+      "value": {
+        "t": "kind",
+        "id": "K_fox_girl"
+      },
+      "source": {
+        "channel": "thought",
+        "holder": "su_tianqing",
+        "hedge": "plain"
+      },
+      "at": 26,
+      "timeRef": "M_a",
+      "note": "「重生成了一只金毛狐女」。她自己认定的，不是叙述者说的"
+    },
+    {
+      "id": "D26",
+      "slot": "S_codex_purpose",
+      "value": {
+        "t": "literal",
+        "v": "在找某个特定的人"
+      },
+      "source": {
+        "channel": "narrator",
+        "holder": null,
+        "hedge": "hedged"
+      },
+      "at": 29,
+      "timeRef": "M_a",
+      "note": "「像是在思考……到底是不是自己要找的人」。叙述者带保留。与 D28 构成全章唯一一处「认识论并存」：同一个槽、同一个时刻、值不同、来源通道不同，两条并存，不是冲突"
+    },
+    {
+      "id": "D27",
+      "slot": "S_codex_name",
+      "value": {
+        "t": "literal",
+        "v": "墨丘利秘典"
+      },
+      "source": {
+        "channel": "speech",
+        "holder": "codex",
+        "hedge": "plain"
+      },
+      "at": 30,
+      "timeRef": "M_a",
+      "note": "专名揭晓。在这一段之前，读者对它的唯一称呼是第 8 段的「黑色古书」"
+    },
+    {
+      "id": "D28",
+      "slot": "S_codex_purpose",
+      "value": {
+        "t": "literal",
+        "v": "寻找它最优秀的适格者"
+      },
+      "source": {
+        "channel": "speech",
+        "holder": "codex",
+        "hedge": "plain"
+      },
+      "at": 30,
+      "timeRef": "M_a"
+    },
+    {
+      "id": "D29",
+      "slot": "S_codex_origin",
+      "value": {
+        "t": "ref",
+        "id": "star_beyond"
+      },
+      "source": {
+        "channel": "speech",
+        "holder": "codex",
+        "hedge": "plain"
+      },
+      "at": 30,
+      "timeRef": "M_a"
+    },
+    {
+      "id": "D30",
+      "slot": "S_star_appel",
+      "value": {
+        "t": "literal",
+        "v": "星空彼岸"
+      },
+      "source": {
+        "channel": "speech",
+        "holder": "codex",
+        "hedge": "plain"
+      },
+      "at": 30,
+      "timeRef": null,
+      "note": "全章唯一的地点披露里，这一个从头到尾只有古书说过，叙述者一次都没提"
+    },
+    {
+      "id": "D31",
+      "slot": "S_codex_kind",
+      "value": {
+        "t": "kind",
+        "id": "K_sapient"
+      },
+      "source": {
+        "channel": "reader_inference",
+        "holder": null,
+        "hedge": "plain"
+      },
+      "at": 30,
+      "timeRef": "M_a",
+      "inferredFrom": [
+        "S_codex_voice",
+        "S_codex_purpose",
+        "S_codex_origin"
+      ],
+      "note": "它会说话、有目的、报得出来处。但文本从没说它有自我意识，它也可能只是个复读机——所以这条是推断，而且按第 5.2 节它不能反过来当前提去推别的事"
+    },
+    {
+      "id": "D32",
+      "slot": "S_su_kind",
+      "value": {
+        "t": "kind",
+        "id": "K_candidate"
+      },
+      "source": {
+        "channel": "speech",
+        "holder": "codex",
+        "hedge": "plain"
+      },
+      "at": 31,
+      "timeRef": "M_a",
+      "note": "「而那个人就是你，苏天晴小姐。」只有古书这么说，叙述者没证实"
+    },
+    {
+      "id": "D33",
+      "slot": "S_body_wearing",
+      "value": {
+        "t": "literal",
+        "v": "宽松的睡裙"
+      },
+      "source": {
+        "channel": "narrator",
+        "holder": null,
+        "hedge": "plain"
+      },
+      "at": 33,
+      "timeRef": "M_a"
+    },
+    {
+      "id": "D34",
+      "slot": "S_body_foot",
+      "value": {
+        "t": "literal",
+        "v": "白皙软嫩、带着红晕的小脚"
+      },
+      "source": {
+        "channel": "narrator",
+        "holder": null,
+        "hedge": "plain"
+      },
+      "at": 34,
+      "timeRef": "M_a"
+    },
+    {
+      "id": "D35",
+      "slot": "S_su_feet",
+      "value": {
+        "t": "literal",
+        "v": "小脚是世界上最美好的瑰宝"
+      },
+      "source": {
+        "channel": "speech",
+        "holder": "su_tianqing",
+        "hedge": "plain"
+      },
+      "at": 39,
+      "timeRef": null,
+      "note": "时间指示为空：这是她一贯的态度，不是这一刻才成立的"
+    },
+    {
+      "id": "D36",
+      "slot": "S_body_prev_owner",
+      "value": {
+        "t": "special",
+        "v": "UNKNOWN"
+      },
+      "source": {
+        "channel": "thought",
+        "holder": "su_tianqing",
+        "hedge": "plain"
+      },
+      "at": 41,
+      "timeRef": "M_a",
+      "note": "「这本书知道自己并不是这副身体原来的主人」。UNKNOWN 是文本明确留白：确实有一个原主，是谁本章不说。与「库里没有这条披露」是两回事"
+    },
+    {
+      "id": "D37",
+      "slot": "S_codex_kind",
+      "value": {
+        "t": "kind",
+        "id": "K_star_envoy"
+      },
+      "source": {
+        "channel": "speech",
+        "holder": "codex",
+        "hedge": "plain"
+      },
+      "at": 45,
+      "timeRef": "M_a"
+    },
+    {
+      "id": "D38",
+      "slot": "S_codex_role",
+      "value": {
+        "t": "literal",
+        "v": "引导苏天晴走上完美的生活"
+      },
+      "source": {
+        "channel": "speech",
+        "holder": "codex",
+        "hedge": "plain"
+      },
+      "at": 45,
+      "timeRef": null
+    },
+    {
+      "id": "D39",
+      "slot": "S_contract_appel",
+      "value": {
+        "t": "literal",
+        "v": "一个小小的契约"
+      },
+      "source": {
+        "channel": "speech",
+        "holder": "codex",
+        "hedge": "plain"
+      },
+      "at": 45,
+      "timeRef": "M_a"
+    },
+    {
+      "id": "D40",
+      "slot": "S_contract_party",
+      "value": {
+        "t": "ref",
+        "id": "su_tianqing"
+      },
+      "source": {
+        "channel": "speech",
+        "holder": "codex",
+        "hedge": "plain"
+      },
+      "at": 45,
+      "timeRef": "M_a"
+    },
+    {
+      "id": "D41",
+      "slot": "S_contract_party",
+      "value": {
+        "t": "ref",
+        "id": "codex"
+      },
+      "source": {
+        "channel": "speech",
+        "holder": "codex",
+        "hedge": "plain"
+      },
+      "at": 45,
+      "timeRef": "M_a"
+    },
+    {
+      "id": "D42",
+      "slot": "S_contract_state",
+      "value": {
+        "t": "literal",
+        "v": "尚未签订"
+      },
+      "source": {
+        "channel": "speech",
+        "holder": "codex",
+        "hedge": "plain"
+      },
+      "at": 45,
+      "timeRef": "M_a"
+    },
+    {
+      "id": "D43",
+      "slot": "S_codex_appel",
+      "value": {
+        "t": "literal",
+        "v": "小破书"
+      },
+      "source": {
+        "channel": "speech",
+        "holder": "su_tianqing",
+        "hedge": "plain"
+      },
+      "at": 50,
+      "timeRef": "M_a",
+      "note": "称呼是多值的，所以它不与第 8 段的「黑色古书」竞争。专名是单值的，所以第 30 段的「墨丘利秘典」才是显示名"
+    },
+    {
+      "id": "D44",
+      "slot": "S_su_wish",
+      "value": {
+        "t": "literal",
+        "v": "取之不尽的财富"
+      },
+      "source": {
+        "channel": "speech",
+        "holder": "su_tianqing",
+        "hedge": "plain"
+      },
+      "at": 54,
+      "timeRef": null
+    },
+    {
+      "id": "D45",
+      "slot": "S_su_wish",
+      "value": {
+        "t": "literal",
+        "v": "变成萝莉"
+      },
+      "source": {
+        "channel": "speech",
+        "holder": "su_tianqing",
+        "hedge": "plain"
+      },
+      "at": 54,
+      "timeRef": null
+    },
+    {
+      "id": "D46",
+      "slot": "S_contract_state",
+      "value": {
+        "t": "literal",
+        "v": "成立"
+      },
+      "source": {
+        "channel": "speech",
+        "holder": "su_tianqing",
+        "hedge": "plain"
+      },
+      "at": 60,
+      "timeRef": "M_a",
+      "note": "与 D42 同槽、同时刻（都是 M_a）、值不同。文本里这明摆着是先后，可 M_a 是一整场对话的区间，第 5.6 节的「接续」要求时刻可判定为不相交，这里判不出来。见 findings 第 2 条"
+    },
+    {
+      "id": "D47",
+      "slot": "S_contract_content",
+      "value": {
+        "t": "literal",
+        "v": "反派魔法少女"
+      },
+      "source": {
+        "channel": "speech",
+        "holder": "codex",
+        "hedge": "plain"
+      },
+      "at": 64,
+      "timeRef": "M_a"
+    },
+    {
+      "id": "D48",
+      "slot": "S_vmg_appel",
+      "value": {
+        "t": "literal",
+        "v": "反派魔法少女"
+      },
+      "source": {
+        "channel": "speech",
+        "holder": "codex",
+        "hedge": "plain"
+      },
+      "at": 64,
+      "timeRef": null,
+      "note": "印证 D01：同槽同值，来源不同（作者 / 古书说出口）。两条隔了 63 段"
+    },
+    {
+      "id": "D49",
+      "slot": "S_su_kind",
+      "value": {
+        "t": "kind",
+        "id": "K_magical_girl"
+      },
+      "source": {
+        "channel": "speech",
+        "holder": "codex",
+        "hedge": "plain"
+      },
+      "at": 67,
+      "timeRef": "M_today",
+      "note": "「从今天开始，你就将成为魔法少女」。时间指示指向 M_today——但原话是「从今天开始」，一个开口向后的区间，模型只存得下一个时刻。见 findings 第 8 条"
+    },
+    {
+      "id": "D50",
+      "slot": "S_mg_appel",
+      "value": {
+        "t": "literal",
+        "v": "魔法少女"
+      },
+      "source": {
+        "channel": "speech",
+        "holder": "codex",
+        "hedge": "plain"
+      },
+      "at": 67,
+      "timeRef": null
+    },
+    {
+      "id": "D51",
+      "slot": "S_creator_appel",
+      "value": {
+        "t": "literal",
+        "v": "造物主"
+      },
+      "source": {
+        "channel": "speech",
+        "holder": "codex",
+        "hedge": "plain"
+      },
+      "at": 67,
+      "timeRef": null
+    },
+    {
+      "id": "D51b",
+      "slot": "S_creator_kind",
+      "value": {
+        "t": "kind",
+        "id": "K_creator"
+      },
+      "source": {
+        "channel": "speech",
+        "holder": "codex",
+        "hedge": "plain"
+      },
+      "at": 67,
+      "timeRef": null,
+      "note": "「造物主」这三个字在原文里一次出手同时干了两件事：给这个主体一个称呼，也给了它一个类别。第一章有三个名词是这样（造物主、魔法少女、反派魔法少女），每一个都得建两个节点——见 findings 第 5 条"
+    },
+    {
+      "id": "D52",
+      "slot": "S_task_appel",
+      "value": {
+        "t": "literal",
+        "v": "一整套任务"
+      },
+      "source": {
+        "channel": "speech",
+        "holder": "codex",
+        "hedge": "plain"
+      },
+      "at": 67,
+      "timeRef": "M_a"
+    },
+    {
+      "id": "D53",
+      "slot": "S_task_giver",
+      "value": {
+        "t": "kind",
+        "id": "K_creator"
+      },
+      "source": {
+        "channel": "speech",
+        "holder": "codex",
+        "hedge": "plain"
+      },
+      "at": 67,
+      "timeRef": null
+    },
+    {
+      "id": "D54",
+      "slot": "S_task_purpose",
+      "value": {
+        "t": "literal",
+        "v": "帮助她逐步走上反派魔法少女的顶点"
+      },
+      "source": {
+        "channel": "speech",
+        "holder": "codex",
+        "hedge": "plain"
+      },
+      "at": 67,
+      "timeRef": null
+    },
+    {
+      "id": "D55",
+      "slot": "S_mg_death_rate",
+      "value": {
+        "t": "number",
+        "v": 90,
+        "unit": "%"
+      },
+      "source": {
+        "channel": "speech",
+        "holder": "su_tianqing",
+        "hedge": "hedged"
+      },
+      "at": 68,
+      "timeRef": null,
+      "note": "原话是问句（「是那种死亡率高达90%的高危职业吗？！」），所以保留度是带保留。古书的回答绕开了这个数字，没否认也没确认——求值时这条落在「悬而未决」里"
+    },
+    {
+      "id": "D56",
+      "slot": "S_mg_kind",
+      "value": {
+        "t": "kind",
+        "id": "K_oudou"
+      },
+      "source": {
+        "channel": "speech",
+        "holder": "codex",
+        "hedge": "plain"
+      },
+      "at": 69,
+      "timeRef": null
+    },
+    {
+      "id": "D57",
+      "slot": "S_oudou_appel",
+      "value": {
+        "t": "literal",
+        "v": "王道系"
+      },
+      "source": {
+        "channel": "speech",
+        "holder": "codex",
+        "hedge": "plain"
+      },
+      "at": 69,
+      "timeRef": null
+    },
+    {
+      "id": "D58",
+      "slot": "S_vmg_prospect",
+      "value": {
+        "t": "literal",
+        "v": "纯纯的找死"
+      },
+      "source": {
+        "channel": "speech",
+        "holder": "su_tianqing",
+        "hedge": "plain"
+      },
+      "at": 70,
+      "timeRef": null
+    },
+    {
+      "id": "D59",
+      "slot": "S_oudou_shape",
+      "value": {
+        "t": "literal",
+        "v": "魔法少女面对强敌逐渐成长，然后喊着友情和羁绊冲上去把反派干碎"
+      },
+      "source": {
+        "channel": "thought",
+        "holder": "su_tianqing",
+        "hedge": "plain"
+      },
+      "at": 72,
+      "timeRef": null,
+      "note": "全章唯一一条出自说明 Beat（B22）的披露。时间指示必须为空——一般规律不在某一刻为真，这和 B22 本身没有时刻是同一个理由的两面"
+    },
+    {
+      "id": "D60",
+      "slot": "S_su_cod",
+      "value": {
+        "t": "literal",
+        "v": "急性心肌梗死"
+      },
+      "source": {
+        "channel": "thought",
+        "holder": "su_tianqing",
+        "hedge": "hedged"
+      },
+      "at": 73,
+      "timeRef": "M_b",
+      "note": "全书这条信息的唯一来源，是她慌乱中的自我推测，不是诊断。第 8 节第六条那条标杆样例"
+    },
+    {
+      "id": "D61",
+      "slot": "S_bprev_appel",
+      "value": {
+        "t": "literal",
+        "v": "原来的身体"
+      },
+      "source": {
+        "channel": "thought",
+        "holder": "su_tianqing",
+        "hedge": "plain"
+      },
+      "at": 73,
+      "timeRef": null
+    },
+    {
+      "id": "D62",
+      "slot": "S_codex_name",
+      "value": {
+        "t": "literal",
+        "v": "墨丘利秘典"
+      },
+      "source": {
+        "channel": "system",
+        "holder": null,
+        "hedge": "plain"
+      },
+      "at": 74,
+      "timeRef": "M_a",
+      "note": "印证 D27。这一条的价值在来源：第 30 段是古书自称，这一条是系统通知——两个不同的通道说了同一个名字，专名从「它自己说的」升级成了两处支持"
+    },
+    {
+      "id": "D63",
+      "slot": "S_contract_state",
+      "value": {
+        "t": "literal",
+        "v": "成立"
+      },
+      "source": {
+        "channel": "system",
+        "holder": null,
+        "hedge": "plain"
+      },
+      "at": 76,
+      "timeRef": "M_a",
+      "note": "印证 D46：同槽同值、来源通道不同（角色说出口 / 系统通知）"
+    },
+    {
+      "id": "D64",
+      "slot": "S_su_kind",
+      "value": {
+        "t": "kind",
+        "id": "K_villain_mg"
+      },
+      "source": {
+        "channel": "system",
+        "holder": null,
+        "hedge": "plain"
+      },
+      "at": 77,
+      "timeRef": "M_today",
+      "note": "「走上反派魔法少女的道路吧，苏天晴。」形式上是祈使句，功能上是系统在宣告她的类别。这一条是本章的落幕，也是第 1 段那个剧透在正文里兑现的地方"
+    }
+  ],
+  "findings": [
+    "77 段正文装出 9 个类、10 个主体、32 个谓词、50 个槽、66 条披露。密度极不均：第 7 至 11 段五段产出 15 条（外貌描写那一片），第 19 至 25 段连续七段一条都没有。",
+    "24 个 Beat 里有 5 个一条披露都不产出：B04（古书再次出声，她茫然）、B07（古书不解她为什么薅尾巴）、B15（她当场就签，古书凌乱）、B17（古书短暂错乱）、B21（她突然有点后悔）。五个全是在写情绪与反应——**推进剧情和产出披露是两回事**，一个 Beat 可以很重要却什么也不往图里存。这也说明 Beat 层不能省：这五段的内容只活在它们的一句话和原文里。",
+    "场内的状态变化被判成了「认识论并存」，于是求值给出一个明摆着错的答案。契约状态在第 45 段是「尚未签订」、第 60 段是「成立」，两条的时刻都是 M_a（整场对话是一个区间），值不同、来源通道不同，照第 5.6 节那张表正好落在「认识论并存」这一行——不是冲突，两条并存。结果读到第 77 段时，求值同时认为契约「尚未签订」和「成立」都为真。这不是精度问题，是答错了。出路只有一条：承认同一时刻内部叙述位置可以当次序用。需要拍板，记为 W11。",
+    "第 5.6 节那张表默认两个值互斥，可互不互斥由基数决定，而表里一个字都没提基数。不接基数就照表判，第一章会凭空判出三处「竞争」：她列的两个愿望（第 54 段「取之不尽的财富」和「变成萝莉」）、契约的两个相对方（第 45 段她和古书）、古书的两个称呼（「黑色古书」和「小破书」）。schema.ts 因此加了第六行「并列累加」——这不是新裁决，是把第 5.3 节已有的基数接进第 5.6 节。",
+    "接上一条，还有一种真的判错。第 12 段说尾巴「正在炸毛」，第 18 段说它「触感无比柔顺」，同槽、同时刻、同来源通道、值不同——照表是「竞争」，可它们一条讲外观一条讲触感，根本不打架。数据里只能把「尾巴」的基数写成多值绕过去，而它明明只有一条尾巴。**基数被用错了地方**：模型缺的是「同一个东西的多面描写」与「同一个位置的多个候选值」之间的区分。",
+    "五行关系表实际只用到三行。全章命中：印证 4 处、认识论并存 2 处、并列累加 7 处；竞争、接续、候选同指各 0 处。竞争和整套反驳机制在本章一次都没被演到——第一章还没到翻案的时候，所以这两样在这份数据上没有被验证过。",
+    "四处印证，每一处的价值都在「来源换了」而不在「又说了一遍」：专名苏天晴（第 6 段她自称 / 第 8 段叙述者）、专名墨丘利秘典（第 30 段自称 / 第 74 段系统通知）、契约成立（第 60 段她说 / 第 76 段系统通知）、反派魔法少女（第 1 段作者标题 / 第 64 段古书）。最后一处隔了 63 段。",
+    "66 条披露里只有 3 条带保留，而这 3 条恰好全落在同一类内容上：第 29 段叙述者揣测古书在想什么、第 68 段她问出的死亡率数字、第 73 段她对自己死因的猜测。求值到第 77 段，悬而未决的槽正好也是这三个——**保留度在这一章是唯一一个真正在起作用的分流器**，时刻一次都没能分出先后。",
+    "「类」在 v4 里装了两件事。「苏天晴是狐女」是第 26 段她自己认定的，有来源、有叙述位置、将来可能被推翻；「苏天晴是人物」文本从来没说过，库内粗分类现在由关联 Kind.category 提供，不是 Entity 字段。",
+    "同一个名词常常既要当类又要当主体，第一章有三个。「造物主」「魔法少女」「反派魔法少女」当类才能贴到主体身上（第 67、77 段），当主体才能挂自己的槽（魔法少女的「死亡率 90%」在第 68 段）。数据里只能各建两个节点，而 v4 没说这两者之间该不该有边、谁是谁的什么。记为 W10。",
+    "读者推断只有两条，一条比一条弱。(苏天晴, 居于哪具身体) 有四处支持横跨三个 Beat；(古书, 类) = 智慧体 只有三处，而且全是它自己的表现——文本从没说过它有自我意识，它也可能只是个复读机。两条都不能反过来当别的推断的前提，schema.ts 的 validate() 会把这条规则查出来。",
+    "时间指示与时刻的对不齐有三种，第一章各出现一次。一、Beat 的时刻和披露的时间指示不同：B05 停在 M_b，它的披露 D18 指向 M_nightshifts。二、时间指示是个开口向后的区间：第 67 段「从今天开始」，模型只存得下 M_today 这一个时刻，「从此以后」存不下。三、时间指示为空且必须为空：说明 Beat 产生的披露（D59）、一般态度（D35）、亲属关系（D21）都不发生在某一刻。",
+    "第 3 段的作者声明（「本书出场角色均已满18岁」）一条披露都不产生：它没有主体，也不指向虚构世界里的任何东西。与第 1 段的章标题恰好构成一对——同样是故事外的 Beat，一个剧透了 63 段之后的情节，一个什么也没进图。故事外不等于不产生披露，也不等于一定产生披露。",
+    "叙述位置切片真的会改名，而且两个主体各改一次。读到第 8 段，古书叫「黑色古书」、身体叫「一道陌生的娇小身影」；读到第 11 段身体改叫「一只娇小的金毛狐女」；读到第 30 段古书改叫「墨丘利秘典」。这不是查看器的效果，是「专名」和「称呼」两个槽在不同叙述位置上求值的结果。读到第 1 段时图上只有一个节点，而它正是那个剧透。"
+  ]
+}

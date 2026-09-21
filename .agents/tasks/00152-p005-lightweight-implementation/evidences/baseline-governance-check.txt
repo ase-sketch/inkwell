@@ -1,0 +1,12 @@
+$ bun scripts/ci/agent-governance.ts
+{
+  "schema": "nbook.governance-report/v1",
+  "repoRoot": "<repoRoot>",
+  "failures": [
+    "迁移目标 hash 不一致：.agents/tasks/133-style-eval/README.md"
+  ],
+  "warnings": []
+}
+error: script "governance:check" exited with code 1
+
+# 已脱敏：本机绝对路径已替换为 <repoRoot>/<systemTemp>（2026-08-24 五轴评审整改）。

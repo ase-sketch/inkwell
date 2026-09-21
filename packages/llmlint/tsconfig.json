@@ -1,0 +1,27 @@
+{
+    "compilerOptions": {
+        "target": "ES2023",
+        "module": "ESNext",
+        "moduleResolution": "Bundler",
+        "baseUrl": ".",
+        "paths": {
+            "llmlint/*": ["skill/src/*"],
+            "evals/*": ["evals/lib/*"],
+            "evals-generator/*": ["evals/generator/*"],
+            "evals-classifier/*": ["evals/classifier/*"],
+            "evals-detector/*": ["evals/detector/*"],
+            "#shared": ["web/shared"],
+            "#shared/*": ["web/shared/*"]
+        },
+        "strict": true,
+        "allowImportingTsExtensions": true,
+        "noEmit": true,
+        "types": ["bun-types", "node", "vitest/globals"],
+        "skipLibCheck": true
+    },
+    "include": [
+        "skill/**/*.ts",
+        "evals/**/*.ts",
+        "tests/**/*.ts"
+    ]
+}

@@ -1,0 +1,33 @@
+
+ RUN  v4.1.10 <repoRoot>
+
+ ❯ scripts/ci/agent-governance.test.ts (37 tests | 1 failed) 17122ms
+     × 治理 CLI 聚合 accepted、draft 和缺少 required 的 profile 结果 5007ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  scripts/ci/agent-governance.test.ts > Agent Skills 适配治理门禁 > 治理 CLI 聚合 accepted、draft 和缺少 required 的 profile 结果
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ scripts/ci/agent-governance.test.ts:196:5
+    194|
+    195|
+    196|     it("治理 CLI 聚合 accepted、draft 和缺少 required 的 profile 结果", async () …
+       |     ^
+    197|         const repoRoot = await createGovernanceCliFixture();
+    198|         const proposalPath = "packages/neuro-book/docs/proposals/agent…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  scripts/ci/agent-governance.test.ts > Agent Skills 适配治理门禁 > 治理 CLI 聚合 accepted、draft 和缺少 required 的 profile 结果
+Error: EBUSY: resource busy or locked, rmdir '<systemTemp>\neuro-book\agent\governance-cli-MurlhC'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 36 passed (37)
+   Start at  12:03:59
+   Duration  17.79s (transform 115ms, setup 52ms, import 421ms, tests 17.12s, environment 0ms)
+
+
+# 已脱敏：本机绝对路径已替换为 <repoRoot>/<systemTemp>（2026-08-24 五轴评审整改）。

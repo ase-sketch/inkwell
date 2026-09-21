@@ -1,0 +1,52 @@
+{
+    "schema": "nbook.issue-migration-evidence/v1",
+    "draftKey": "product-runtime-stage-builder-import",
+    "issue": {
+        "number": 226,
+        "url": "https://github.com/notnotype/neuro-book/issues/226",
+        "state": "OPEN",
+        "title": "[Bug] Product Runtime stage 缺少 ProductRuntimeImageBuilder 导入",
+        "labels": [
+            "type: bug",
+            "status: needs-triage",
+            "area: install-release",
+            "platform: windows",
+            "source: agent"
+        ]
+    },
+    "deduplication": {
+        "query": "repo:notnotype/neuro-book \"Draft-Key: product-runtime-stage-builder-import\"",
+        "matchesBeforeCreate": 0,
+        "bodyDraftKeyVerifiedAfterCreate": true
+    },
+    "authorization": {
+        "source": "开发者本轮明确要求将 issue 记录到 GitHub",
+        "actions": [
+            "搜索精确 Draft-Key",
+            "创建 GitHub Issue",
+            "回读编号、URL、正文 Draft-Key 和实际标签"
+        ],
+        "notAuthorized": [
+            "Project 写入",
+            "PR",
+            "评论",
+            "push",
+            "合并",
+            "发布",
+            "部署"
+        ]
+    },
+    "association": {
+        "workId": "w00009-issue-123-proper-lockfile",
+        "taskId": "t01-proper-lockfile-exfat",
+        "workIssueIdUnchanged": "i123",
+        "relation": "Issue 226 tracks the existing Product stage blocker discovered during Issue 123 acceptance; it does not replace or mutate Issue 123."
+    },
+    "localDraft": {
+        "migratedAndRemoved": true,
+        "removedAfterRemoteReadback": true,
+        "duplicateLocalIssueBodyNotRetained": true
+    },
+    "readbackCommand": "gh issue view 226 --repo notnotype/neuro-book --json number,url,state,labels,body",
+    "readbackResult": "Draft-Key and all five labels matched the created Issue."
+}

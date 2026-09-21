@@ -1,0 +1,47 @@
+{
+    "name": "llmlint-dev",
+    "version": "3.0.0",
+    "private": true,
+    "type": "module",
+    "description": "Development workspace for llmlint. The installable Agent Skill package lives in ./skill.",
+    "license": "AGPL-3.0-only",
+    "repository": {
+        "type": "git",
+        "url": "git@github.com:notnotype/llmlint.git"
+    },
+    "exports": {
+        "./skill-test-api": "./skill/test-api.ts"
+    },
+    "scripts": {
+        "test": "bun run registry:build && bun run test:vitest && bun run test:bun",
+        "test:vitest": "vitest run --exclude tests/agent-invocation-revision-migration.test.ts",
+        "test:bun": "bun test tests/agent-invocation-revision-migration.test.ts web/tests/nuxt/use-agent-chat.test.ts evals",
+        "registry:build": "cd web && bun scripts/build-registry.ts",
+        "typecheck": "bun run registry:build && tsc --noEmit --pretty false",
+        "verify": "bun run typecheck && bun test && bun skill/bin/llmlint.ts --version && bun skill/bin/llmlint.ts rules --detector semantic --format json && bun skill/bin/llmlint.ts guide --tier core",
+        "web:dev": "cd web && bun run dev",
+        "web:build": "cd web && bun run build",
+        "web:start": "cd web && bun run start",
+        "web:generate": "cd web && bun run generate",
+        "agent:migrate-neuro": "cd web && bun scripts/migrate-neuro.ts",
+        "deploy:dmit": "powershell -NoProfile -ExecutionPolicy Bypass -File deploy/dmit/package-and-upload.ps1"
+    },
+    "dependencies": {
+        "@earendil-works/pi-ai": "^0.75.4",
+        "@gradio/client": "^2.3.0",
+        "@notnotype/neuro-agent-harness": "workspace:*",
+        "commander": "^14.0.2",
+        "fflate": "^0.8.3",
+        "node-fetch-native": "^1.6.7",
+        "picocolors": "^1.1.1",
+        "tinyglobby": "^0.2.15"
+    },
+    "devDependencies": {
+        "@notnotype/neuro-book-test-support": "workspace:*",
+        "@types/node": "^25.6.0",
+        "bun-types": "^1.3.4",
+        "happy-dom": "^20.10.6",
+        "typescript": "^5.9.3",
+        "vitest": "^4.1.2"
+    }
+}

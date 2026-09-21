@@ -1,0 +1,37 @@
+{
+  "extends": "./.nuxt/tsconfig.json",
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "paths": {
+      "nbook/*": [
+        "./*"
+      ],
+      "neuro_book/*": [
+        "./*"
+      ],
+      "#scripts/*": [
+        "../../scripts/*"
+      ]
+    }
+  },
+  "include": [
+    ".nuxt/**/*.d.ts",
+    "app/**/*",
+    "server/agent/**/*",
+    "shared/**/*",
+    "*.d.ts",
+    "nuxt.config.ts"
+  ],
+  "exclude": [
+    "server/agent-v2/**/*",
+    "assets/agent-v2/**/*"
+  ]
+}

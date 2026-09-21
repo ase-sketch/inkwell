@@ -1,0 +1,467 @@
+{
+  "schema": "nbook.task-evidence/v1",
+  "taskId": "02-product-host-success-research",
+  "generatedAt": "2026-08-27",
+  "producer": "Leader",
+  "phase": "source-evidence-and-developer-observation-pending",
+  "status": "evidence-ready-observation-pending",
+  "decisionIds": [
+    "D-PRODUCT-01",
+    "D-PRODUCT-02"
+  ],
+  "scope": {
+    "in": [
+      "CLI coding agent host profile",
+      "embedded backend service host profile",
+      "product host requiring persistent Session",
+      "observable failure-cost and success-material candidates",
+      "official source provenance"
+    ],
+    "out": [
+      "product recommendation",
+      "developer observation",
+      "product decision",
+      "Runtime selection",
+      "Session field contract",
+      "Store selection",
+      "public API",
+      "package topology",
+      "source code or dependency changes",
+      "real Provider or Model execution"
+    ]
+  },
+  "provenancePolicy": {
+    "fixedBy": [
+      "canonical URL",
+      "official page title",
+      "publisher",
+      "access date",
+      "retrieval form",
+      "read fields",
+      "explicit version or commit when the page exposes one"
+    ],
+    "versionRule": "versionOrCommit=null means the official page did not expose a version or commit; no version is inferred from the current date or package examples",
+    "factInferenceSeparation": true,
+    "externalContentIsData": true,
+    "noProviderModelRun": true
+  },
+  "sources": [
+    {
+      "id": "S-CLAUDE-OVERVIEW",
+      "publisher": "Anthropic",
+      "title": "Overview",
+      "url": "https://code.claude.com/docs/en/overview",
+      "accessedAt": "2026-08-27",
+      "retrieval": "functions.read canonical URL; reader returned the official Markdown alternate",
+      "versionOrCommit": null,
+      "versionEvidence": "页面未声明版本号或 commit；未推测",
+      "readFields": [
+        "Claude Code description as a coding tool that reads codebases, edits files, runs commands, and integrates with development tools",
+        "Terminal, IDE, desktop, and web surfaces",
+        "CLI scripting, MCP, hooks, parallel agents, and Agent SDK references"
+      ],
+      "facts": [
+        "Claude Code is described as an agentic coding tool that can read code, edit files, run commands, and integrate with development tools.",
+        "The official overview lists terminal, IDE, desktop, and web surfaces.",
+        "The overview describes CLI piping/scripting and custom workflows through the Agent SDK."
+      ],
+      "inferences": [
+        "A CLI coding-agent host can expose a terminal-first task journey with a project workspace and observable file/command results."
+      ],
+      "limitations": [
+        "This documents Claude Code, not NeuroAgentHarness requirements.",
+        "It does not establish which surface or host should be first for this project.",
+        "It does not prove behavior of another Provider, Model, OS, or production deployment."
+      ]
+    },
+    {
+      "id": "S-CLAUDE-HEADLESS",
+      "publisher": "Anthropic",
+      "title": "Run Claude Code programmatically",
+      "url": "https://code.claude.com/docs/en/headless",
+      "accessedAt": "2026-08-27",
+      "retrieval": "functions.read canonical URL; reader returned the official Markdown alternate",
+      "versionOrCommit": null,
+      "versionEvidence": "页面未声明版本号或 commit；页面示例包含版本条件时仅按页面原文读取，不将其转成项目版本",
+      "readFields": [
+        "claude -p non-interactive invocation",
+        "allowedTools and permission modes",
+        "text/json/stream-json output formats",
+        "exit status and failure behavior",
+        "continue/resume and SIGTERM behavior",
+        "background-task and piped-stdin notes"
+      ],
+      "facts": [
+        "The Agent SDK can drive Claude Code programmatically through CLI, Python, or TypeScript.",
+        "claude -p runs non-interactively and can be combined with options such as --continue, --allowedTools, and --output-format.",
+        "The documented output formats are text, json, and stream-json; JSON can include session metadata and structured output.",
+        "Claude Code exits with code 0 on success and a non-zero code when the run fails; failures inside a run are printed as the result on stdout according to the page.",
+        "SIGTERM leaves the current turn unfinished and records no result for that turn; the page describes later resume behavior."
+      ],
+      "inferences": [
+        "A CLI host can treat exit status, final result, and stream completion as separate observable signals.",
+        "Tool authorization, process signals, and output capture are host-facing integration concerns even when the Agent loop is supplied by a library or subprocess."
+      ],
+      "limitations": [
+        "The page describes Claude Code-specific CLI semantics.",
+        "It does not establish exactly-once external effects, cross-process durable jobs, or this project's cancellation contract.",
+        "No real Provider or Model was run for R1."
+      ]
+    },
+    {
+      "id": "S-CLAUDE-CLI",
+      "publisher": "Anthropic",
+      "title": "CLI reference",
+      "url": "https://code.claude.com/docs/en/cli-reference",
+      "accessedAt": "2026-08-27",
+      "retrieval": "functions.read canonical URL; reader returned the official Markdown alternate",
+      "versionOrCommit": null,
+      "versionEvidence": "页面未声明版本号或 commit；文档中出现的 minimum-version notes 不作为本项目版本",
+      "readFields": [
+        "claude, claude -p, claude -c, and claude -r commands",
+        "--allowedTools, --continue, --output-format, --permission-mode, and related CLI flags"
+      ],
+      "facts": [
+        "The CLI reference lists interactive startup, non-interactive query, continue, and resume commands.",
+        "The reference documents flags for allowed tools, continuing sessions, output format, permission mode, and other execution controls."
+      ],
+      "inferences": [
+        "A CLI host journey can include one-shot, continue, and named-session resume modes without assuming a single interaction style."
+      ],
+      "limitations": [
+        "The reference is not a neutral standard for all coding agents.",
+        "Flag availability and behavior may change; this manifest fixes the URL and access date but records no undisclosed revision."
+      ]
+    },
+    {
+      "id": "S-CLAUDE-SDK",
+      "publisher": "Anthropic",
+      "title": "Agent SDK overview",
+      "url": "https://code.claude.com/docs/en/agent-sdk/overview",
+      "accessedAt": "2026-08-27",
+      "retrieval": "functions.read canonical URL; reader returned the official Markdown alternate",
+      "versionOrCommit": null,
+      "versionEvidence": "页面未声明版本号或 commit；未推测",
+      "readFields": [
+        "Agent SDK versus CLI, Client SDK, and Managed Agents",
+        "agent loop, built-in tools, hooks, subagents, MCP, permissions, sessions, human in the loop, and tracing",
+        "Python/TypeScript library and CLI subprocess distinction"
+      ],
+      "facts": [
+        "The Agent SDK is described as a library that runs the agent loop in the host process in Python or TypeScript.",
+        "The page distinguishes the SDK from the terminal-oriented CLI, direct Client SDK, and hosted Managed Agents.",
+        "The listed capabilities include tools, hooks, subagents, MCP, permissions, sessions, human-in-the-loop, and tracing.",
+        "Sessions are described as maintaining context across exchanges and supporting resume or fork."
+      ],
+      "inferences": [
+        "An embedded host and a CLI host can consume different integration surfaces while sharing a conceptual agent loop.",
+        "A Harness research boundary should distinguish run-loop responsibilities from host permissions, products, and deployment."
+      ],
+      "limitations": [
+        "The page describes Anthropic products and terms, not this project's target contract.",
+        "It does not decide whether NeuroAgentHarness should wrap a CLI, expose a library, or support both first."
+      ]
+    },
+    {
+      "id": "S-OPENAI-OVERVIEW",
+      "publisher": "OpenAI",
+      "title": "OpenAI Agents SDK TypeScript",
+      "url": "https://openai.github.io/openai-agents-js/",
+      "accessedAt": "2026-08-27",
+      "retrieval": "functions.read canonical URL; reader returned the official documentation HTML",
+      "versionOrCommit": null,
+      "versionEvidence": "页面未声明 SDK release version or commit；页面 generator metadata is not treated as package version",
+      "readFields": [
+        "Agent, sandbox agent, realtime agent, handoff, guardrail, tracing, and session primitives",
+        "agent loop and function-tool schema validation",
+        "lower-level package and custom-provider composition notes"
+      ],
+      "facts": [
+        "The TypeScript SDK presents Agents, sandbox agents, realtime agents, agents-as-tools/handoffs, guardrails, tracing, and sessions as primitives or capabilities.",
+        "The SDK agent loop invokes tools, sends results back to the LLM, and continues until the task is complete.",
+        "The documentation describes lower-level packages for custom provider wiring or specific integrations."
+      ],
+      "inferences": [
+        "An embedded backend host may need to compose model, tools, guardrails, sessions, and tracing rather than only call a one-shot completion API.",
+        "A provider-neutral Harness could be evaluated at the loop/state boundary while provider wiring remains in an adapter."
+      ],
+      "limitations": [
+        "This is OpenAI SDK documentation, not evidence that the same abstractions are required here.",
+        "The page does not prove production recovery, exactly-once effects, or a preferred host for NeuroAgentHarness."
+      ]
+    },
+    {
+      "id": "S-OPENAI-SESSIONS",
+      "publisher": "OpenAI",
+      "title": "Sessions",
+      "url": "https://openai.github.io/openai-agents-js/guides/sessions/",
+      "accessedAt": "2026-08-27",
+      "retrieval": "functions.read canonical URL; reader returned the official documentation HTML",
+      "versionOrCommit": null,
+      "versionEvidence": "页面未声明 SDK release version or commit；未推测",
+      "readFields": [
+        "automatic history retrieval and persistence around Runner.run",
+        "MemorySession and OpenAIConversationsSession",
+        "RunState resume with the same Session",
+        "custom Session storage and CRUD helpers"
+      ],
+      "facts": [
+        "When a Session is supplied, the runner retrieves prior items before a run and persists new user input and assistant output after a run completes.",
+        "The same Session is kept when resuming an interrupted RunState.",
+        "MemorySession is process-local and is reset when the process exits.",
+        "The Session interface can be implemented with storage such as Redis, DynamoDB, SQLite, or another datastore.",
+        "The documented Session helpers include getItems, addItems, popItem, and clearSession."
+      ],
+      "inferences": [
+        "A product host that promises persistence must distinguish process-local memory from durable storage and define restart behavior.",
+        "Session history access and Invocation resume are related but separable host-observable concerns."
+      ],
+      "limitations": [
+        "The page documents one SDK's Session contract, not a required NeuroAgentHarness schema.",
+        "It does not define tenant authorization, retention, migration, or external side-effect idempotency."
+      ]
+    },
+    {
+      "id": "S-OPENAI-RESULTS",
+      "publisher": "OpenAI",
+      "title": "Results",
+      "url": "https://openai.github.io/openai-agents-js/guides/results/",
+      "accessedAt": "2026-08-27",
+      "retrieval": "functions.read canonical URL; reader returned the official documentation HTML",
+      "versionOrCommit": null,
+      "versionEvidence": "页面未声明 SDK release version or commit；未推测",
+      "readFields": [
+        "RunResult and StreamedRunResult",
+        "finalOutput, newItems, history, interruptions, state, and streaming completion",
+        "approval resume and cancellation distinctions"
+      ],
+      "facts": [
+        "Non-streaming and streaming runs expose result surfaces including finalOutput, newItems, interruptions, and state.",
+        "history is described as replay-ready next-turn input, while newItems carries richer agent/tool/handoff metadata.",
+        "Approval interruptions are resumed by resolving state and passing the same state back to run.",
+        "A streamed run can finish cleanup after cancellation while finalOutput remains unset when the turn did not finish."
+      ],
+      "inferences": [
+        "A host's success observation cannot be reduced to final text; it may need terminal status, interruption state, rich items, and stream completion.",
+        "A persistent product should define which result surface is durable, user-visible, or audit-only."
+      ],
+      "limitations": [
+        "The documented fields are SDK-specific and do not prescribe this project's public API.",
+        "The page does not establish an external delivery protocol or business transaction boundary."
+      ]
+    },
+    {
+      "id": "S-OPENAI-SANDBOX",
+      "publisher": "OpenAI",
+      "title": "Sandbox agents",
+      "url": "https://openai.github.io/openai-agents-js/guides/sandbox-agents/",
+      "accessedAt": "2026-08-27",
+      "retrieval": "functions.read canonical URL; reader returned the official documentation HTML",
+      "versionOrCommit": null,
+      "versionEvidence": "页面未声明 SDK release version or commit；未推测",
+      "readFields": [
+        "persistent workspace and sandbox session state",
+        "manifest, capabilities, snapshot, and sandbox client",
+        "later-run reconnect and Windows client prerequisite note"
+      ],
+      "facts": [
+        "Sandbox Agents are described as providing persistent workspaces for files, shell commands, patches, artifacts, and saved sandbox state.",
+        "The documented composition includes a manifest, capabilities, sandbox client, session/sessionState, or snapshot for later runs.",
+        "The page notes that on Windows a Docker-backed or hosted sandbox client is used instead of the Unix-local client in the quickstart."
+      ],
+      "inferences": [
+        "A coding-oriented product host may treat workspace state and conversation state as separate recovery surfaces.",
+        "Runtime/environment prerequisites can be part of observable host success and cannot be hidden inside a provider-neutral Core claim."
+      ],
+      "limitations": [
+        "The page documents OpenAI sandbox implementation choices, not a mandate for this package.",
+        "No real sandbox, filesystem, or Provider was run in R1."
+      ]
+    },
+    {
+      "id": "S-OPENAI-CONVERSATION",
+      "publisher": "OpenAI",
+      "title": "Conversation state",
+      "url": "https://developers.openai.com/api/docs/guides/conversation-state",
+      "accessedAt": "2026-08-27",
+      "retrieval": "functions.read canonical URL; reader found the official Markdown suffix version",
+      "versionOrCommit": null,
+      "versionEvidence": "页面未声明 API release version or commit；示例模型名不作为项目版本",
+      "readFields": [
+        "stateless text-generation requests",
+        "manual history construction and previous response output",
+        "preserving complete output items for subsequent requests"
+      ],
+      "facts": [
+        "The page states that each text generation request is independent and stateless.",
+        "Multi-turn conversations can be implemented by providing prior user and assistant messages as input.",
+        "The example appends all previous response output items, including reasoning items, before the next request."
+      ],
+      "inferences": [
+        "A product host must explicitly choose whether conversation state is held locally, by a Session abstraction, or by a provider-managed mechanism.",
+        "If a host reconstructs history manually, omission or transformation of prior items can change later behavior."
+      ],
+      "limitations": [
+        "The page is specific to OpenAI Responses API state patterns.",
+        "It does not decide what facts NeuroAgentHarness should persist or whether provider-managed state is acceptable."
+      ]
+    },
+    {
+      "id": "S-LANGGRAPH-PERSISTENCE",
+      "publisher": "LangChain",
+      "title": "Persistence",
+      "url": "https://docs.langchain.com/oss/javascript/langgraph/persistence",
+      "accessedAt": "2026-08-27",
+      "retrieval": "functions.read canonical URL; reader returned the official Markdown alternate",
+      "versionOrCommit": null,
+      "versionEvidence": "页面未声明 library release version or commit；未推测",
+      "readFields": [
+        "persistence use cases",
+        "checkpointer versus store distinction",
+        "Agent Server, MemorySaver restart limitation, and persistent backends"
+      ],
+      "facts": [
+        "Persistence is described as useful for continuing conversations, resuming interruptions, recovering failures, or remembering information across interactions.",
+        "Checkpointers persist thread graph-state snapshots for short-term memory, human-in-the-loop, time travel, and fault tolerance.",
+        "Stores persist application-defined data across threads for preferences, facts, and shared knowledge.",
+        "MemorySaver/InMemorySaver store checkpoints in RAM and lose them on process restart; the page recommends a persistent checkpointer for production."
+      ],
+      "inferences": [
+        "A persistent product host should not collapse current-run recovery state and cross-session application memory into one unspecified bucket.",
+        "Restart behavior is an observable product property, not only a storage implementation detail."
+      ],
+      "limitations": [
+        "This is LangGraph documentation and its graph terminology does not define this project's model.",
+        "It does not prove a particular backend, consistency level, migration policy, or external side-effect guarantee."
+      ]
+    },
+    {
+      "id": "S-TEMPORAL-WORKFLOWS",
+      "publisher": "Temporal",
+      "title": "Temporal Workflow",
+      "url": "https://docs.temporal.io/workflows",
+      "accessedAt": "2026-08-27",
+      "retrieval": "functions.read canonical URL; reader returned the official Markdown alternate",
+      "versionOrCommit": null,
+      "versionEvidence": "页面未声明 SDK/server release version or commit；未推测",
+      "readFields": [
+        "Workflow Definition, Type, and Execution",
+        "resilience and Event History replay",
+        "determinism and Activity boundary for external effects"
+      ],
+      "facts": [
+        "Temporal distinguishes Workflow Definition, Workflow Type, and Workflow Execution.",
+        "The documentation says Workflow Executions emit Commands and process Events recorded in Event History.",
+        "After infrastructure failure, Temporal can recreate workflow state from Event History and replay code to resume.",
+        "Workflow code must be deterministic during replay; API calls, database queries, LLM invocations, and file I/O belong in Activities whose results are recorded and reused during replay."
+      ],
+      "inferences": [
+        "An embedded backend host with long-running work may need a durable workflow owner separate from an in-process Agent loop.",
+        "External effects and replay/retry semantics must be explicit; a Harness should not claim workflow durability merely because it can serialize a local run state."
+      ],
+      "limitations": [
+        "Temporal is a separate workflow platform, not a dependency or target implementation for R1.",
+        "Its guarantees require its own server, worker, Activity, and determinism model; they cannot be inferred for this repository."
+      ]
+    }
+  ],
+  "hostCoverage": [
+    {
+      "hostId": "H1-cli-coding-agent",
+      "name": "CLI coding agent",
+      "sourceIds": [
+        "S-CLAUDE-OVERVIEW",
+        "S-CLAUDE-HEADLESS",
+        "S-CLAUDE-CLI",
+        "S-CLAUDE-SDK",
+        "S-OPENAI-OVERVIEW",
+        "S-OPENAI-RESULTS"
+      ],
+      "requiredProfileFields": [
+        "task journey",
+        "failure cost",
+        "host responsibilities",
+        "possible Harness responsibilities",
+        "counterexample",
+        "observable-result material"
+      ],
+      "profilePath": "walkthroughs/001-host-evidence-and-observation.md#候选宿主 A CLI coding agent"
+    },
+    {
+      "hostId": "H2-embedded-backend-service",
+      "name": "嵌入式后端服务",
+      "sourceIds": [
+        "S-OPENAI-OVERVIEW",
+        "S-OPENAI-SESSIONS",
+        "S-OPENAI-RESULTS",
+        "S-CLAUDE-SDK",
+        "S-LANGGRAPH-PERSISTENCE",
+        "S-TEMPORAL-WORKFLOWS"
+      ],
+      "requiredProfileFields": [
+        "task journey",
+        "failure cost",
+        "host responsibilities",
+        "possible Harness responsibilities",
+        "counterexample",
+        "observable-result material"
+      ],
+      "profilePath": "walkthroughs/001-host-evidence-and-observation.md#候选宿主 B 嵌入式后端服务"
+    },
+    {
+      "hostId": "H3-persistent-session-product",
+      "name": "需要持久 Session 的产品宿主",
+      "sourceIds": [
+        "S-OPENAI-SESSIONS",
+        "S-OPENAI-RESULTS",
+        "S-OPENAI-CONVERSATION",
+        "S-OPENAI-SANDBOX",
+        "S-LANGGRAPH-PERSISTENCE",
+        "S-CLAUDE-SDK"
+      ],
+      "requiredProfileFields": [
+        "task journey",
+        "failure cost",
+        "host responsibilities",
+        "possible Harness responsibilities",
+        "counterexample",
+        "observable-result material"
+      ],
+      "profilePath": "walkthroughs/001-host-evidence-and-observation.md#候选宿主 C 需要持久 Session 的产品宿主"
+    }
+  ],
+  "developerObservation": {
+    "required": true,
+    "status": "not-recorded",
+    "templatePath": "walkthroughs/001-host-evidence-and-observation.md#空白开发者独立观察模板",
+    "mustInclude": [
+      "真实需要",
+      "假想需要",
+      "明确不服务",
+      "不可接受的失败",
+      "观察来源与方法",
+      "未检查项",
+      "证据缺口"
+    ],
+    "agentMustNotFill": true
+  },
+  "decisionStatus": {
+    "D-PRODUCT-01": "open-developer-observation-pending",
+    "D-PRODUCT-02": "open-developer-observation-pending"
+  },
+  "notExecuted": [
+    "真实 Provider/Model",
+    "真实产品用户旅程",
+    "真实后端部署或跨进程恢复",
+    "浏览器人工验收",
+    "源码、依赖、Proposal、Spec 或包拓扑变更",
+    "下游 Task 派发或启动"
+  ],
+  "knownLimitations": [
+    "官方页面没有统一的版本号或 commit；manifest 显式记录 null，不伪造版本 provenance。",
+    "来源材料说明外部产品支持的能力，不等于 NeuroAgentHarness 的产品需求、优先级或成功阈值。",
+    "宿主画像中的失败成本、宿主职责和 Harness 职责是研究推论，必须由开发者独立观察确认、修正或拒绝。",
+    "README/context 的状态或 revision 矛盾不在此文件内修正，交回 Leader 维护。",
+    "本阶段尚未形成推荐、决策简报或产品决定。"
+  ]
+}

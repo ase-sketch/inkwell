@@ -1,0 +1,488 @@
+.nb-ui-colorway {
+    color-scheme: var(--color-scheme, light dark);
+}
+
+/* 焦点环走主题装饰 token（--focus-ring/--focus-outline），与对照页 sc-* 同一配方 */
+.nb-ui-focus-ring:focus-visible {
+    outline: none;
+    border-color: var(--focus-outline);
+    box-shadow: var(--focus-ring);
+    transition: border-color var(--motion-base) var(--ease-standard),
+                box-shadow var(--motion-base) var(--ease-standard);
+}
+
+/*
+ * 表单控件状态基座（单一来源）。
+ * 所有字段类控件（FormInput/FormNumberInput/FormSelect/FormTextarea/Combobox/TagInput）
+ * 的边框与聚焦辉光都从这里出，invalid 由组件根据 FormField context 追加 .nb-ui-control-invalid。
+ * 同一条规则用 :focus 覆盖原生控件、:focus-within 覆盖包装容器（Combobox/TagInput）。
+ *
+ * 尺寸类也在这里登记，而不是依赖 Tailwind 的 arbitrary value：Tailwind v4 不会为运行时
+ * `h-[var(--control-h-*)]` 生成稳定 utility，主题密度必须有静态消费点。
+ */
+.nb-ui-control-h-sm {
+    height: var(--control-h-sm);
+}
+
+.nb-ui-control-h-md {
+    height: var(--control-h-md);
+}
+
+.nb-ui-control-h-lg {
+    height: var(--control-h-lg);
+}
+
+.nb-ui-control-px {
+    padding-inline: var(--control-px);
+}
+
+.nb-ui-control {
+    border-color: var(--control-outline, var(--border-color));
+    /* sc-input 常态就有内阴影（凹陷质感由主题装饰 token 决定，低装饰主题为 none） */
+    box-shadow: var(--inset-shadow);
+    transition: border-color var(--motion-base) var(--ease-standard),
+                box-shadow var(--motion-base) var(--ease-standard),
+                background-color var(--motion-base) var(--ease-standard),
+                color var(--motion-base) var(--ease-standard);
+}
+
+.nb-ui-control:focus,
+.nb-ui-control:focus-within,
+.nb-ui-control[data-state="open"] {
+    border-color: var(--focus-outline);
+    box-shadow: var(--inset-shadow), var(--focus-ring);
+}
+
+/*
+ * 只读与禁用状态：绝对不展示编辑态高亮边框与 Focus 辉光。
+ * 针对 input[readonly]/input:disabled 精准重置，不误伤包含 button/span 等非编辑子节点的容器。
+ */
+input.nb-ui-control:read-only,
+textarea.nb-ui-control:read-only,
+.nb-ui-control[readonly],
+.nb-ui-control:disabled,
+.nb-ui-control:has(input[readonly]),
+.nb-ui-control:has(input:disabled),
+.nb-ui-control:has(textarea[readonly]),
+.nb-ui-control:has(textarea:disabled),
+input.nb-ui-control:read-only:focus,
+textarea.nb-ui-control:read-only:focus,
+.nb-ui-control[readonly]:focus,
+.nb-ui-control:disabled:focus,
+.nb-ui-control:has(input[readonly]):focus-within,
+.nb-ui-control:has(input:disabled):focus-within,
+.nb-ui-control:has(textarea[readonly]):focus-within,
+.nb-ui-control:has(textarea:disabled):focus-within {
+    border-color: var(--control-outline, var(--border-color));
+    box-shadow: var(--inset-shadow);
+    outline: none;
+}
+
+/* 移除 Chrome / Safari / Edge 下原生 input[type="search"] 自带的默认清除与装饰按钮，由 UI 统一接管 */
+input.nb-ui-native-input[type="search"]::-webkit-search-decoration,
+input.nb-ui-native-input[type="search"]::-webkit-search-cancel-button,
+input.nb-ui-native-input[type="search"]::-webkit-search-results-button,
+input.nb-ui-native-input[type="search"]::-webkit-search-results-decoration {
+    -webkit-appearance: none;
+    appearance: none;
+    display: none;
+}
+
+/* 移除 Chrome / Safari / Edge / Firefox 下原生 input[type="number"] 自带的默认上下微调按钮 */
+input.nb-ui-native-input[type="number"]::-webkit-outer-spin-button,
+input.nb-ui-native-input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input.nb-ui-native-input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+/* 双类选择器抬高特异性，保证 invalid 边框压过组件上的 hover:border-* 原子类 */
+.nb-ui-control.nb-ui-control-invalid,
+.nb-ui-control.nb-ui-control-invalid:hover,
+.nb-ui-control.nb-ui-control-invalid:focus,
+.nb-ui-control.nb-ui-control-invalid:focus-within {
+    border-color: var(--status-danger);
+}
+
+.nb-ui-control.nb-ui-control-invalid:focus:not(:read-only):not([readonly]),
+.nb-ui-control.nb-ui-control-invalid:focus-within:not(:has(:read-only)):not(:has([readonly])) {
+    box-shadow: var(--inset-shadow), 0 0 0 3px color-mix(in srgb, var(--status-danger) 18%, transparent);
+}
+
+/*
+ * 浮层面板外观基座（与 theme/z-index.ts 的 NB_Z_INDEX 对称的登记处）。
+ * Dropdown / Combobox / ContextMenu / Tooltip / Dialog / TimePicker 的浮层面板统一从这里取
+ * 边框、圆角、底色、阴影与磨砂；新增浮层组件请消费此类，不要再复制这一组属性。
+ * 例外：DialogWindow 的毛玻璃窗体、Panel 的页面表面投影刻意不同，各自维护。
+ *
+ * 五个取值全部走主题变量，且默认值逐项对齐改动前的写死值——
+ * --panel-outline → --border-color、--overlay-surface → --bg-panel、--overlay-blur → none、
+ * --elevation-popover → 配色的 --shadow-panel（`tokens.css` 里那一条 var() 兜底就是为这个接的：
+ * 一开始它取的是写死的 8% 黑，实测暗色下浮层直接失去层级，那是本轮引入的真回归）。
+ * 圆角默认取 --radius-panel，菜单通过 .nb-ui-menu-surface 显式切到 --radius-menu；
+ * 这样 Dialog、Tooltip 与菜单不再被同一档半径强行绑在一起。
+ *
+ * 面色拆成 background-color 与显式的镜面 modifier，是为了给玻璃主题留出**镜面层**。
+ * `.nb-ui-surface-rim` 才消费 --overlay-sheen；小浮层默认没有面渐变，避免被读成一层塑料膜。
+ * 两条都别写回 background 简写：简写会把没写出来的那条重置掉。
+ *
+ * 这一层排在 utilities 之后且同为单类选择器，所以它会压过组件模板上的 rounded-* 之类原子类。
+ * 组件要另给圆角只能走 inline style（Tooltip 就是这么做的），别再往模板里加原子类——
+ * 那会写出一个永远不生效的类，看代码的人以为改了其实没改。
+ */
+.nb-ui-popover-surface {
+    border: var(--border-w) solid var(--panel-outline);
+    border-radius: var(--nb-popover-radius, var(--radius-panel));
+    background-color: var(--overlay-surface);
+    background-image: none;
+    box-shadow: var(--elevation-popover);
+    backdrop-filter: var(--overlay-blur);
+    -webkit-backdrop-filter: var(--overlay-blur);
+
+    /*
+     * 内圈的同心半径。这条不是外观，是**几何约束**，所以和外观一起放在这个登记处：
+     * 浮层里贴着边的那些盒子（列表项、滚动区）的圆角必须由外圈半径推出来，不能各写各的。
+     *
+     * 公式 = 外圈半径 − 描边 − 内边距，也就是 UIKit 的 containerConcentricRadius
+     * / SwiftUI 的 ConcentricRectangle 在做的事。max() 是下限，防止主题把外圈调到很小时算成负数。
+     *
+     * 内边距走 --nb-popover-pad，默认 6px（= --space-3，即模板上的 p-1.5）。
+     * 浮层要改内边距**必须同时改这个变量**，否则半径就和实际留白对不上了——
+     * 这正是它在这里而不是写死一个数的理由。
+     */
+    --nb-popover-pad: var(--space-3);
+    --nb-popover-inner-radius: max(2px, calc(var(--nb-popover-radius, var(--radius-panel)) - var(--border-w) - var(--nb-popover-pad)));
+}
+
+/* 菜单 / 下拉的几何 modifier。外圈 12px 时，默认 6px 内边距与 1px 描边推出约 5px 内圈。 */
+.nb-ui-menu-surface {
+    --nb-popover-radius: var(--radius-menu, var(--radius-panel));
+}
+
+/* 仅整块玻璃 surface opt-in 镜面层；菜单、下拉等小浮层默认不铺面渐变。 */
+.nb-ui-surface-rim {
+    background-image: var(--overlay-sheen);
+}
+
+/*
+ * 浮层里贴着边的盒子（列表项、菜单项、滚动区）的圆角。
+ *
+ * 为什么不能沿用原子类的 rounded-md（6px）：**同心不成立时，弧线之间的那圈留白会在角上被挤没。**
+ * nbook 下外圈是 20px、内边距 6px，直边上项与外框之间有 6px，到角上只剩不到 1px——
+ * 用户的原话是「他的宽度和圆角没有对齐」。这不是错觉：6px 的角画在 20px 的角里，
+ * 两条弧线根本不平行，读起来像项比框宽了一圈。同一个数（13px）画上去，
+ * 内外弧线就是平行的两条，那圈留白从直边一路等宽绕到角上。
+ *
+ * 判据：把浮层的一角放大到 4 倍截图，看项的弧线与框的弧线是否平行、之间的留白是否等宽。
+ * 只看 1 倍的整体图是分辨不出来的——本轮就是放大之后才确认根因的。
+ *
+ * 兜底 6px 是给「不在 .nb-ui-popover-surface 里面用」这种误用留的，正常路径上永远取不到。
+ */
+.nb-ui-popover-item {
+    border-radius: var(--nb-popover-inner-radius, 6px);
+}
+
+/*
+ * 浮层入退场 modifier（合同见 design-language.md 动效节）：
+ * 入场 = opacity + scale(0.96 → 1)，--motion-enter；退场同配方，--motion-fast。
+ *
+ * 两条挂载通道共用这个登记处：
+ * 1. Reka 原语（FormSelect 等）——内容树由原语的 Presence 持有，挂 [data-state]，
+ *    Presence 等到 animationend 才卸载；缩放原点消费原语算好的
+ *    --reka-*-content-transform-origin（它已经处理了碰撞翻转，不要自己推方向）。
+ * 2. 手写 v-if 浮层（Dropdown）——配 Vue <Transition name="nb-popover"> 使用，
+ *    enter/leave-active 期间直接播同两条 keyframes，原点给 top center 兜底。
+ *
+ * 已有自己过渡的浮层（Combobox / ContextMenu / Tooltip / DialogWindow / TimePicker）
+ * 不挂这个 modifier，避免两层动画叠加。
+ */
+@keyframes nb-popover-in {
+    from {
+        opacity: 0;
+        transform: scale(0.96);
+    }
+}
+
+@keyframes nb-popover-out {
+    to {
+        opacity: 0;
+        transform: scale(0.96);
+    }
+}
+
+.nb-ui-popover-motion {
+    transform-origin: var(--reka-popover-content-transform-origin, var(--reka-hover-card-content-transform-origin, var(--reka-menubar-content-transform-origin, var(--reka-select-content-transform-origin, var(--reka-dropdown-menu-content-transform-origin, top center)))));
+}
+
+.nb-ui-popover-motion[data-state="open"],
+.nb-ui-popover-motion.nb-popover-enter-active {
+    animation: nb-popover-in var(--motion-enter) var(--ease-standard);
+}
+
+.nb-ui-popover-motion[data-state="closed"],
+.nb-ui-popover-motion.nb-popover-leave-active {
+    animation: nb-popover-out var(--motion-fast) var(--ease-standard);
+}
+
+/*
+ * 这里**曾经**有一条 `corner-shape: squircle`（Apple 的角是超椭圆不是正圆弧，官方
+ * macOS 27 UI Kit 把 Save Dialog 记作「Radius 26 / Smooth / Apple (60%)」）。已撤掉。
+ *
+ * 原因是它和上面那条 backdrop-filter 互斥：**Chromium 把 backdrop-filter 裁到普通
+ * border-radius，不认 corner-shape**（Chrome 151 实测）。而背景、描边、外阴影都是按
+ * squircle 画的，squircle 在角上比同半径的圆弧更外凸，于是四个角各露出一牙**没有被模糊
+ * 的背景**——用户看到的就是「模糊的区域不对，好像错位了」。
+ *
+ * 判据（可复现）：给面板 `backdrop-filter: brightness(0)`、背景设透明、描边设红，
+ * 背后铺纯白。黑色区域是滤镜的实际生效范围，红线是面板的真实轮廓；squircle 下两者之间
+ * 有一圈灰月牙，强制 `corner-shape: round` 后月牙消失。
+ *
+ * 试过的补法与它为什么不划算：把模糊挪到内层、squircle + `overflow: hidden` 挂在外层，
+ * 裁切确实跟得上（实测无月牙）。但 `.nb-ui-popover-surface` 是菜单 / 下拉共用的基座，
+ * 给它加 `overflow: hidden` 会把子菜单和锚定弹层一起裁掉。为一档角的形状换掉子菜单，
+ * 不划算——**一个和自己的盒子对不齐的滤镜，比正圆弧难看得多**。
+ *
+ * 什么时候可以加回来：Chromium 让 backdrop-filter 的裁切跟随 corner-shape 之后。
+ * 复查方法就是上面那条判据。
+ */
+
+/*
+ * 对话框的面。它比菜单 / 下拉大一个数量级，圆角与阴影因此各单列一档（见 tokens.css）。
+ *
+ * 只覆盖这两项，其余四项仍由 .nb-ui-popover-surface 一处给——这不是把浮层外观分叉出去，
+ * 而是在同一个登记处里补一条对话框专用的尺寸。
+ *
+ * 阴影这一条是本轮补的。在此之前 --elevation-dialog **库内一个消费方都没有**，
+ * 真 Dialog 拿的是浮层档，于是「对话框压得比浮层重」这个分档只存在于变量表里。
+ * 它不是可有可无的一档：Apple 官方 macOS 27 UI Kit 里两者的环境投影实测差了一倍——
+ * 浮层 `0 18px 48px`，Save Dialog `0 36px 100px`。对话框压住整个窗口，浮层只压住一小片。
+ */
+.nb-ui-dialog-surface {
+    border-radius: var(--radius-dialog);
+    box-shadow: var(--elevation-dialog);
+}
+
+/*
+ * 浮层内部的滚动区。**滚动不要加在 .nb-ui-popover-surface 自己身上**，否则同时坏两件事：
+ *
+ * ① 滚动条画在圆角里。浮层圆角越大越明显——`--radius-panel` 在 nbook 下是 20px，
+ *    一条贴着右边缘的滚动条会被那道弧线削掉两头，看起来像描边裂了个口子。
+ * ② 列表项贴着圆角边缘被切。内容滚到顶时首项正好压在弧线上，横着削掉半个字，
+ *    读起来不像「列表还能往上滚」，像「这个框画坏了」。
+ *
+ * 所以浮层本体只管外观并 overflow: hidden，滚动交给内部这一层，并让它比外框缩进一圈：
+ * 切口因此落在描边内侧，是一条正常的滚动截断，而不是压在圆角上的破口。
+ *
+ * 滚动条本身用标准属性染色（Chromium 121+ 与 Firefox 都认），取值从 --text-main 派生，
+ * 所以任何配色下都不会剩一条系统默认的亮色滚动条压在暗色玻璃上。
+ */
+.nb-ui-popover-scroll {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--text-main) 24%, transparent) transparent;
+}
+
+/*
+ * 上下渐隐。**opt-in**，只发给「打开时必定处在中间位置」的滚动区（时间列表这种：
+ * 它开着就把当前值滚到中央，所以首尾两项一定是截断的）。
+ *
+ * 不做成 .nb-ui-popover-scroll 的默认，是因为菜单和下拉多数时候根本不溢出，
+ * 那时渐隐会把首尾两项无缘无故洗淡，看起来像它们被禁用了。
+ *
+ * 截断本身是滚动列表的正常样子，问题只在于**截在哪儿**：贴着圆角描边横切一刀，
+ * 读起来是「这个框画坏了」；隔着一段渐隐收进去，读起来才是「上面还有」。
+ *
+ * mask-image 属于「看不见的透明度」，reduced-transparency 下要一起收掉——
+ * 库只把三个时长归零，不会替你关掉这个。
+ */
+.nb-ui-popover-scroll-fade-top {
+    --nb-scroll-fade: 8px;
+    mask-image: linear-gradient(
+        to bottom,
+        transparent 0,
+        #000 var(--nb-scroll-fade),
+        #000 100%
+    );
+    -webkit-mask-image: linear-gradient(
+        to bottom,
+        transparent 0,
+        #000 var(--nb-scroll-fade),
+        #000 100%
+    );
+}
+
+.nb-ui-popover-scroll-fade-bottom {
+    --nb-scroll-fade: 8px;
+    mask-image: linear-gradient(
+        to bottom,
+        #000 0,
+        #000 calc(100% - var(--nb-scroll-fade)),
+        transparent 100%
+    );
+    -webkit-mask-image: linear-gradient(
+        to bottom,
+        #000 0,
+        #000 calc(100% - var(--nb-scroll-fade)),
+        transparent 100%
+    );
+}
+
+.nb-ui-popover-scroll-fade-both {
+    --nb-scroll-fade: 8px;
+    mask-image: linear-gradient(
+        to bottom,
+        transparent 0,
+        #000 var(--nb-scroll-fade),
+        #000 calc(100% - var(--nb-scroll-fade)),
+        transparent 100%
+    );
+    -webkit-mask-image: linear-gradient(
+        to bottom,
+        transparent 0,
+        #000 var(--nb-scroll-fade),
+        #000 calc(100% - var(--nb-scroll-fade)),
+        transparent 100%
+    );
+}
+
+@media (prefers-reduced-transparency: reduce) {
+    .nb-ui-popover-scroll-fade,
+    .nb-ui-popover-scroll-fade-top,
+    .nb-ui-popover-scroll-fade-bottom,
+    .nb-ui-popover-scroll-fade-both {
+        mask-image: none !important;
+        -webkit-mask-image: none !important;
+    }
+}
+
+/*
+ * 危险菜单项（Dropdown / ContextMenu 共用）：常驻红字，悬停/子菜单展开态用 danger 12% 底色。
+ */
+.nb-ui-menu-item-danger {
+    color: var(--status-danger);
+}
+
+.nb-ui-menu-item-danger:hover:not(:disabled),
+.nb-ui-menu-item-danger.is-active {
+    background: color-mix(in srgb, var(--status-danger) 12%, transparent);
+}
+
+/* ==========================================================================
+   全库组件微物理动效与关键帧动画（Micro-physics & Keyframe Animations）
+   ========================================================================== */
+
+/* 手风琴与折叠容器展开/收起动画 */
+@keyframes nb-accordion-down {
+    from {
+        height: 0;
+        opacity: 0;
+    }
+    to {
+        height: var(--reka-accordion-content-height, var(--reka-collapsible-content-height, auto));
+        opacity: 1;
+    }
+}
+
+@keyframes nb-accordion-up {
+    from {
+        height: var(--reka-accordion-content-height, var(--reka-collapsible-content-height, auto));
+        opacity: 1;
+    }
+    to {
+        height: 0;
+        opacity: 0;
+    }
+}
+
+.animate-accordion-down,
+.animate-collapsible-down {
+    animation: nb-accordion-down var(--motion-base) var(--ease-standard);
+}
+
+.animate-accordion-up,
+.animate-collapsible-up {
+    animation: nb-accordion-up var(--motion-base) var(--ease-standard);
+}
+
+/* 骨架屏与占位高光流动 Shimmer 动画 */
+@keyframes nb-shimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+.nb-shimmer {
+    position: relative;
+    overflow: hidden;
+}
+
+.nb-shimmer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        color-mix(in srgb, var(--text-main) 9%, transparent) 50%,
+        transparent 100%
+    );
+    animation: nb-shimmer 2s var(--ease-standard) infinite;
+}
+
+/* 悬浮微晶发光弥散 Pulse 动画 */
+@keyframes nb-crystal-glow {
+    0%, 100% {
+        box-shadow: 0 0 8px 1px color-mix(in srgb, var(--accent-main) 25%, transparent),
+                    0 2px 12px color-mix(in srgb, var(--shadow-color) 12%, transparent);
+    }
+    50% {
+        box-shadow: 0 0 18px 4px color-mix(in srgb, var(--accent-main) 45%, transparent),
+                    0 4px 20px color-mix(in srgb, var(--shadow-color) 20%, transparent);
+    }
+}
+
+.nb-crystal-glow {
+    animation: nb-crystal-glow 2.8s var(--ease-standard) infinite;
+}
+
+/* 弹入微动效 */
+@keyframes nb-pop-in {
+    0% {
+        transform: scale(0.92);
+        opacity: 0;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.nb-pop-in {
+    animation: nb-pop-in var(--motion-enter) var(--ease-standard);
+}
+
+/* 方案与内容平滑交替过渡 */
+.scheme-fade-enter-active,
+.scheme-fade-leave-active {
+    transition: opacity var(--motion-base) var(--ease-standard),
+                transform var(--motion-base) var(--ease-standard);
+}
+
+.scheme-fade-enter-from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+}
+
+.scheme-fade-leave-to {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.985);
+}

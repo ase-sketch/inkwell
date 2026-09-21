@@ -1,0 +1,40 @@
+# NeuroBook 主应用本地配置与运行态；发布示例文件显式保留。
+.env
+.env.local
+config.yaml
+!assets/workspace/.nbook/templates/project-directory-templates/simulation/config.yaml
+
+# Nuxt / Product / test output
+.nuxt/
+.output/
+.nitro/
+.cache/
+.nuxt-analyze/
+coverage/
+dist/
+product/
+logs/
+server/generated/prisma/
+server/agent/variables/generated-profile-variable-types.d.ts
+server/.agent/
+workspace/
+
+# Package-local governance and runtime state
+.agent/
+.local/
+.worktree/
+
+# System workspace assets generated during prepare/build
+assets/workspace/.nbook/agent/profiles/.compiled/
+assets/workspace/.nbook/agent/variables/.compiled/
+assets/workspace/.nbook/agent/.staging/
+assets/workspace/.nbook/agent/profiles/.system-profile-metadata.json
+assets/workspace/.nbook/agent/skills/llmlint/
+assets/workspace/.nbook/agent/assets/
+assets/workspace/.nbook/agent/writing-presets/references/
+assets/workspace/.nbook/agent/writing-presets/styles/
+
+# Package user/runtime data must not enter Source snapshots.
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm

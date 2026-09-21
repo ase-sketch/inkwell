@@ -1,0 +1,1279 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>记忆结构查看器 · 第一章 · v4</title>
+<!--
+  第一章的两份金标：evidences/chapter-01-beats.json（正文怎么切）
+  和 chapter-01.json（记住了什么）。下面 id="dataset" 那一坨由
+  scripts/build-viewer.ts 写入，不要手改。也可以把任意一份或两份
+  JSON 拖进页面临时替换。
+
+  这个页面里的求值、显示名、校验都是照 memory-model-v4.md 重新实现的，
+  和 schema.ts 相互独立。两边都对同一份数据报 0 错误才算数。
+-->
+<style>
+:root{
+  --paper:#f3f2f7; --card:#ffffff; --sunk:#eceaf3;
+  --ink:#1b1830; --ink2:#4a4660; --ink3:#8b87a3; --ink4:#b3b0c4;
+  --rule:#dedbe8; --rule2:#eae8f1;
+  --gold:#a87515; --gold-bg:rgba(168,117,21,.09);
+  --cinnabar:#c7304f; --cinnabar-bg:rgba(199,48,79,.07);
+  --verdi:#1e8a74; --verdi-bg:rgba(30,138,116,.09);
+  --indigo:#5a4bb8; --indigo-bg:rgba(90,75,184,.09);
+  --slate:#6b7186; --slate-bg:rgba(107,113,134,.09);
+  --f-display:"Noto Serif SC","Songti SC",serif;
+  --f-body:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  --f-mono:"Chivo Mono",ui-monospace,"Consolas",monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:13px;line-height:1.65;-webkit-font-smoothing:antialiased}
+.app{height:100%;display:grid;grid-template-rows:auto auto 1fr}
+
+/* ── 顶栏 ───────────────────────────────────────── */
+.bar{display:flex;align-items:center;gap:10px;padding:9px 14px;background:var(--card);border-bottom:1px solid var(--rule)}
+.brand{font-family:var(--f-display);font-size:15px;font-weight:700;letter-spacing:.02em;white-space:nowrap}
+.chap{color:var(--ink3);font-size:12px;white-space:nowrap}
+.schema{font-family:var(--f-mono);font-size:10.5px;color:var(--ink3);background:var(--sunk);border-radius:4px;padding:2px 6px;white-space:nowrap}
+.grow{flex:1}
+.search{width:190px;font:inherit;font-size:12px;padding:4px 8px;border:1px solid var(--rule);border-radius:6px;background:var(--card);color:var(--ink)}
+.search:focus{outline:none;border-color:var(--indigo)}
+.btn{font:inherit;font-size:12px;padding:4px 9px;border:1px solid var(--rule);border-radius:6px;background:var(--card);color:var(--ink2);cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--ink4)}
+.btn.on{background:var(--indigo-bg);border-color:var(--indigo);color:var(--indigo)}
+.badge{font-family:var(--f-mono);font-size:11px;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.badge.ok{background:var(--verdi-bg);color:var(--verdi)}
+.badge.bad{background:var(--cinnabar-bg);color:var(--cinnabar)}
+.badge.idle{background:var(--sunk);color:var(--ink3)}
+
+/* ── 叙述位置 ───────────────────────────────────── */
+.pos{background:var(--card);border-bottom:1px solid var(--rule);padding:8px 14px 10px}
+.pos-top{display:flex;align-items:center;gap:12px}
+.pos-lab{font-size:12px;color:var(--ink3);white-space:nowrap}
+.pos-k{font-family:var(--f-mono);font-size:15px;font-weight:700;color:var(--indigo);min-width:58px}
+.pos-top input[type=range]{flex:1;accent-color:var(--indigo);height:18px}
+.stat{font-family:var(--f-mono);font-size:11.5px;color:var(--ink2);white-space:nowrap}
+.stat b{color:var(--ink);font-weight:700}
+.stat i{color:var(--ink4);font-style:normal}
+.ov{margin-top:7px;display:grid;grid-template-columns:52px 1fr;gap:3px 8px;align-items:center}
+.ov-lab{font-size:10.5px;color:var(--ink4);text-align:right;white-space:nowrap}
+.ov-track{position:relative;height:13px;background:var(--sunk);border-radius:3px;overflow:hidden;cursor:pointer}
+.ov-cell{position:absolute;top:0;bottom:0}
+.ov-now{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--indigo);z-index:5;pointer-events:none}
+.ov-bar{position:absolute;bottom:0;background:var(--indigo);opacity:.55}
+.beatline{margin-top:6px;font-size:12px;color:var(--ink2);display:flex;gap:8px;align-items:baseline;min-height:20px}
+.beatline .bid{font-family:var(--f-mono);font-size:11px;color:var(--indigo);font-weight:700}
+
+/* ── 三栏 ───────────────────────────────────────── */
+.body{display:grid;grid-template-columns:262px minmax(0,1fr) minmax(0,392px);min-height:0}
+.side,.insp{background:var(--card);overflow-y:auto;min-height:0;min-width:0}
+.side{border-right:1px solid var(--rule)}
+.insp{border-left:1px solid var(--rule)}
+.main{position:relative;min-height:0;min-width:0}
+.tabs{display:flex;position:sticky;top:0;background:var(--card);border-bottom:1px solid var(--rule);z-index:9}
+.tab{flex:1;min-width:0;text-align:center;padding:7px 2px;font:inherit;font-size:12px;color:var(--ink3);cursor:pointer;border:0;border-bottom:2px solid transparent;background:transparent}
+.tab:hover{color:var(--ink2)}
+.tab.on{color:var(--indigo);border-bottom-color:var(--indigo);font-weight:700}
+.tab u{font-family:var(--f-mono);font-size:10px;text-decoration:none;color:var(--ink4);margin-left:3px}
+
+.sec{padding:8px 11px 3px}
+.sec-h{font-size:10.5px;letter-spacing:.09em;color:var(--ink4);text-transform:uppercase;margin:2px 0 5px}
+.row{padding:7px 11px;border-bottom:1px solid var(--rule2);cursor:pointer;display:flex;gap:7px;align-items:baseline;min-width:0}
+.row:hover{background:var(--sunk)}
+.row.on{background:var(--indigo-bg);box-shadow:inset 2px 0 0 var(--indigo)}
+.row.dim{opacity:.38}
+.row .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .sub{color:var(--ink4);font-size:11px}
+.dot{width:7px;height:7px;border-radius:99px;flex:none;align-self:center}
+.cnt{font-family:var(--f-mono);font-size:10.5px;color:var(--ink4)}
+
+/* ── 检视器 ─────────────────────────────────────── */
+.ins{padding:12px 14px 40px}
+.ins-kicker{font-size:10.5px;letter-spacing:.09em;color:var(--ink4);text-transform:uppercase}
+.ins-h{font-family:var(--f-display);font-size:19px;font-weight:700;line-height:1.35;margin:1px 0 3px}
+.ins-sub{font-size:12px;color:var(--ink3);margin-bottom:9px}
+.kv{display:grid;grid-template-columns:66px 1fr;gap:2px 9px;font-size:12px;margin:7px 0}
+.kv dt{color:var(--ink4)}
+.kv dd{margin:0;color:var(--ink2)}
+.blk{margin:11px 0 0}
+.blk-h{font-size:10.5px;letter-spacing:.09em;color:var(--ink4);text-transform:uppercase;padding-bottom:3px;border-bottom:1px solid var(--rule2);margin-bottom:6px;display:flex;justify-content:space-between}
+.gloss{font-size:11.5px;color:var(--ink3);line-height:1.6;background:var(--sunk);border-radius:6px;padding:7px 9px;margin:7px 0}
+.gloss b{color:var(--ink2)}
+.warnbox{font-size:11.5px;line-height:1.6;background:var(--cinnabar-bg);border-left:3px solid var(--cinnabar);border-radius:0 6px 6px 0;padding:7px 9px;margin:8px 0;color:var(--ink2)}
+.warnbox b{color:var(--cinnabar)}
+.emptyc{color:var(--ink4);font-size:12px;padding:26px 0;text-align:center}
+
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0}
+.chip{font-size:10.5px;padding:1px 7px;border-radius:99px;background:var(--sunk);color:var(--ink2);white-space:nowrap}
+.chip.beat-list{min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere;line-height:1.5}
+.chip.mono{font-family:var(--f-mono);font-size:10px}
+.chip.gold{background:var(--gold-bg);color:var(--gold)}
+.chip.cin{background:var(--cinnabar-bg);color:var(--cinnabar)}
+.chip.ver{background:var(--verdi-bg);color:var(--verdi)}
+.chip.ind{background:var(--indigo-bg);color:var(--indigo)}
+.chip.sla{background:var(--slate-bg);color:var(--slate)}
+.chip.click{cursor:pointer}
+.chip.click:hover{filter:brightness(.95)}
+
+.dcl{border:1px solid var(--rule2);border-radius:7px;padding:7px 9px;margin-bottom:6px;background:var(--card)}
+.dcl.held{border-left:3px solid var(--verdi)}
+.dcl.pend{border-left:3px solid var(--gold)}
+.dcl.dead{border-left:3px solid var(--cinnabar);opacity:.62}
+.dcl.fut{border-left:3px solid var(--rule);opacity:.42}
+.dcl-h{display:flex;gap:6px;align-items:baseline;font-size:11px;color:var(--ink4);font-family:var(--f-mono)}
+.dcl-v{font-size:13px;color:var(--ink);margin:2px 0 3px;font-weight:500}
+.dcl-n{font-size:11.5px;color:var(--ink3);line-height:1.55}
+.at{cursor:pointer;color:var(--indigo);text-decoration:underline dotted}
+
+.vitem{font-size:11.5px;line-height:1.55;padding:5px 11px;border-bottom:1px solid var(--rule2)}
+.vitem.bad{background:var(--cinnabar-bg)}
+.vitem.warn{background:var(--gold-bg)}
+.vitem .vat{font-family:var(--f-mono);font-size:10.5px;color:var(--ink4);display:block}
+
+/* ── 图 ─────────────────────────────────────────── */
+#graph{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab}
+#graph.drag{cursor:grabbing}
+.gbar{position:absolute;left:10px;top:10px;z-index:4;display:flex;gap:5px;flex-wrap:wrap;max-width:calc(100% - 20px)}
+.glegend{position:absolute;left:10px;bottom:10px;z-index:4;background:rgba(255,255,255,.92);border:1px solid var(--rule);border-radius:7px;padding:7px 9px;font-size:11px;color:var(--ink2);line-height:1.75}
+.glegend i{display:inline-block;width:9px;height:9px;border-radius:99px;margin-right:5px;vertical-align:-1px}
+.glegend hr{border:0;border-top:1px solid var(--rule2);margin:5px 0}
+.ghint{position:absolute;right:10px;top:10px;z-index:4;font-size:11px;color:var(--ink4)}
+.n-lab{font-size:11px;fill:var(--ink2);pointer-events:none;paint-order:stroke;stroke:var(--paper);stroke-width:3px;stroke-linejoin:round}
+.n-lab.big{font-size:12.5px;fill:var(--ink);font-weight:600}
+.e-lab{font-size:9.5px;fill:var(--ink4);pointer-events:none;paint-order:stroke;stroke:var(--paper);stroke-width:3px}
+.drop{position:fixed;inset:0;background:rgba(90,75,184,.12);border:3px dashed var(--indigo);z-index:99;display:none;align-items:center;justify-content:center;font-family:var(--f-display);font-size:22px;color:var(--indigo)}
+.drop.on{display:flex}
+.row[data-pick],.row[data-ins-slot],.chip.click,.at[data-goto]{outline:none}
+.row[data-pick]:focus-visible,.row[data-ins-slot]:focus-visible{position:relative;z-index:1;outline:2px solid var(--indigo);outline-offset:-2px}
+.chip.click:focus-visible,.at[data-goto]:focus-visible{outline:2px solid var(--indigo);outline-offset:2px}
+/* ── 窄屏：保留主体、图和检视器，但改为可滚动的阅读顺序 ── */
+.app,.bar,.pos,.body{min-width:0}
+.pos-top input[type=range]{min-width:0}
+@media (max-width:1100px){
+  .bar{min-width:0;flex-wrap:wrap;min-height:49px;height:auto;gap:6px 8px;padding:8px 12px}
+  .grow{display:none}
+  .search{flex:1 1 180px;width:auto;min-width:0}
+}
+@media (max-width:900px){
+  .body{grid-template-columns:220px minmax(0,1fr);grid-template-rows:minmax(0,1fr) minmax(220px,38vh)}
+  .side{grid-column:1;grid-row:1 / 3}
+  .main{grid-column:2;grid-row:1;min-height:0}
+  .insp{grid-column:2;grid-row:2;max-height:none;border-top:1px solid var(--rule)}
+}
+@media (max-width:600px){
+  body{overflow:auto}
+  .app{height:auto;min-height:100%}
+  .chap{flex-basis:100%;order:3;overflow:hidden;text-overflow:ellipsis}
+  .schema{max-width:150px;overflow:hidden;text-overflow:ellipsis}
+  .search{order:4;flex-basis:100%;width:100%}
+  .btn{font-size:11px;padding:5px 7px}
+  .badge{font-size:10px;padding:3px 7px}
+  .pos{padding:8px 10px}
+  .pos-top{flex-wrap:wrap;gap:5px 9px}
+  .pos-top input[type=range]{flex:1 1 130px}
+  .stat{flex-basis:100%;overflow:hidden;text-overflow:ellipsis}
+  .ov{grid-template-columns:40px 1fr;gap:3px 6px}
+  .body{display:flex;flex-direction:column;min-height:calc(100vh - 230px);overflow:visible}
+  .side{order:1;flex:none;height:auto;max-height:34vh;border-right:0;border-bottom:1px solid var(--rule)}
+  .main{order:2;flex:0 0 56vh;height:56vh;min-height:360px}
+  .insp{order:3;flex:none;height:auto;max-height:70vh;border-left:0;border-top:1px solid var(--rule)}
+  .gbar{left:7px;top:7px;max-width:calc(100% - 14px)}
+  .ghint{right:7px;top:auto;bottom:7px;max-width:50%;text-align:right}
+  .glegend{left:7px;bottom:7px;max-width:48%;font-size:10px}
+}
+@media (max-width:360px){
+  .brand{font-size:14px}
+  .schema{max-width:130px;font-size:9px}
+  .btn{font-size:10.5px;padding-inline:6px}
+  .badge{font-size:9.5px;padding-inline:6px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="bar">
+    <span class="brand">记忆结构</span>
+    <span class="chap" id="chapTitle">—</span>
+    <span class="schema" id="schemaTag">—</span>
+    <span class="grow"></span>
+    <input class="search" id="q" type="search" aria-label="搜索主体、槽、值或披露" placeholder="搜主体 / 槽 / 值 / 披露…">
+    <button class="btn" id="btnReset">回到第 1 段</button>
+    <button class="btn" id="btnEnd">读完</button>
+    <span class="badge idle" id="vBadge" role="status" aria-live="polite">校验中…</span>
+  </header>
+
+  <div class="pos">
+    <div class="pos-top">
+      <span class="pos-lab">叙述位置</span>
+      <span class="pos-k" id="posK">第 1 段</span>
+      <input type="range" id="slider" min="1" max="77" value="1" step="1" aria-label="叙述位置段号">
+      <span class="stat" id="statLine">—</span>
+    </div>
+    <div class="ov">
+      <div class="ov-lab">Beat</div>
+      <div class="ov-track" id="ovBeat"><div class="ov-now" id="nowBeat"></div></div>
+      <div class="ov-lab">披露</div>
+      <div class="ov-track" id="ovDcl"><div class="ov-now" id="nowDcl"></div></div>
+    </div>
+    <div class="beatline" id="beatLine"></div>
+  </div>
+
+  <div class="body">
+    <aside class="side">
+      <div class="tabs" id="tabs" role="tablist" aria-label="记忆结构导航">
+        <button type="button" class="tab on" role="tab" aria-selected="true" aria-controls="sideBody" data-tab="entity">主体<u id="tEntity"></u></button>
+        <button type="button" class="tab" role="tab" aria-selected="false" aria-controls="sideBody" data-tab="slot">槽<u id="tSlot"></u></button>
+        <button type="button" class="tab" role="tab" aria-selected="false" aria-controls="sideBody" data-tab="lex">词表<u id="tLex"></u></button>
+        <button type="button" class="tab" role="tab" aria-selected="false" aria-controls="sideBody" data-tab="check">校验<u id="tCheck"></u></button>
+      </div>
+      <div id="sideBody" role="tabpanel" tabindex="0"></div>
+    </aside>
+
+    <main class="main">
+      <div class="gbar">
+        <button class="btn on" id="gSlots">展开选中主体的槽</button>
+        <button class="btn on" id="gHide">只画已出场的</button>
+        <button class="btn" id="gRelax">重排</button>
+      </div>
+      <div class="ghint">拖节点可摆位置 · 点边看槽</div>
+      <svg id="graph"></svg>
+      <div class="glegend" id="legend"></div>
+    </main>
+
+    <aside class="insp"><div class="ins" id="ins"></div></aside>
+  </div>
+</div>
+
+<div class="drop" id="drop">把 chapter-01.json 或 chapter-01-beats.json 拖进来</div>
+
+<script type="application/json" id="dataset">
+{"memory":{"schema":"nbook.novel-memory/v4-spike","provenance":{"method":"人工通读手工装填，不是抽取管线输出","model":"memory-model-v4.md 第 5、6 节","sourceText":"../t01-novel-understanding-spike/evidences/chapter-001-source-normalized.txt","sourceNormalization":"chapter-source-normalization/v1，文件第 N 行即第 N 段","companion":"evidences/chapter-01-beats.json 是同一章的另一半（正文怎么切）。时刻的真源在那个文件里，本文件的 timeRef 按 id 引用它；主体 id 两边必须一致，scripts/build-viewer.ts 会核对","note":"本文件不构成任何召回率或准确率证据。v2 版本（nbook.novel-memory/v2-spike，8 个 Episode、26 条 Fact）已按 v4 第 11 节 W6 的倾向重建，不是迁移——v2 的 Episode 与 v4 的 Beat 不是同一个尺度，逐条搬运没有意义"},"chapter":1,"chapterTitle":"反派魔法少女","paragraphCount":77,"kinds":[{"id":"K_fox_girl","name":"狐女","note":"第 11 段「一只娇小的金毛狐女」","category":"body"},{"id":"K_codex","name":"典籍","note":"第 8 段「这本飘浮在半空中的黑色古书」","category":"item"},{"id":"K_sapient","name":"智慧体","note":"文本从没说过它有自我意识。这个类只能由读者推断挂上去，且按第 5.2 节不能反过来当推理前提","category":"character"},{"id":"K_candidate","name":"适格者","note":"第 30、31 段古书自称在找的那种人","category":"character"},{"id":"K_star_envoy","name":"星界使者","note":"第 45 段古书的自我定位","category":"character"},{"id":"K_magical_girl","name":"魔法少女","note":"第 67 段","category":"character"},{"id":"K_villain_mg","name":"反派魔法少女","note":"第 1 段章标题就出现了，正文第 64 段才由古书说出","category":"character"},{"id":"K_oudou","name":"王道系","note":"第 69 段古书说这一款魔法少女是王道系的","category":"concept"},{"id":"K_creator","name":"造物主","note":"第 67 段，只有古书提过一次","category":"character"}],"entities":[{"id":"su_tianqing","label":"苏天晴","note":"库内标签不是读者知道的名字。读者知道的名字由 (su_tianqing, 专名) 这个槽在某个叙述位置上求值得到"},{"id":"codex","label":"黑色古书","intro":[{"at":12,"text":"一本浮在半空的黑色古书，能以低沉的声音说话。来历不明。"},{"at":32,"text":"墨丘利秘典。自称从星空彼岸而来，为寻找它最优秀的适格者。"}],"note":"第 5.1 节那两条介绍的出处。只存一份全局介绍，读到第 12 段的检索就会泄漏第 30 段才揭晓的专名"},{"id":"body_fox","label":"这具狐女身体","intro":[{"at":8,"text":"镜子里那道陌生的娇小身影。是谁不清楚。"},{"at":12,"text":"一只娇小的金毛狐女：金色长发、毛茸茸的兽耳、白皙的肌肤、背后一只炸毛的大尾巴。"}],"note":"身体是主体。苏天晴与这具身体是两个节点，「她居于其中」是一条读者推断，不是默认前提"},{"id":"body_prev","label":"原来的身体","note":"第 73 段她想回去的那具。本章只有这一处提及"},{"id":"tainai","label":"太奶","note":"第 16 段，猝死前听见她说话。文本没说她是活人还是幻觉"},{"id":"contract","label":"那份契约"},{"id":"star_beyond","label":"星空彼岸","note":"只由古书说出，叙述者一次也没提"},{"id":"room","label":"昏暗的房间"},{"id":"noodle_stall","label":"街边面摊"},{"id":"task_set","label":"那一整套任务"}],"predicates":[{"id":"P_proper_name","name":"专名","cardinality":"single","volatility":"low","note":"正式名字。与「称呼」分开，因为查看器要用它当揭晓前后的显示名"},{"id":"P_appellation","name":"称呼","cardinality":"multi","volatility":"low","note":"文本用来指称它的说法，可以有很多个"},{"id":"P_kind","name":"类","cardinality":"multi","volatility":"low","note":"值指向一个类。文本说出来的类别才走这里；库内粗分类由 Kind.category 提供"},{"id":"P_voice","name":"声音","cardinality":"single","volatility":"low"},{"id":"P_hair","name":"发色","cardinality":"single","volatility":"low"},{"id":"P_ear","name":"耳型","cardinality":"single","volatility":"low","note":"第 5.3 节的例子。耳朵当前是耷拉还是竖起不建槽，那个每一拍都在变"},{"id":"P_ear_count","name":"耳朵数量","cardinality":"single","volatility":"low"},{"id":"P_skin","name":"肤色","cardinality":"single","volatility":"low"},{"id":"P_features","name":"五官","cardinality":"single","volatility":"low"},{"id":"P_tail","name":"尾巴","cardinality":"multi","volatility":"low","note":"基数被迫写成 multi，理由不正当——它只有一条尾巴。写 multi 是为了让第 12 段的外观和第 18 段的触感并存，而不是被判成竞争。见 findings 第 3 条"},{"id":"P_build","name":"体型","cardinality":"single","volatility":"low"},{"id":"P_foot","name":"脚","cardinality":"single","volatility":"low"},{"id":"P_wearing","name":"穿着","cardinality":"single","volatility":"medium","note":"在小说里穿着换得比发色勤。本章只有一条披露，建槽属于边界判断"},{"id":"P_prev_owner","name":"原来的主人","cardinality":"single","volatility":"low"},{"id":"P_inhabits","name":"居于哪具身体","cardinality":"single","volatility":"low"},{"id":"P_cause_of_death","name":"死因","cardinality":"single","volatility":"low"},{"id":"P_prev_work","name":"前世的工作状况","cardinality":"single","volatility":"medium"},{"id":"P_kin","name":"亲属","cardinality":"multi","volatility":"low"},{"id":"P_locomotion","name":"行动方式","cardinality":"single","volatility":"low"},{"id":"P_origin","name":"来处","cardinality":"single","volatility":"low"},{"id":"P_purpose","name":"目的","cardinality":"single","volatility":"low"},{"id":"P_role_to_su","name":"对苏天晴的身份","cardinality":"single","volatility":"low","note":"宾语烧进谓词名里，与第 5.4 节的「(爱丽丝, 对罗兰的态度)」同一种写法"},{"id":"P_attitude_feet","name":"对小脚的态度","cardinality":"single","volatility":"low"},{"id":"P_wish_claim","name":"主张的通用愿望","cardinality":"multi","volatility":"low"},{"id":"P_party","name":"契约相对方","cardinality":"multi","volatility":"low"},{"id":"P_content","name":"契约内容","cardinality":"single","volatility":"low"},{"id":"P_state","name":"契约状态","cardinality":"single","volatility":"medium","note":"整章唯一一个在同一个时刻内部改了值的槽。见 findings 第 2 条"},{"id":"P_task_giver","name":"任务的定制者","cardinality":"single","volatility":"low"},{"id":"P_task_purpose","name":"任务的用途","cardinality":"single","volatility":"low"},{"id":"P_death_rate","name":"死亡率","cardinality":"single","volatility":"low"},{"id":"P_genre_shape","name":"故事里的走向","cardinality":"single","volatility":"low"},{"id":"P_prospect","name":"在王道故事里的处境","cardinality":"single","volatility":"low"}],"slots":[{"id":"S_su_name","subject":{"type":"entity","id":"su_tianqing"},"predicate":"P_proper_name"},{"id":"S_su_voice","subject":{"type":"entity","id":"su_tianqing"},"predicate":"P_voice"},{"id":"S_su_kind","subject":{"type":"entity","id":"su_tianqing"},"predicate":"P_kind"},{"id":"S_su_inhabits","subject":{"type":"entity","id":"su_tianqing"},"predicate":"P_inhabits","note":"第 7 节那条推断落在这个槽上"},{"id":"S_su_cod","subject":{"type":"entity","id":"su_tianqing"},"predicate":"P_cause_of_death"},{"id":"S_su_prev_work","subject":{"type":"entity","id":"su_tianqing"},"predicate":"P_prev_work"},{"id":"S_su_kin","subject":{"type":"entity","id":"su_tianqing"},"predicate":"P_kin"},{"id":"S_su_feet","subject":{"type":"entity","id":"su_tianqing"},"predicate":"P_attitude_feet"},{"id":"S_su_wish","subject":{"type":"entity","id":"su_tianqing"},"predicate":"P_wish_claim"},{"id":"S_codex_name","subject":{"type":"entity","id":"codex"},"predicate":"P_proper_name"},{"id":"S_codex_appel","subject":{"type":"entity","id":"codex"},"predicate":"P_appellation"},{"id":"S_codex_kind","subject":{"type":"entity","id":"codex"},"predicate":"P_kind"},{"id":"S_codex_voice","subject":{"type":"entity","id":"codex"},"predicate":"P_voice"},{"id":"S_codex_locomotion","subject":{"type":"entity","id":"codex"},"predicate":"P_locomotion"},{"id":"S_codex_origin","subject":{"type":"entity","id":"codex"},"predicate":"P_origin"},{"id":"S_codex_purpose","subject":{"type":"entity","id":"codex"},"predicate":"P_purpose","note":"全章唯一一处「认识论并存」"},{"id":"S_codex_role","subject":{"type":"entity","id":"codex"},"predicate":"P_role_to_su"},{"id":"S_body_appel","subject":{"type":"entity","id":"body_fox"},"predicate":"P_appellation"},{"id":"S_body_kind","subject":{"type":"entity","id":"body_fox"},"predicate":"P_kind"},{"id":"S_body_hair","subject":{"type":"entity","id":"body_fox"},"predicate":"P_hair"},{"id":"S_body_ear","subject":{"type":"entity","id":"body_fox"},"predicate":"P_ear"},{"id":"S_body_earcount","subject":{"type":"entity","id":"body_fox"},"predicate":"P_ear_count"},{"id":"S_body_skin","subject":{"type":"entity","id":"body_fox"},"predicate":"P_skin"},{"id":"S_body_features","subject":{"type":"entity","id":"body_fox"},"predicate":"P_features"},{"id":"S_body_tail","subject":{"type":"entity","id":"body_fox"},"predicate":"P_tail"},{"id":"S_body_build","subject":{"type":"entity","id":"body_fox"},"predicate":"P_build"},{"id":"S_body_foot","subject":{"type":"entity","id":"body_fox"},"predicate":"P_foot"},{"id":"S_body_wearing","subject":{"type":"entity","id":"body_fox"},"predicate":"P_wearing"},{"id":"S_body_prev_owner","subject":{"type":"entity","id":"body_fox"},"predicate":"P_prev_owner"},{"id":"S_bprev_appel","subject":{"type":"entity","id":"body_prev"},"predicate":"P_appellation"},{"id":"S_tainai_appel","subject":{"type":"entity","id":"tainai"},"predicate":"P_appellation"},{"id":"S_creator_appel","subject":{"type":"kind","id":"K_creator"},"predicate":"P_appellation"},{"id":"S_creator_kind","subject":{"type":"kind","id":"K_creator"},"predicate":"P_kind"},{"id":"S_contract_appel","subject":{"type":"entity","id":"contract"},"predicate":"P_appellation"},{"id":"S_contract_party","subject":{"type":"entity","id":"contract"},"predicate":"P_party"},{"id":"S_contract_content","subject":{"type":"entity","id":"contract"},"predicate":"P_content"},{"id":"S_contract_state","subject":{"type":"entity","id":"contract"},"predicate":"P_state"},{"id":"S_mg_appel","subject":{"type":"kind","id":"K_magical_girl"},"predicate":"P_appellation"},{"id":"S_mg_kind","subject":{"type":"kind","id":"K_magical_girl"},"predicate":"P_kind"},{"id":"S_mg_death_rate","subject":{"type":"kind","id":"K_magical_girl"},"predicate":"P_death_rate"},{"id":"S_vmg_appel","subject":{"type":"kind","id":"K_villain_mg"},"predicate":"P_appellation"},{"id":"S_vmg_prospect","subject":{"type":"kind","id":"K_villain_mg"},"predicate":"P_prospect"},{"id":"S_oudou_appel","subject":{"type":"kind","id":"K_oudou"},"predicate":"P_appellation"},{"id":"S_oudou_shape","subject":{"type":"kind","id":"K_oudou"},"predicate":"P_genre_shape"},{"id":"S_star_appel","subject":{"type":"entity","id":"star_beyond"},"predicate":"P_appellation"},{"id":"S_room_appel","subject":{"type":"entity","id":"room"},"predicate":"P_appellation"},{"id":"S_stall_appel","subject":{"type":"entity","id":"noodle_stall"},"predicate":"P_appellation"},{"id":"S_task_appel","subject":{"type":"entity","id":"task_set"},"predicate":"P_appellation"},{"id":"S_task_giver","subject":{"type":"entity","id":"task_set"},"predicate":"P_task_giver"},{"id":"S_task_purpose","subject":{"type":"entity","id":"task_set"},"predicate":"P_task_purpose"}],"disclosures":[{"id":"D01","slot":"S_vmg_appel","value":{"t":"literal","v":"反派魔法少女"},"source":{"channel":"author","holder":null,"hedge":"plain"},"at":1,"timeRef":null,"note":"章标题。故事外的 Beat 照样产生披露——读者在第 1 段就读到了这个词，比第 64 段古书说出契约内容早 63 段。第 8 节第五条的实物"},{"id":"D02","slot":"S_su_name","value":{"t":"literal","v":"苏天晴"},"source":{"channel":"speech","holder":"su_tianqing","hedge":"plain"},"at":6,"timeRef":"M_a","note":"她自己报的名"},{"id":"D03","slot":"S_su_voice","value":{"t":"literal","v":"清脆悦耳的女声"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":7,"timeRef":"M_a"},{"id":"D04","slot":"S_codex_voice","value":{"t":"literal","v":"低沉的、仿佛来自遥远彼方的言语"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":7,"timeRef":"M_a"},{"id":"D05","slot":"S_room_appel","value":{"t":"literal","v":"昏暗的房间"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":7,"timeRef":"M_a"},{"id":"D06","slot":"S_su_name","value":{"t":"literal","v":"苏天晴"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":8,"timeRef":"M_a","note":"印证 D02：同槽同值，来源通道不同（角色说出口 / 叙述者）。「她自称苏天晴」到「叙述者也这么叫她」是两件事"},{"id":"D07","slot":"S_codex_appel","value":{"t":"literal","v":"黑色古书"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":8,"timeRef":"M_a"},{"id":"D08","slot":"S_codex_kind","value":{"t":"kind","id":"K_codex"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":8,"timeRef":"M_a"},{"id":"D09","slot":"S_codex_locomotion","value":{"t":"literal","v":"飘浮在半空中"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":8,"timeRef":"M_a"},{"id":"D10","slot":"S_body_appel","value":{"t":"literal","v":"一道陌生的娇小身影"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":8,"timeRef":"M_a","note":"「陌生」是这条披露里最有用的一个字：它是第 7 节那条推断的第一处支持"},{"id":"D11","slot":"S_body_build","value":{"t":"literal","v":"娇小"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":8,"timeRef":"M_a"},{"id":"D12","slot":"S_body_hair","value":{"t":"literal","v":"灿烂的金色长发，垂落在肩膀后背"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":9,"timeRef":"M_a"},{"id":"D13","slot":"S_body_ear","value":{"t":"literal","v":"毛茸茸的耳朵，长在头顶"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":9,"timeRef":"M_a","note":"同一段里的「耷拉」不进这个槽——耳朵姿态每一拍都在变，按第 5.3 节不建槽"},{"id":"D14","slot":"S_body_features","value":{"t":"literal","v":"精致的五官与眼眸"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":9,"timeRef":"M_a"},{"id":"D15","slot":"S_body_skin","value":{"t":"literal","v":"白皙"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":10,"timeRef":"M_a"},{"id":"D16","slot":"S_body_kind","value":{"t":"kind","id":"K_fox_girl"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":11,"timeRef":"M_a"},{"id":"D16b","slot":"S_body_appel","value":{"t":"literal","v":"一只娇小的金毛狐女"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":11,"timeRef":"M_a","note":"与 D16 同一句原文，却是两条披露：一条给称呼，一条给类。读者在这一段之前只有第 8 段那个「一道陌生的娇小身影」，节点在这里当场改名"},{"id":"D17","slot":"S_body_tail","value":{"t":"literal","v":"背后一只正在炸毛的大尾巴"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":12,"timeRef":"M_a"},{"id":"D18","slot":"S_su_prev_work","value":{"t":"literal","v":"连续三个夜班后刚下班"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":16,"timeRef":"M_nightshifts","note":"整份数据里最要紧的一条：它所在的 Beat（B05）停在 M_b（面摊那一刻），而它说的那件事发生在 M_nightshifts。Beat.时刻 与 披露.时间指示 在同一个 Beat 上取了不同的值——第 5.7.3 节「两个挂钩，一种节点」的实物"},{"id":"D19","slot":"S_stall_appel","value":{"t":"literal","v":"街边面摊"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":16,"timeRef":"M_b"},{"id":"D20","slot":"S_tainai_appel","value":{"t":"literal","v":"太奶"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":16,"timeRef":"M_b"},{"id":"D21","slot":"S_su_kin","value":{"t":"ref","id":"tainai"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":16,"timeRef":null,"note":"时间指示为空：亲属关系不系于某一刻。文本没说太奶当时是活人还是回光返照，模型也不替它决定"},{"id":"D22","slot":"S_su_inhabits","value":{"t":"ref","id":"body_fox"},"source":{"channel":"reader_inference","holder":null,"hedge":"plain"},"at":16,"timeRef":"M_a","inferredFrom":["S_body_appel","S_body_kind","S_body_tail","S_su_prev_work"],"note":"第 7 节那条推断。四处支持横跨三个 Beat（B02、B03、B05），没有一处是直说的：读到第 15 段它还立不住，第 16 段才成立。第 41 段的 S_body_prev_owner 是第五处支持，做梦阶段重跑时会把它一起收进来——推断自指向槽而不是指向披露，就是为了让这种重跑成立"},{"id":"D23","slot":"S_body_earcount","value":{"t":"number","v":2,"unit":"只"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":18,"timeRef":"M_a"},{"id":"D24","slot":"S_body_tail","value":{"t":"literal","v":"触感无比柔顺，被薅时的摩挲拉拽感从尾巴尖直冲天灵盖"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":18,"timeRef":"M_a","note":"与 D17 同槽、同时刻、同来源通道，值却不同。按第 5.6 节那张表这是「竞争」，可它们根本不打架——一条讲外观一条讲触感。见 findings 第 3 条"},{"id":"D25","slot":"S_su_kind","value":{"t":"kind","id":"K_fox_girl"},"source":{"channel":"thought","holder":"su_tianqing","hedge":"plain"},"at":26,"timeRef":"M_a","note":"「重生成了一只金毛狐女」。她自己认定的，不是叙述者说的"},{"id":"D26","slot":"S_codex_purpose","value":{"t":"literal","v":"在找某个特定的人"},"source":{"channel":"narrator","holder":null,"hedge":"hedged"},"at":29,"timeRef":"M_a","note":"「像是在思考……到底是不是自己要找的人」。叙述者带保留。与 D28 构成全章唯一一处「认识论并存」：同一个槽、同一个时刻、值不同、来源通道不同，两条并存，不是冲突"},{"id":"D27","slot":"S_codex_name","value":{"t":"literal","v":"墨丘利秘典"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":30,"timeRef":"M_a","note":"专名揭晓。在这一段之前，读者对它的唯一称呼是第 8 段的「黑色古书」"},{"id":"D28","slot":"S_codex_purpose","value":{"t":"literal","v":"寻找它最优秀的适格者"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":30,"timeRef":"M_a"},{"id":"D29","slot":"S_codex_origin","value":{"t":"ref","id":"star_beyond"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":30,"timeRef":"M_a"},{"id":"D30","slot":"S_star_appel","value":{"t":"literal","v":"星空彼岸"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":30,"timeRef":null,"note":"全章唯一的地点披露里，这一个从头到尾只有古书说过，叙述者一次都没提"},{"id":"D31","slot":"S_codex_kind","value":{"t":"kind","id":"K_sapient"},"source":{"channel":"reader_inference","holder":null,"hedge":"plain"},"at":30,"timeRef":"M_a","inferredFrom":["S_codex_voice","S_codex_purpose","S_codex_origin"],"note":"它会说话、有目的、报得出来处。但文本从没说它有自我意识，它也可能只是个复读机——所以这条是推断，而且按第 5.2 节它不能反过来当前提去推别的事"},{"id":"D32","slot":"S_su_kind","value":{"t":"kind","id":"K_candidate"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":31,"timeRef":"M_a","note":"「而那个人就是你，苏天晴小姐。」只有古书这么说，叙述者没证实"},{"id":"D33","slot":"S_body_wearing","value":{"t":"literal","v":"宽松的睡裙"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":33,"timeRef":"M_a"},{"id":"D34","slot":"S_body_foot","value":{"t":"literal","v":"白皙软嫩、带着红晕的小脚"},"source":{"channel":"narrator","holder":null,"hedge":"plain"},"at":34,"timeRef":"M_a"},{"id":"D35","slot":"S_su_feet","value":{"t":"literal","v":"小脚是世界上最美好的瑰宝"},"source":{"channel":"speech","holder":"su_tianqing","hedge":"plain"},"at":39,"timeRef":null,"note":"时间指示为空：这是她一贯的态度，不是这一刻才成立的"},{"id":"D36","slot":"S_body_prev_owner","value":{"t":"special","v":"UNKNOWN"},"source":{"channel":"thought","holder":"su_tianqing","hedge":"plain"},"at":41,"timeRef":"M_a","note":"「这本书知道自己并不是这副身体原来的主人」。UNKNOWN 是文本明确留白：确实有一个原主，是谁本章不说。与「库里没有这条披露」是两回事"},{"id":"D37","slot":"S_codex_kind","value":{"t":"kind","id":"K_star_envoy"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":45,"timeRef":"M_a"},{"id":"D38","slot":"S_codex_role","value":{"t":"literal","v":"引导苏天晴走上完美的生活"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":45,"timeRef":null},{"id":"D39","slot":"S_contract_appel","value":{"t":"literal","v":"一个小小的契约"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":45,"timeRef":"M_a"},{"id":"D40","slot":"S_contract_party","value":{"t":"ref","id":"su_tianqing"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":45,"timeRef":"M_a"},{"id":"D41","slot":"S_contract_party","value":{"t":"ref","id":"codex"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":45,"timeRef":"M_a"},{"id":"D42","slot":"S_contract_state","value":{"t":"literal","v":"尚未签订"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":45,"timeRef":"M_a"},{"id":"D43","slot":"S_codex_appel","value":{"t":"literal","v":"小破书"},"source":{"channel":"speech","holder":"su_tianqing","hedge":"plain"},"at":50,"timeRef":"M_a","note":"称呼是多值的，所以它不与第 8 段的「黑色古书」竞争。专名是单值的，所以第 30 段的「墨丘利秘典」才是显示名"},{"id":"D44","slot":"S_su_wish","value":{"t":"literal","v":"取之不尽的财富"},"source":{"channel":"speech","holder":"su_tianqing","hedge":"plain"},"at":54,"timeRef":null},{"id":"D45","slot":"S_su_wish","value":{"t":"literal","v":"变成萝莉"},"source":{"channel":"speech","holder":"su_tianqing","hedge":"plain"},"at":54,"timeRef":null},{"id":"D46","slot":"S_contract_state","value":{"t":"literal","v":"成立"},"source":{"channel":"speech","holder":"su_tianqing","hedge":"plain"},"at":60,"timeRef":"M_a","note":"与 D42 同槽、同时刻（都是 M_a）、值不同。文本里这明摆着是先后，可 M_a 是一整场对话的区间，第 5.6 节的「接续」要求时刻可判定为不相交，这里判不出来。见 findings 第 2 条"},{"id":"D47","slot":"S_contract_content","value":{"t":"literal","v":"反派魔法少女"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":64,"timeRef":"M_a"},{"id":"D48","slot":"S_vmg_appel","value":{"t":"literal","v":"反派魔法少女"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":64,"timeRef":null,"note":"印证 D01：同槽同值，来源不同（作者 / 古书说出口）。两条隔了 63 段"},{"id":"D49","slot":"S_su_kind","value":{"t":"kind","id":"K_magical_girl"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":67,"timeRef":"M_today","note":"「从今天开始，你就将成为魔法少女」。时间指示指向 M_today——但原话是「从今天开始」，一个开口向后的区间，模型只存得下一个时刻。见 findings 第 8 条"},{"id":"D50","slot":"S_mg_appel","value":{"t":"literal","v":"魔法少女"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":67,"timeRef":null},{"id":"D51","slot":"S_creator_appel","value":{"t":"literal","v":"造物主"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":67,"timeRef":null},{"id":"D51b","slot":"S_creator_kind","value":{"t":"kind","id":"K_creator"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":67,"timeRef":null,"note":"「造物主」这三个字在原文里一次出手同时干了两件事：给这个主体一个称呼，也给了它一个类别。第一章有三个名词是这样（造物主、魔法少女、反派魔法少女），每一个都得建两个节点——见 findings 第 5 条"},{"id":"D52","slot":"S_task_appel","value":{"t":"literal","v":"一整套任务"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":67,"timeRef":"M_a"},{"id":"D53","slot":"S_task_giver","value":{"t":"kind","id":"K_creator"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":67,"timeRef":null},{"id":"D54","slot":"S_task_purpose","value":{"t":"literal","v":"帮助她逐步走上反派魔法少女的顶点"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":67,"timeRef":null},{"id":"D55","slot":"S_mg_death_rate","value":{"t":"number","v":90,"unit":"%"},"source":{"channel":"speech","holder":"su_tianqing","hedge":"hedged"},"at":68,"timeRef":null,"note":"原话是问句（「是那种死亡率高达90%的高危职业吗？！」），所以保留度是带保留。古书的回答绕开了这个数字，没否认也没确认——求值时这条落在「悬而未决」里"},{"id":"D56","slot":"S_mg_kind","value":{"t":"kind","id":"K_oudou"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":69,"timeRef":null},{"id":"D57","slot":"S_oudou_appel","value":{"t":"literal","v":"王道系"},"source":{"channel":"speech","holder":"codex","hedge":"plain"},"at":69,"timeRef":null},{"id":"D58","slot":"S_vmg_prospect","value":{"t":"literal","v":"纯纯的找死"},"source":{"channel":"speech","holder":"su_tianqing","hedge":"plain"},"at":70,"timeRef":null},{"id":"D59","slot":"S_oudou_shape","value":{"t":"literal","v":"魔法少女面对强敌逐渐成长，然后喊着友情和羁绊冲上去把反派干碎"},"source":{"channel":"thought","holder":"su_tianqing","hedge":"plain"},"at":72,"timeRef":null,"note":"全章唯一一条出自说明 Beat（B22）的披露。时间指示必须为空——一般规律不在某一刻为真，这和 B22 本身没有时刻是同一个理由的两面"},{"id":"D60","slot":"S_su_cod","value":{"t":"literal","v":"急性心肌梗死"},"source":{"channel":"thought","holder":"su_tianqing","hedge":"hedged"},"at":73,"timeRef":"M_b","note":"全书这条信息的唯一来源，是她慌乱中的自我推测，不是诊断。第 8 节第六条那条标杆样例"},{"id":"D61","slot":"S_bprev_appel","value":{"t":"literal","v":"原来的身体"},"source":{"channel":"thought","holder":"su_tianqing","hedge":"plain"},"at":73,"timeRef":null},{"id":"D62","slot":"S_codex_name","value":{"t":"literal","v":"墨丘利秘典"},"source":{"channel":"system","holder":null,"hedge":"plain"},"at":74,"timeRef":"M_a","note":"印证 D27。这一条的价值在来源：第 30 段是古书自称，这一条是系统通知——两个不同的通道说了同一个名字，专名从「它自己说的」升级成了两处支持"},{"id":"D63","slot":"S_contract_state","value":{"t":"literal","v":"成立"},"source":{"channel":"system","holder":null,"hedge":"plain"},"at":76,"timeRef":"M_a","note":"印证 D46：同槽同值、来源通道不同（角色说出口 / 系统通知）"},{"id":"D64","slot":"S_su_kind","value":{"t":"kind","id":"K_villain_mg"},"source":{"channel":"system","holder":null,"hedge":"plain"},"at":77,"timeRef":"M_today","note":"「走上反派魔法少女的道路吧，苏天晴。」形式上是祈使句，功能上是系统在宣告她的类别。这一条是本章的落幕，也是第 1 段那个剧透在正文里兑现的地方"}],"findings":["77 段正文装出 9 个类、10 个主体、32 个谓词、50 个槽、66 条披露。密度极不均：第 7 至 11 段五段产出 15 条（外貌描写那一片），第 19 至 25 段连续七段一条都没有。","24 个 Beat 里有 5 个一条披露都不产出：B04（古书再次出声，她茫然）、B07（古书不解她为什么薅尾巴）、B15（她当场就签，古书凌乱）、B17（古书短暂错乱）、B21（她突然有点后悔）。五个全是在写情绪与反应——**推进剧情和产出披露是两回事**，一个 Beat 可以很重要却什么也不往图里存。这也说明 Beat 层不能省：这五段的内容只活在它们的一句话和原文里。","场内的状态变化被判成了「认识论并存」，于是求值给出一个明摆着错的答案。契约状态在第 45 段是「尚未签订」、第 60 段是「成立」，两条的时刻都是 M_a（整场对话是一个区间），值不同、来源通道不同，照第 5.6 节那张表正好落在「认识论并存」这一行——不是冲突，两条并存。结果读到第 77 段时，求值同时认为契约「尚未签订」和「成立」都为真。这不是精度问题，是答错了。出路只有一条：承认同一时刻内部叙述位置可以当次序用。需要拍板，记为 W11。","第 5.6 节那张表默认两个值互斥，可互不互斥由基数决定，而表里一个字都没提基数。不接基数就照表判，第一章会凭空判出三处「竞争」：她列的两个愿望（第 54 段「取之不尽的财富」和「变成萝莉」）、契约的两个相对方（第 45 段她和古书）、古书的两个称呼（「黑色古书」和「小破书」）。schema.ts 因此加了第六行「并列累加」——这不是新裁决，是把第 5.3 节已有的基数接进第 5.6 节。","接上一条，还有一种真的判错。第 12 段说尾巴「正在炸毛」，第 18 段说它「触感无比柔顺」，同槽、同时刻、同来源通道、值不同——照表是「竞争」，可它们一条讲外观一条讲触感，根本不打架。数据里只能把「尾巴」的基数写成多值绕过去，而它明明只有一条尾巴。**基数被用错了地方**：模型缺的是「同一个东西的多面描写」与「同一个位置的多个候选值」之间的区分。","五行关系表实际只用到三行。全章命中：印证 4 处、认识论并存 2 处、并列累加 7 处；竞争、接续、候选同指各 0 处。竞争和整套反驳机制在本章一次都没被演到——第一章还没到翻案的时候，所以这两样在这份数据上没有被验证过。","四处印证，每一处的价值都在「来源换了」而不在「又说了一遍」：专名苏天晴（第 6 段她自称 / 第 8 段叙述者）、专名墨丘利秘典（第 30 段自称 / 第 74 段系统通知）、契约成立（第 60 段她说 / 第 76 段系统通知）、反派魔法少女（第 1 段作者标题 / 第 64 段古书）。最后一处隔了 63 段。","66 条披露里只有 3 条带保留，而这 3 条恰好全落在同一类内容上：第 29 段叙述者揣测古书在想什么、第 68 段她问出的死亡率数字、第 73 段她对自己死因的猜测。求值到第 77 段，悬而未决的槽正好也是这三个——**保留度在这一章是唯一一个真正在起作用的分流器**，时刻一次都没能分出先后。","「类」在 v4 里装了两件事。「苏天晴是狐女」是第 26 段她自己认定的，有来源、有叙述位置、将来可能被推翻；「苏天晴是人物」文本从来没说过，库内粗分类现在由关联 Kind.category 提供，不是 Entity 字段。","同一个名词常常既要当类又要当主体，第一章有三个。「造物主」「魔法少女」「反派魔法少女」当类才能贴到主体身上（第 67、77 段），当主体才能挂自己的槽（魔法少女的「死亡率 90%」在第 68 段）。数据里只能各建两个节点，而 v4 没说这两者之间该不该有边、谁是谁的什么。记为 W10。","读者推断只有两条，一条比一条弱。(苏天晴, 居于哪具身体) 有四处支持横跨三个 Beat；(古书, 类) = 智慧体 只有三处，而且全是它自己的表现——文本从没说过它有自我意识，它也可能只是个复读机。两条都不能反过来当别的推断的前提，schema.ts 的 validate() 会把这条规则查出来。","时间指示与时刻的对不齐有三种，第一章各出现一次。一、Beat 的时刻和披露的时间指示不同：B05 停在 M_b，它的披露 D18 指向 M_nightshifts。二、时间指示是个开口向后的区间：第 67 段「从今天开始」，模型只存得下 M_today 这一个时刻，「从此以后」存不下。三、时间指示为空且必须为空：说明 Beat 产生的披露（D59）、一般态度（D35）、亲属关系（D21）都不发生在某一刻。","第 3 段的作者声明（「本书出场角色均已满18岁」）一条披露都不产生：它没有主体，也不指向虚构世界里的任何东西。与第 1 段的章标题恰好构成一对——同样是故事外的 Beat，一个剧透了 63 段之后的情节，一个什么也没进图。故事外不等于不产生披露，也不等于一定产生披露。","叙述位置切片真的会改名，而且两个主体各改一次。读到第 8 段，古书叫「黑色古书」、身体叫「一道陌生的娇小身影」；读到第 11 段身体改叫「一只娇小的金毛狐女」；读到第 30 段古书改叫「墨丘利秘典」。这不是查看器的效果，是「专名」和「称呼」两个槽在不同叙述位置上求值的结果。读到第 1 段时图上只有一个节点，而它正是那个剧透。"]},"beats":{"schema":"nbook.novel-beats/v4-spike","provenance":{"method":"人工通读手工拆分，不是抽取管线输出","model":"memory-model-v4.md 第 3 节","sourceText":"../../t01-novel-understanding-spike/evidences/chapter-001-source-normalized.txt","sourceNormalization":"chapter-source-normalization/v1，文件第 N 行即第 N 段","note":"本文件不构成任何召回率或准确率证据；它的用途是给 t03 的 S1 当对照答案，以及验证 v4 第 3 节的切分规则在真实正文上能不能落地"},"chapter":1,"chapterTitle":"反派魔法少女","entityLegend":{"note":"只是给本文件 holder 字段用的图例。主体的真源是 ../chapter-01.json 的 entities，两边的 id 必须一致，build-viewer.ts 会核对","su_tianqing":"苏天晴。自称此名的那个人，前世下夜班后猝死","codex":"黑色古书。第 30 段起揭晓专名为墨丘利秘典","body_fox":"金毛狐女的身体。苏天晴现在居于其中，原主本章未说明"},"moments":[{"id":"M_a","grain":"interval","label":null,"note":"第一章当下。房间里这一场连续对话发生的时刻，文本没有给它任何名字。它是一个区间，从第 5 段铺到第 77 段——所以它不能当相对时间词的锚点，见 v4 第 5.7.6 节"},{"id":"M_b","grain":"interval","label":null,"note":"回述那一场发生的时刻，面摊那一刻。文本管它叫「五分钟前」，但那是相对说法，按 v4 第 5.7.2 节只能进关系不能当 label"},{"id":"M_c","grain":"interval","label":null,"note":"古书第一次说那段开场白的时刻。正文里没有这一段——第 30、31 段明写是「重复」，原话在第 5 段之前就说过了。所以这是一个没有任何 Beat 停在上面、也不属于任何场的时刻，见 v4 第 5.7.6 节第二条"},{"id":"M_today","grain":"interval","label":null,"note":"第 67 段古书说的「今天」，包着当下那一刻的那一天。粒度是日，比 M_a 粗——粒度不是时刻的属性，是关系上单位的属性"},{"id":"M_nightshifts","grain":"interval","label":null,"note":"「连续三个夜班」那一段。它不是任何 Beat 停在的地方——B05 停在 M_b（面摊那一刻），这一段是 B05 产生的披露「她连上了三个夜班」指向的时刻。这是 v4 第 5.7.3 节「两个挂钩，一种节点」的实物：Beat.时刻 与 披露.时间指示 在同一个 Beat 上取了不同的值"}],"momentRelations":[{"subject":"M_b","predicate":"before","anchor":null,"offset":{"value":5,"unit":"分钟"},"at":16,"source":{"channel":"narrator","holder":null,"hedge":"plain"},"note":"「五分钟前」。锚点为空表示叙述当下，也就是第 16 段那一刻——不是这个 Beat 的时刻（B05 的时刻是 M_b 本身，写成锚点就成了「面摊比面摊早五分钟」）"},{"subject":"M_c","predicate":"before","anchor":null,"offset":{"value":2,"unit":"分钟"},"at":29,"source":{"channel":"narrator","holder":null,"hedge":"plain"},"note":"「两分钟前的开场白」。与上一条一起构成 v4 第 5.7.6 节那个对撞：两条都锚到 M_a 就会推出「面摊比开场白早 3 分钟」，锚到各自叙述位置只能推出「开场白至少比面摊晚 3 分钟」"},{"subject":"M_today","predicate":"contains","anchor":null,"offset":null,"at":67,"source":{"channel":"speech","holder":"codex","hedge":"plain"},"note":"「从今天开始」。包含关系没有偏移。来源是古书说出口，不是叙述者——同一个「今天」由不同人说出来是两条记录，规则 6"},{"subject":"M_nightshifts","predicate":"before","anchor":{"type":"moment","ref":"M_b"},"offset":null,"at":16,"source":{"channel":"narrator","holder":null,"hedge":"plain"},"note":"「结束了连续三个夜班后刚下班的自己坐在街边面摊上」。全章唯一一条锚点写死的关系——文本明确把夜班挂在面摊那一刻上，不是挂在叙述当下。偏移为空：「后刚下班」有先后没有距离，按第 5.7.4 节不编数字"}],"beats":[{"id":"B01","paragraphs":[1,4],"type":"paratext","sources":[{"channel":"author","holder":null,"hedge":"plain"}],"moment":null,"gist":"章标题「反派魔法少女」与作者的满18岁声明","note":"故事外，但仍向读者披露了「反派魔法少女」这个词——比正文第 64 段揭晓早了 60 段。第 1、2 段标题重复是归一化产物"},{"id":"B02","paragraphs":[5,8],"type":"narrative","sources":[{"channel":"speech","holder":"codex","hedge":"plain"},{"channel":"speech","holder":"su_tianqing","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"}],"moment":"M_a","gist":"古书问名，她报出苏天晴；她坐在床头看着浮空的黑色古书，从镜中瞥见陌生身影"},{"id":"B03","paragraphs":[9,12],"type":"description","sources":[{"channel":"narrator","holder":null,"hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"hedged"}],"moment":"M_a","gist":"这具身体：金色长发、兽耳、精致五官、白皙肌肤、炸毛大尾巴——一只娇小的金毛狐女","note":"全章披露密度最高的一段，一个 Beat 产出 6 条披露。第 12 段「这应该是一只乖巧可爱的」是叙述者带保留的评价，够不上建槽，因此按 v4 第 5.5 节「没有槽就没有披露」不产生任何披露，只活在原文里"},{"id":"B04","paragraphs":[13,15],"type":"narrative","sources":[{"channel":"speech","holder":"codex","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"}],"moment":"M_a","gist":"古书再次出声把她的注意力拽回，她仍然茫然"},{"id":"B05","paragraphs":[16,16],"type":"narrative","sources":[{"channel":"narrator","holder":null,"hedge":"plain"}],"moment":"M_b","gist":"三个夜班后在面摊吃面，听见太奶说话，回头看见她坐在藤椅上织围巾，随后胸口剧痛失去意识","note":"回述。全章唯一一处时刻切换，也是唯一一处硬边界由时刻切出来的地方"},{"id":"B06","paragraphs":[17,19],"type":"narrative","sources":[{"channel":"narrator","holder":null,"hedge":"plain"},{"channel":"thought","holder":"su_tianqing","hedge":"plain"}],"moment":"M_a","gist":"她薅了一把炸毛的尾巴，触感真实得让她耳朵竖起、全身绷直"},{"id":"B07","paragraphs":[20,22],"type":"narrative","sources":[{"channel":"speech","holder":"codex","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"},{"channel":"thought","holder":"codex","hedge":"plain"}],"moment":"M_a","gist":"古书不解她为什么薅自己的尾巴，心想不疼吗","note":"视角漂移第一处：第 21 段后半句是叙述者贴着古书写，第 22 段是古书的心声"},{"id":"B08","paragraphs":[23,27],"type":"narrative","sources":[{"channel":"speech","holder":"su_tianqing","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"},{"channel":"thought","holder":"su_tianqing","hedge":"plain"}],"moment":"M_a","gist":"她干咳掩饰尴尬制止古书说话，理清思绪：我重生了，重生成一只金毛狐女","note":"第 25 至 27 段人称切到第一人称"},{"id":"B09","paragraphs":[28,29],"type":"narrative","sources":[{"channel":"speech","holder":"su_tianqing","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"hedged"}],"moment":"M_a","gist":"她问「你是谁」；古书沉默良久，像是在判断她是不是自己要找的人","note":"视角漂移第二处：第 29 段「像是在思考」是叙述者带保留地揣测古书"},{"id":"B10","paragraphs":[30,32],"type":"narrative","sources":[{"channel":"speech","holder":"codex","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"}],"moment":"M_a","gist":"古书自称墨丘利秘典，从星空彼岸而来寻找最优秀的适格者，认定她就是那个人；她觉得这台词中二","note":"本章设定密度最高的一段。这三条设定全部出自古书自称，叙述者一条也没直陈证实——它只在上一段（第 29 段）带保留地给过一个自己的版本「是不是自己要找的人」，两条落在同一个槽上，构成 v4 第 5.6 节的「认识论并存」"},{"id":"B11","paragraphs":[33,35],"type":"narrative","sources":[{"channel":"narrator","holder":null,"hedge":"plain"},{"channel":"thought","holder":"su_tianqing","hedge":"plain"}],"moment":"M_a","gist":"她跳下床走到镜前，抬脚端详这只白嫩带红晕的小脚，自评完美"},{"id":"B12","paragraphs":[36,39],"type":"narrative","sources":[{"channel":"speech","holder":"codex","hedge":"plain"},{"channel":"speech","holder":"su_tianqing","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"}],"moment":"M_a","gist":"古书以为她满意这具身体、不解她为何盯着脚看；她答小脚是世上最美好的瑰宝"},{"id":"B13","paragraphs":[40,41],"type":"narrative","sources":[{"channel":"narrator","holder":null,"hedge":"plain"},{"channel":"thought","holder":"su_tianqing","hedge":"plain"}],"moment":"M_a","gist":"她一边搭话一边意识到：这本书知道她不是这具身体原来的主人","note":"支持「她不是原主」这条推断的第五处，也是本章最直接的一处"},{"id":"B14","paragraphs":[42,45],"type":"narrative","sources":[{"channel":"speech","holder":"codex","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"}],"moment":"M_a","gist":"古书快进到下一步：她是最佳适格者，它作为星界使者引导她，只需签一个小小的契约"},{"id":"B15","paragraphs":[46,49],"type":"narrative","sources":[{"channel":"speech","holder":"su_tianqing","hedge":"plain"},{"channel":"speech","holder":"codex","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"}],"moment":"M_a","gist":"她当场就签，古书凌乱，问她怎么不犹豫考虑"},{"id":"B16","paragraphs":[50,56],"type":"narrative","sources":[{"channel":"speech","holder":"su_tianqing","hedge":"plain"},{"channel":"speech","holder":"codex","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"}],"moment":"M_a","gist":"她严肃宣称世上最通用的两个愿望是取之不尽的财富和变成萝莉，而变成可爱狐狐本身就是最大的奖励","note":"七段一个 Beat，是全章最长的。来源在这七段里来回换了五次——这正是来源不能当切分依据的例子"},{"id":"B17","paragraphs":[57,58],"type":"narrative","sources":[{"channel":"narrator","holder":null,"hedge":"hedged"}],"moment":"M_a","gist":"古书短暂错乱，随即把话题拖回正题","note":"视角漂移第三处：第 58 段「好像有哪里很对，好像又根本不对」是叙述者贴着古书写，且带保留"},{"id":"B18","paragraphs":[59,63],"type":"narrative","sources":[{"channel":"speech","holder":"codex","hedge":"plain"},{"channel":"speech","holder":"su_tianqing","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"},{"channel":"thought","holder":"su_tianqing","hedge":"plain"}],"moment":"M_a","gist":"契约算成立，她不假思索地承认；随后才想起问契约内容，担心是奴隶契约","note":"如果作者在这里断章，一刀不会切到任何 Beat——好的断章点天然落在 Beat 边界上"},{"id":"B19","paragraphs":[64,67],"type":"narrative","sources":[{"channel":"speech","holder":"codex","hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"},{"channel":"speech","holder":"su_tianqing","hedge":"plain"}],"moment":"M_a","gist":"契约内容是反派魔法少女；从今天起她将成为魔法少女，造物主给她定制了一整套任务"},{"id":"B20","paragraphs":[68,70],"type":"narrative","sources":[{"channel":"speech","holder":"su_tianqing","hedge":"plain"},{"channel":"speech","holder":"codex","hedge":"plain"}],"moment":"M_a","gist":"她指出魔法少女死亡率九成；古书说是王道系的那种；她说王道故事里当反派是纯纯找死"},{"id":"B21","paragraphs":[71,71],"type":"narrative","sources":[{"channel":"narrator","holder":null,"hedge":"plain"}],"moment":"M_a","gist":"她突然有点后悔了"},{"id":"B22","paragraphs":[72,72],"type":"exposition","sources":[{"channel":"thought","holder":"su_tianqing","hedge":"plain"}],"moment":null,"gist":"王道系是什么：魔法少女面对强敌逐渐成长，喊着友情和羁绊把反派干碎的那种故事","note":"全章唯一的说明 Beat。形式上是心声，功能上是作者借心声给读者解释概念——类型是说明、来源是心声，两维分开才装得下。它没有时刻，但夹在两个有时刻的 Beat 中间，是「场必须是区间不能是集合」的直接理由"},{"id":"B23","paragraphs":[73,73],"type":"narrative","sources":[{"channel":"thought","holder":"su_tianqing","hedge":"hedged"}],"moment":"M_a","gist":"她想能不能反悔、能不能送回原来的身体，觉得急性心肌梗死或许还有抢救机会","note":"「死因是急性心肌梗死」这条全书唯一的来源就在这里，是她慌乱中的自我推测，不是诊断"},{"id":"B24","paragraphs":[74,77],"type":"narrative","sources":[{"channel":"system","holder":null,"hedge":"plain"},{"channel":"narrator","holder":null,"hedge":"plain"}],"moment":"M_a","gist":"脑中依次响起秘典绑定成功、契约成立、走上反派魔法少女的道路；她欲哭无泪","note":"系统通知通道的唯一出处。第 75 段明写「脑子里响起的声音」，说话人从未出现，四个旧通道一个都装不下"}],"scenes":[{"id":"SC1","beats":["B02","B04"],"moment":"M_a","location":"昏暗的房间","pov":"su_tianqing","gist":"醒来，古书问名，她发现自己变成了狐女"},{"id":"SC2","beats":["B05","B05"],"moment":"M_b","location":"街边面摊","pov":"su_tianqing","gist":"回述：前世下夜班后在面摊猝死"},{"id":"SC3","beats":["B06","B24"],"moment":"M_a","location":"昏暗的房间","pov":"su_tianqing","povDrift":["B07","B09","B17"],"gist":"从薅尾巴到契约成立：她问出古书身份，看新身体，秒签契约，得知自己要当反派魔法少女"}],"findings":["三条场记录，但只有两个时刻。SC1 与 SC3 共享 M_a，是被回述打断的同一场戏——「是同一场」由共享时刻表达，不由场的身份表达。","第一章几乎就是一场戏：一个房间、一段连续时间、两个角色。t03 那次真实 S1 调用切出了 7 个窗口，它切的其实是 Beat，不是场。","24 个 Beat 覆盖全部 77 段，无重叠无空隙，平均 3.2 段。最长的 B16 有 7 段，最短的 B21、B22、B23 各 1 段。","硬边界在这一章只切出过两刀：B05 处时刻变，B22 处类型变。其余 21 处边界全是软边界（一句话概括不了）。","地点在这一章一次都没有切出边界——第 33 段「走到落地镜前」按不换地点处理，落地镜就在房间里。","视角漂移三处（B07、B09、B17），全部漂到古书身上。t03 那次 S1 给七个窗口全标了 pov 苏天晴，三处全漏。","类型分布：叙事 21、描写 1、说明 1、故事外 1。描写和说明各只有一个 Beat，但都是模型里不可替代的一类——B03 是披露密度最高的一段，B22 是「场必须是区间」的理由。","来源通道用到五个：作者、叙述者、角色说出口、角色心里想、系统通知都直接出现在正文里；第六个「读者推断」不出现在 Beat 上，它只出现在披露上。","三处视角漂移里只有 B07 能从字段算出来（心里想 + 持有者=古书）。B09、B17 的漂移载体是「叙述者 + 带保留」，持有者按定义为空，现有字段表达不了它贴着谁——见 v4 的待裁决 W8。","五个时刻里只有两个被 Beat 占用。M_c（第一次说开场白那一刻）、M_today（第 67 段的「今天」）、M_nightshifts（连上三个夜班那一段）都没有任何 Beat 停在上面，M_c 更是完全落在正文之外——时刻的集合比场的集合大，时刻不能由场生成。","M_nightshifts 是「两个挂钩，一种节点」的实物：B05 这个 Beat 停在 M_b（面摊那一刻），可它产生的披露「她连上了三个夜班」指的是 M_b 之前那一段。同一个 Beat 上，Beat.时刻 与 披露.时间指示 取了不同的值，一个字段装不下。","四条时刻关系里三条锚点为空（叙述当下），只有 M_nightshifts 那条锚点写死在 M_b 上——因为文本明确把夜班挂在面摊那一刻上（「结束了连续三个夜班后刚下班的自己坐在街边面摊上」），不是挂在读者读到的那一刻。","全章带数值的时间指示只有两条：第 16 段「五分钟前」、第 29 段「两分钟前」。其余的「随后」「接着」「良久后」「片刻后」「没有丝毫停顿」「后刚下班」全都只有先后没有距离，按 v4 第 5.7.4 节偏移留空，不编数字。","全章一个绝对时间词都没有。第一章的时间线是一团浮着的相对位置，没有任何一点能钉在日历上——这不妨碍回答「面摊那一刻在房间那一刻之前」，但任何想给时刻发坐标的设计在这一章就会开始编造。"]}}
+</script>
+<script>
+"use strict";
+/* ══════════════════════════════════════════════════════════
+   0  数据
+   ══════════════════════════════════════════════════════════ */
+const MEM_SCHEMA   = 'nbook.novel-memory/v4-spike';
+const BEATS_SCHEMA = 'nbook.novel-beats/v4-spike';
+
+const CHANNEL_ZH = {
+  narrator:'叙述者', speech:'角色说出口', thought:'角色心里想',
+  system:'系统提示', author:'作者旁白', reader_inference:'读者推断',
+};
+const HEDGE_ZH   = { plain:'直陈', hedged:'带保留', suspended:'文本明确悬置' };
+const HOLDERLESS = ['narrator','system','author','reader_inference'];
+const BEAT_TYPE_ZH = { paratext:'故事外', narrative:'叙事', description:'描写', exposition:'说明' };
+const MOMENT_PRED_ZH = { before:'早于', after:'晚于', same:'同一', contains:'包含', overlaps:'重叠' };
+const RELATION_ZH = {
+  compete:'竞争', coexist:'认识论并存', succeed:'接续',
+  corroborate:'印证', candidate:'候选同指', accrue:'并列累加',
+};
+/** 换算成分钟。认不出来的单位就只当先后用，不当距离用。 */
+const UNIT_MINUTES = { '分钟':1, '小时':60, '天':1440, '周':10080, '月':43200, '年':525600 };
+const NOW_ASSUMPTION = '同一章内，叙述当下按段号单调不减。跨章不作任何假设（见 W9）。';
+const KIND_COLOR = {
+  character:'var(--indigo)', body:'var(--cinnabar)', item:'var(--gold)',
+  location:'var(--verdi)', concept:'var(--slate)', organization:'var(--ink3)',
+};
+const KIND_CATEGORY_ZH = {
+  character:'人物', item:'物品', body:'身体', concept:'概念',
+  location:'地点', organization:'组织',
+};
+const KIND_CATEGORY_ORDER = ['character','body','item','concept','location','organization'];
+
+let MEM = null, BEATS = null, C = null;
+
+function loadInline(){
+  let raw = {};
+  try { raw = JSON.parse(document.getElementById('dataset').textContent || '{}'); } catch (e) { raw = {}; }
+  if (raw && raw.memory) MEM = raw.memory;
+  if (raw && raw.beats)  BEATS = raw.beats;
+}
+
+/* merge：两半合成一章。beats 缺席也要能开（只是时刻那一路推不出东西）。 */
+function merge(mem, beats){
+  return {
+    chapter: mem.chapter, chapterTitle: mem.chapterTitle, paragraphCount: mem.paragraphCount,
+    kinds: mem.kinds||[], entities: mem.entities||[], predicates: mem.predicates||[],
+    slots: mem.slots||[], disclosures: mem.disclosures||[],
+    moments: beats ? (beats.moments||[]) : [],
+    momentRelations: beats ? (beats.momentRelations||[]) : [],
+    beats: beats ? (beats.beats||[]) : [],
+    scenes: beats ? (beats.scenes||[]) : [],
+    findings: [...(mem.findings||[]), ...((beats && beats.findings)||[])],
+  };
+}
+
+/* ══════════════════════════════════════════════════════════
+   1  查表小工具
+   ══════════════════════════════════════════════════════════ */
+const byId  = (arr,id)=> arr.find(x=>x.id===id);
+const ent   = id => byId(C.entities,id);
+const kind  = id => byId(C.kinds,id);
+const pred  = id => byId(C.predicates,id);
+const slotB = id => byId(C.slots,id);
+const dclB  = id => byId(C.disclosures,id);
+const predOfSlot = s => s ? pred(s.predicate) : undefined;
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, m =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+function valueKey(v){
+  return v.t==='special' ? 'X:'+v.v
+    : v.t==='number' ? 'N:'+v.v+(v.unit||'')
+    : v.t==='ref' ? 'R:'+v.id
+    : v.t==='kind' ? 'K:'+v.id
+    : 'S:'+v.v;
+}
+/** 值怎么念给人听。ref 用当前叙述位置下的显示名，别泄漏后文的专名。 */
+function valueText(v, k){
+  if (v.t==='literal') return v.v;
+  if (v.t==='number')  return v.v + (v.unit||'');
+  if (v.t==='ref')     { const e=ent(v.id); return e ? displayName(e, k==null?C.paragraphCount:k) : '?'+v.id; }
+  if (v.t==='kind')    { const kd=kind(v.id); return kd ? kd.name : '?'+v.id; }
+  return v.v==='UNKNOWN' ? '（文本明确留白）' : '（明确没有）';
+}
+const subjectId = s => s?.subject?.id;
+const subjectRecord = ref => ref?.type==='kind' ? kind(ref.id) : ref?.type==='entity' ? ent(ref.id) : undefined;
+const subjectLabel = ref => {
+  const x = subjectRecord(ref);
+  return x ? (ref.type==='kind' ? x.name : displayName(x,S.k)) : (ref?.id || '?');
+};
+const slotLabel = s => {
+  const p = predOfSlot(s);
+  return subjectLabel(s.subject) + ' · ' + (p ? p.name : s.predicate);
+};
+const beatOf = p => C.beats.find(b => p>=b.paragraphs[0] && p<=b.paragraphs[1]);
+function sceneOf(p){
+  for (const s of C.scenes){
+    const a = byId(C.beats,s.beats[0]), b = byId(C.beats,s.beats[1]);
+    if (a && b && p>=a.paragraphs[0] && p<=b.paragraphs[1]) return s;
+  }
+  return undefined;
+}
+
+/* ══════════════════════════════════════════════════════════
+   2  时刻：定性闭包 + 定量下界
+   ══════════════════════════════════════════════════════════ */
+const nowVar = at => '@'+at;
+let _order=null, _bounds=null;
+
+function qualitativeOrder(){
+  const nodes = new Set(C.moments.map(m=>m.id));
+  const edges = [];
+  const same = new Map();
+  const find = x => {
+    let r = same.get(x);
+    if (r===undefined || r===x) return x;
+    r = find(r); same.set(x,r); return r;
+  };
+  const nows = [];
+  for (const r of C.momentRelations){
+    const anchor = r.anchor ? r.anchor.ref : nowVar(r.at);
+    if (!r.anchor){ nodes.add(anchor); nows.push(r.at); }
+    nodes.add(r.subject);
+    if (r.predicate==='before') edges.push([r.subject, anchor]);
+    else if (r.predicate==='after') edges.push([anchor, r.subject]);
+    else if (r.predicate==='same') same.set(find(r.subject), find(anchor));
+  }
+  nows.sort((a,b)=>a-b);
+  for (let i=1;i<nows.length;i++) edges.push([nowVar(nows[i-1]), nowVar(nows[i])]);
+
+  const adj = new Map();
+  for (const [a,b] of edges){ if(!adj.has(a)) adj.set(a,[]); adj.get(a).push(b); }
+  const before = new Set();
+  for (const s of nodes){
+    const seen = new Set([s]), stack=[s];
+    while (stack.length){
+      const x = stack.pop();
+      for (const y of (adj.get(x)||[])) if (!seen.has(y)){ seen.add(y); stack.push(y); before.add(s+'>'+y); }
+    }
+  }
+  return { before, same, find };
+}
+
+/** 差分约束的最长路松弛。key 是 `a->b`，值是 x_b − x_a 的下界（分钟）。 */
+function quantitativeBounds(){
+  const nodes = new Set(C.moments.map(m=>m.id));
+  const cons = [], nows = [];
+  for (const r of C.momentRelations){
+    const anchor = r.anchor ? r.anchor.ref : nowVar(r.at);
+    if (!r.anchor){ nodes.add(anchor); nows.push(r.at); }
+    nodes.add(r.subject);
+    const mins = r.offset ? (UNIT_MINUTES[r.offset.unit] ?? null) : null;
+    const d = (mins!==null && r.offset) ? r.offset.value*mins : null;
+    if (r.predicate==='before'){
+      cons.push({a:r.subject,b:anchor,w:d??0});
+      if (d!==null) cons.push({a:anchor,b:r.subject,w:-d});
+    } else if (r.predicate==='after'){
+      cons.push({a:anchor,b:r.subject,w:d??0});
+      if (d!==null) cons.push({a:r.subject,b:anchor,w:-d});
+    } else if (r.predicate==='same'){
+      cons.push({a:r.subject,b:anchor,w:0});
+      cons.push({a:anchor,b:r.subject,w:0});
+    }
+  }
+  nows.sort((a,b)=>a-b);
+  for (let i=1;i<nows.length;i++) cons.push({a:nowVar(nows[i-1]),b:nowVar(nows[i]),w:0});
+
+  const ns = [...nodes], key=(a,b)=>a+'->'+b, lo = new Map();
+  for (const n of ns) lo.set(key(n,n), 0);
+  for (const cn of cons){
+    const k2 = key(cn.a,cn.b);
+    lo.set(k2, Math.max(lo.has(k2)?lo.get(k2):-Infinity, cn.w));
+  }
+  for (const k2 of ns) for (const i of ns) for (const j of ns){
+    if (!lo.has(key(i,k2)) || !lo.has(key(k2,j))) continue;
+    const v = lo.get(key(i,k2)) + lo.get(key(k2,j));
+    if (v > (lo.has(key(i,j))?lo.get(key(i,j)):-Infinity)) lo.set(key(i,j), v);
+  }
+  return lo;
+}
+const order  = ()=> (_order  || (_order  = qualitativeOrder()));
+const bounds = ()=> (_bounds || (_bounds = quantitativeBounds()));
+
+/** 两个时刻是同一个、错开、还是判不了。两边都空视为同一个（都挂在叙述当下）。 */
+function compareMoments(a,b){
+  if (a===null && b===null) return 'same';
+  if (a===null || b===null) return 'undecidable';
+  const o = order();
+  if (a===b || o.find(a)===o.find(b)) return 'same';
+  if (o.before.has(a+'>'+b) || o.before.has(b+'>'+a)) return 'disjoint';
+  return 'undecidable';
+}
+
+/* ══════════════════════════════════════════════════════════
+   3  第 5.6 节：两条披露之间是什么关系
+   ══════════════════════════════════════════════════════════ */
+/*
+  第 5.6 节那张表只有五行，这里多一行「并列累加」：那张表默认两个值互斥，
+  而互不互斥由基数说了算。多值谓词上两个不同的值根本不构成一对关系。
+  不看基数就照表判，第一章会凭空判出三处「竞争」。
+*/
+function relationOf(x,y){
+  const sameVal = valueKey(x.value)===valueKey(y.value);
+  const p = x.slot ? predOfSlot(slotB(x.slot)) : undefined;
+  if (p && p.cardinality==='multi' && !sameVal) return 'accrue';
+  const m = compareMoments(x.timeRef ?? null, y.timeRef ?? null);
+  const sameCh = x.source.channel===y.source.channel && (x.source.holder??null)===(y.source.holder??null);
+  const inf = x.source.channel==='reader_inference' || y.source.channel==='reader_inference';
+  if (m==='same' && sameVal && !sameCh) return inf ? 'candidate' : 'corroborate';
+  if (m==='same' && !sameVal &&  sameCh) return 'compete';
+  if (m==='same' && !sameVal && !sameCh) return 'coexist';
+  if (m==='disjoint' && !sameVal) return 'succeed';
+  if (m==='disjoint' &&  sameVal) return inf ? 'candidate' : 'corroborate';
+  return 'candidate';
+}
+
+/** 读到第 k 段为止把一个槽求值一遍：三堆 + 出现过的关系。 */
+function evaluateSlot(s, k){
+  const p = predOfSlot(s);
+  const all = C.disclosures.filter(d=>d.slot===s.id && d.at<=k);
+  const killed = new Set(C.disclosures.filter(d=>d.refutes && d.at<=k).map(d=>d.refutes));
+  const live = all.filter(d=>!killed.has(d.id)).sort((a,b)=>a.at-b.at);
+  const refuted = all.filter(d=>killed.has(d.id));
+
+  const rels = new Set();
+  for (let i=0;i<live.length;i++) for (let j=i+1;j<live.length;j++) rels.add(relationOf(live[i],live[j]));
+
+  const held=[], pending=[], multi = p && p.cardinality==='multi';
+  for (const d of live){
+    const propped = d.source.hedge==='plain' || live.some(o=>o!==d && o.source.hedge==='plain' && valueKey(o.value)===valueKey(d.value));
+    const contested = !multi && live.some(o=>o!==d && valueKey(o.value)!==valueKey(d.value) &&
+      (relationOf(d,o)==='compete' || relationOf(d,o)==='candidate'));
+    if (propped && !contested) held.push(d); else pending.push(d);
+  }
+  return { slot:s, held, pending, refuted, relations:[...rels] };
+}
+const readerState = k => C.slots.map(s=>evaluateSlot(s,k))
+  .filter(s=>s.held.length||s.pending.length||s.refuted.length);
+
+const supportOf = (d,k) => C.disclosures.filter(o=>
+  o.id!==d.id && o.slot===d.slot && o.at<=k &&
+  o.source.channel!=='reader_inference' && relationOf(d,o)==='corroborate');
+
+/**
+ * 读到第 k 段为止，读者管这个主体叫什么。
+ * 专名（最新）→ 叙述者最近一次给的称呼 → 任何人最早给的称呼 → 库内 label。
+ * 中间那一档限定叙述者，否则第 50 段之后古书会显示成「小破书」。这是显示口径，不是模型规则。
+ */
+function namingDisclosures(e,predName,k){
+  const ids=new Set(C.slots.filter(s=>s.subject?.type==='entity'&&s.subject.id===e.id&&
+    (predOfSlot(s)||{}).name===predName).map(s=>s.id));
+  return C.disclosures.filter(d=>d.slot&&ids.has(d.slot)&&d.at<=k&&d.value.t==='literal').sort((a,b)=>a.at-b.at);
+}
+function displayName(e,k){
+  const names=namingDisclosures(e,'专名',k);
+  if(names.length)return names[names.length-1].value.v;
+  const appels=namingDisclosures(e,'称呼',k);
+  for(let i=appels.length-1;i>=0;i--)if(appels[i].source.channel==='narrator')return appels[i].value.v;
+  if(appels.length)return appels[0].value.v;
+  return e.label;
+}
+function nameTimeline(e){
+  const out=[];let last=null;
+  for(let k=1;k<=C.paragraphCount;k++){
+    const n=displayName(e,k);
+    if(n!==last){out.push({at:k,name:n});last=n;}
+  }
+  return out;
+}
+function entityKnownAt(e,k){
+  const ids=new Set(C.slots.filter(s=>s.subject?.type==='entity'&&s.subject.id===e.id).map(s=>s.id));
+  return C.disclosures.some(d=>d.at<=k&&((d.slot&&ids.has(d.slot))||(d.value.t==='ref'&&d.value.id===e.id)));
+}
+const introAt=(e,k)=>{
+  const xs=(e.intro||[]).filter(i=>i.at<=k).sort((a,b)=>b.at-a.at);
+  return xs.length?xs[0].text:null;
+};
+const firstAt=e=>{
+  const ids=new Set(C.slots.filter(s=>s.subject?.type==='entity'&&s.subject.id===e.id).map(s=>s.id));
+  const ds=C.disclosures.filter(d=>(d.slot&&ids.has(d.slot))||(d.value.t==='ref'&&d.value.id===e.id));
+  return ds.length?Math.min(...ds.map(d=>d.at)):Infinity;
+};
+function entityCategory(e,k){
+  const cats=C.slots.filter(s=>s.subject?.type==='entity'&&s.subject.id===e.id&&
+    (predOfSlot(s)||{}).name==='类').flatMap(s=>evaluateSlot(s,k).held)
+    .filter(d=>d.value.t==='kind').map(d=>kind(d.value.id)?.category).filter(Boolean);
+  return cats[0]||'character';
+}
+/**
+ * W11 探测器：单值谓词的槽同时把两个互斥的值判成「为真」。
+ * 第一章上 S_contract_state 会中——两条披露都挂 M_a、通道不同，判成认识论并存，
+ * 于是「尚未签订」和「成立」一起为真。这是个明摆着的错答案，不是显示问题。
+ */
+function w11Flags(k){
+  return readerState(k).filter(st=>{
+    const p = predOfSlot(st.slot);
+    if (!p || p.cardinality!=='single') return false;
+    return new Set(st.held.map(d=>valueKey(d.value))).size > 1;
+  });
+}
+
+/* ══════════════════════════════════════════════════════════
+   4  独立校验器
+   照 memory-model-v4.md 重写一遍，不看 schema.ts。两边都报 0 错误才算数。
+   ══════════════════════════════════════════════════════════ */
+function check(){
+  const out=[];
+  const err=(at,m)=>out.push({level:'error',at,message:m});
+  const warn=(at,m)=>out.push({level:'warn',at,message:m});
+  if (!MEM) { err('dataset','没有 chapter-01.json'); return out; }
+  const N = C.paragraphCount;
+
+  // 1 两份文档的身份
+  if (MEM.schema!==MEM_SCHEMA) err('memory.schema','schema 串不是 '+MEM_SCHEMA);
+  if (BEATS){
+    if (BEATS.schema!==BEATS_SCHEMA) err('beats.schema','schema 串不是 '+BEATS_SCHEMA);
+    if (BEATS.chapter!==MEM.chapter) err('beats.chapter','两份数据不是同一章');
+  } else warn('beats','只载入了记忆那一半，时刻相关的检查全部跳过');
+
+  // 2 id 在八个集合里全局唯一
+  const seen = new Map();
+  for (const [name,arr] of [['kind',C.kinds],['entity',C.entities],['predicate',C.predicates],
+                            ['slot',C.slots],['disclosure',C.disclosures],['moment',C.moments],
+                            ['beat',C.beats],['scene',C.scenes]])
+    for (const x of arr){
+      if (seen.has(x.id)) err(x.id, 'id 撞了：'+seen.get(x.id)+' 与 '+name);
+      seen.set(x.id,name);
+    }
+
+  // 3 槽：SubjectRef 主体与谓词能解析，(主体,谓词) 不许重复
+  const pairs = new Set();
+  for (const s of C.slots){
+    const ref=s.subject||{};
+    if(ref.type!=='entity'&&ref.type!=='kind')err(s.id,'主体引用类型 '+(ref.type||'?')+' 不认识');
+    if(!subjectRecord(ref))err(s.id,'主体 '+(ref.type||'?')+':'+(ref.id||'?')+' 不存在');
+    if(!pred(s.predicate))err(s.id,'谓词 '+s.predicate+' 不存在');
+    const key=(ref.type||'?')+':'+(ref.id||'?')+'|'+s.predicate;
+    if(pairs.has(key))err(s.id,'同一对（主体,谓词）已经有槽了，槽必须唯一');
+    pairs.add(key);
+  }
+
+  // 4 披露
+  for (const d of C.disclosures){
+    const hasSlot = !!d.slot, hasRef = !!d.refutes;
+    if (hasSlot===hasRef) err(d.id,'slot 与 refutes 必须二选一，不能都填也不能都空');
+    if (hasSlot && !slotB(d.slot)) err(d.id,'槽 '+d.slot+' 不存在');
+    if (hasRef && !dclB(d.refutes)) err(d.id,'被反驳的披露 '+d.refutes+' 不存在');
+    if (hasRef){
+      const t = dclB(d.refutes);
+      if (t && t.at > d.at) err(d.id,'反驳出现在被反驳的披露之前');
+    }
+    if (!(Number.isInteger(d.at) && d.at>=1 && d.at<=N)) err(d.id,'at='+d.at+' 不在 1..'+N);
+    const ch = d.source.channel;
+    if (!CHANNEL_ZH[ch]) err(d.id,'来源通道 '+ch+' 不认识');
+    const needHolder = !HOLDERLESS.includes(ch);
+    if (needHolder && !d.source.holder) err(d.id,CHANNEL_ZH[ch]+'必须写明是谁说的');
+    if (!needHolder && d.source.holder) err(d.id,CHANNEL_ZH[ch]+'不该有 holder');
+    if (d.source.holder && !ent(d.source.holder)) err(d.id,'holder '+d.source.holder+' 不是库里的主体');
+    if (!HEDGE_ZH[d.source.hedge]) err(d.id,'hedge '+d.source.hedge+' 不认识');
+    if (d.timeRef && BEATS && !byId(C.moments,d.timeRef)) err(d.id,'时间指示 '+d.timeRef+' 不存在');
+    if (d.value.t==='ref'  && !ent(d.value.id))  err(d.id,'值指向的主体 '+d.value.id+' 不存在');
+    if (d.value.t==='kind' && !kind(d.value.id)) err(d.id,'值指向的类 '+d.value.id+' 不存在');
+
+    // 推断：reader_inference 与 inferredFrom 互为充要
+    const isInf = ch==='reader_inference', hasFrom = Array.isArray(d.inferredFrom) && d.inferredFrom.length>0;
+    if (isInf && !hasFrom) err(d.id,'读者推断必须写明推断自哪些槽');
+    if (!isInf && hasFrom) err(d.id,'只有读者推断才能写 inferredFrom');
+    if (isInf && hasFrom) for (const sid of d.inferredFrom){
+      const s = slotB(sid);
+      if (!s){ err(d.id,'推断自 '+sid+'，但没有这个槽'); continue; }
+      // 推断不能拿另一条推断当证据
+      const base = C.disclosures.filter(o=>o.slot===sid && o.source.channel!=='reader_inference');
+      if (!base.length) err(d.id,'推断自 '+sid+'，但那个槽只有推断，没有文本给的披露');
+      else if (Math.min(...base.map(o=>o.at)) > d.at) err(d.id,'推断出现在它的前提之前');
+    }
+  }
+
+  if (BEATS){
+    // 5 Beat：连续、铺满、类型合法、故事外与说明不许挂时刻
+    const bs = [...C.beats].sort((a,b)=>a.paragraphs[0]-b.paragraphs[0]);
+    let cursor = 1;
+    for (const b of bs){
+      const [lo,hi] = b.paragraphs;
+      if (lo>hi) err(b.id,'段区间反了');
+      if (lo!==cursor) err(b.id,'Beat 之间有缝或有重叠：期望从第 '+cursor+' 段接上，实际第 '+lo+' 段');
+      cursor = hi+1;
+      if (!BEAT_TYPE_ZH[b.type]) err(b.id,'Beat 类型 '+b.type+' 不认识');
+      if ((b.type==='paratext'||b.type==='exposition') && b.moment)
+        err(b.id, BEAT_TYPE_ZH[b.type]+'的 Beat 不该停在某个时刻上');
+      if (b.moment && !byId(C.moments,b.moment)) err(b.id,'时刻 '+b.moment+' 不存在');
+      for (const s of (b.sources||[])){
+        if (s.channel==='reader_inference') err(b.id,'Beat 的来源不能是读者推断，正文不会推断');
+        const need = !HOLDERLESS.includes(s.channel);
+        if (need && !s.holder) err(b.id,CHANNEL_ZH[s.channel]+'必须写明是谁说的');
+        if (s.holder && !ent(s.holder)) err(b.id,'holder '+s.holder+' 不是库里的主体');
+      }
+    }
+    if (bs.length && cursor !== N+1) err('beats','Beat 没有铺满全章：铺到第 '+(cursor-1)+' 段，全章 '+N+' 段');
+
+    // 6 场：Beat 区间合法，场内 Beat 不许挂到别的时刻上
+    for (const s of C.scenes){
+      const a = byId(C.beats,s.beats[0]), b = byId(C.beats,s.beats[1]);
+      if (!a || !b){ err(s.id,'场的首尾 Beat 有一个不存在'); continue; }
+      if (a.paragraphs[0] > b.paragraphs[0]) err(s.id,'场的首尾 Beat 反了');
+      if (!byId(C.moments,s.moment)) err(s.id,'时刻 '+s.moment+' 不存在');
+      if (s.pov && !ent(s.pov)) err(s.id,'视角人物 '+s.pov+' 不存在');
+      // povDrift 记的是「叙述漂到别人身上的那几个 Beat」，不是主体
+      for (const x of (s.povDrift||[])){
+        const bd = byId(C.beats,x);
+        if (!bd) err(s.id,'视角漂移标在 '+x+' 上，但没有这个 Beat');
+        else if (bd.paragraphs[0] < a.paragraphs[0] || bd.paragraphs[1] > b.paragraphs[1])
+          err(s.id,'视角漂移标在 '+x+' 上，但那个 Beat 不在这个场里');
+      }
+      for (const b2 of C.beats)
+        if (b2.paragraphs[0]>=a.paragraphs[0] && b2.paragraphs[1]<=b.paragraphs[1] &&
+            b2.moment && b2.moment!==s.moment)
+          err(s.id, b2.id+' 在这个场里，却挂在时刻 '+b2.moment+' 上');
+    }
+
+    // 7 时刻：label 不许把相对时间写死
+    const REL = ['之前','之后','以前','以后','稍后','随后','后来','刚才','当时','那时','三分钟','分钟前'];
+    for (const m of C.moments){
+      if (m.label) for (const w of REL)
+        if (m.label.includes(w)) err(m.id,'时刻的名字里出现了相对时间词「'+w+'」，先后是关系的事，不是名字的事');
+      const used = C.beats.some(b=>b.moment===m.id) || C.scenes.some(s=>s.moment===m.id) ||
+        C.disclosures.some(d=>d.timeRef===m.id) ||
+        C.momentRelations.some(r=>r.subject===m.id || (r.anchor && r.anchor.ref===m.id));
+      if (!used) warn(m.id,'这个时刻没有被任何 Beat、场、披露或关系用到');
+    }
+
+    // 8 时刻关系
+    for (let i=0;i<C.momentRelations.length;i++){
+      const r = C.momentRelations[i], at='momentRelation#'+(i+1);
+      if (!byId(C.moments,r.subject)) err(at,'主语 '+r.subject+' 不是时刻');
+      if (!MOMENT_PRED_ZH[r.predicate]) err(at,'谓词 '+r.predicate+' 不认识');
+      if (r.anchor){
+        if (r.anchor.type!=='moment') err(at,'锚点类型 '+r.anchor.type+' 不认识');
+        else if (!byId(C.moments,r.anchor.ref)) err(at,'锚点 '+r.anchor.ref+' 不是时刻');
+      }
+      if (r.offset && r.predicate!=='before' && r.predicate!=='after')
+        err(at,'只有早于/晚于才能带偏移');
+      if (r.offset && !(r.offset.unit in UNIT_MINUTES)) err(at,'偏移单位 '+r.offset.unit+' 不认识');
+      if (!(Number.isInteger(r.at) && r.at>=1 && r.at<=N)) err(at,'at='+r.at+' 不在 1..'+N);
+      if (r.source){
+        const need = !HOLDERLESS.includes(r.source.channel);
+        if (need && !r.source.holder) err(at,'这条关系没写明是谁说的');
+        if (r.source.holder && !ent(r.source.holder)) err(at,'holder '+r.source.holder+' 不是库里的主体');
+      } else err(at,'时刻关系必须有来源');
+    }
+  }
+
+  // 9 提醒：建了却没人用的类 / 没有披露的槽
+  for (const kd of C.kinds)
+    if (!C.disclosures.some(d=>d.value.t==='kind' && d.value.id===kd.id))
+      warn(kd.id,'类没有被任何披露挂到主体上');
+  for (const s of C.slots)
+    if (!C.disclosures.some(d=>d.slot===s.id)) warn(s.id,'槽里一条披露都没有');
+  return out;
+}
+
+/* ══════════════════════════════════════════════════════════
+   5  状态
+   ══════════════════════════════════════════════════════════ */
+const S = { k:1, tab:'entity', sel:null, q:'', showSlots:true, hideUnknown:true };
+let ISSUES = [];
+
+const $ = id => document.getElementById(id);
+const on = (el,ev,fn) => el && el.addEventListener(ev,fn);
+const activate = (el, fn) => {
+  on(el, 'click', fn);
+  on(el, 'keydown', ev => {
+    if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); fn(); }
+  });
+};
+function select(type,id){
+  S.sel=id?{type,id}:null;
+  if(!C)return;
+  renderSide();renderInspector();renderGraph();
+}
+function setK(k){
+  if(!C)return;
+  S.k=Math.max(1,Math.min(C.paragraphCount,k|0));
+  $('slider').value=S.k;
+  renderPos();renderSide();renderInspector();renderGraph();
+}
+
+window.goto = k => setK(k);
+window.pick = (t,id) => select(t,id);
+
+/* ══════════════════════════════════════════════════════════
+   6  顶栏 + 叙述位置
+   ══════════════════════════════════════════════════════════ */
+function renderTop(){
+  $('chapTitle').textContent = '第 ' + C.chapter + ' 章 · ' + C.chapterTitle + ' · 共 ' + C.paragraphCount + ' 段';
+  $('schemaTag').textContent = MEM.schema + (BEATS ? '  +  ' + BEATS.schema : '  （缺 beats）');
+  const e = ISSUES.filter(i=>i.level==='error').length, w = ISSUES.filter(i=>i.level==='warn').length;
+  const b = $('vBadge');
+  b.className = 'badge ' + (e ? 'bad' : w ? 'idle' : 'ok');
+  b.textContent = e ? (e + ' 错误 / ' + w + ' 提醒') : (w ? ('0 错误 / ' + w + ' 提醒') : '0 错误 0 提醒');
+  b.title = '页面内置校验器（与 schema.ts 独立实现）';
+  $('slider').max = C.paragraphCount;
+}
+
+function renderOverview(){
+  const N = C.paragraphCount, pct = p => ((p-1)/N*100)+'%', wid = n => (n/N*100)+'%';
+  const tint = { paratext:'var(--slate)', narrative:'var(--indigo)', description:'var(--cinnabar)', exposition:'var(--gold)' };
+  const tb = $('ovBeat');
+  tb.querySelectorAll('.ov-cell').forEach(x=>x.remove());
+  for (const b of C.beats){
+    const d = document.createElement('div');
+    d.className='ov-cell';
+    d.style.left = pct(b.paragraphs[0]);
+    d.style.width = wid(b.paragraphs[1]-b.paragraphs[0]+1);
+    d.style.background = tint[b.type] || 'var(--ink4)';
+    d.style.opacity = .55;
+    d.style.borderRight = '1px solid var(--card)';
+    d.title = b.id + ' ' + BEAT_TYPE_ZH[b.type] + ' 第 ' + b.paragraphs[0] + '–' + b.paragraphs[1] + ' 段\n' + b.gist;
+    tb.appendChild(d);
+  }
+  const per = new Array(N+1).fill(0);
+  for (const d of C.disclosures) per[d.at]++;
+  const mx = Math.max(1, ...per);
+  const td = $('ovDcl');
+  td.querySelectorAll('.ov-cell').forEach(x=>x.remove());
+  for (let p=1;p<=N;p++){
+    if (!per[p]) continue;
+    const d = document.createElement('div');
+    d.className='ov-cell';
+    d.style.left = pct(p); d.style.width = wid(1);
+    d.style.top = 'auto'; d.style.bottom='0';
+    d.style.height = (18 + 82*per[p]/mx) + '%';
+    d.style.background = p<=S.k ? 'var(--indigo)' : 'var(--ink4)';
+    d.style.opacity = p<=S.k ? .8 : .35;
+    d.title = '第 ' + p + ' 段 · ' + per[p] + ' 条披露';
+    td.appendChild(d);
+  }
+}
+
+function renderPos(){
+  const k = S.k, N = C.paragraphCount;
+  $('posK').textContent = '第 ' + k + ' 段';
+  const st = readerState(k);
+  const es = C.entities.filter(e=>entityKnownAt(e,k));
+  const ds = C.disclosures.filter(d=>d.at<=k);
+  const flags = w11Flags(k);
+  $('statLine').innerHTML =
+    '主体 <b>' + es.length + '</b><i>/' + C.entities.length + '</i>　' +
+    '槽 <b>' + st.length + '</b><i>/' + C.slots.length + '</i>　' +
+    '披露 <b>' + ds.length + '</b><i>/' + C.disclosures.length + '</i>' +
+    (flags.length ? '　<span style="color:var(--cinnabar)">互斥同真 ' + flags.length + '</span>' : '');
+  $('nowBeat').style.left = ((k-0.5)/N*100)+'%';
+  $('nowDcl').style.left  = ((k-0.5)/N*100)+'%';
+  renderOverview();
+
+  const b = beatOf(k), sc = sceneOf(k);
+  $('beatLine').innerHTML = b
+    ? '<span class="bid">' + esc(b.id) + '</span>' +
+      '<span class="chip ' + ({paratext:'sla',narrative:'ind',description:'cin',exposition:'gold'}[b.type]||'') + '">' +
+        BEAT_TYPE_ZH[b.type] + '</span>' +
+      (b.moment ? '<span class="chip ver">时刻 ' + esc(b.moment) + '</span>' : '<span class="chip">不停在时刻上</span>') +
+      (sc ? '<span class="chip">' + esc(sc.location) + ' · 视角 ' + esc(displayName(ent(sc.pov)||{label:sc.pov,id:sc.pov}, k)) + '</span>' : '') +
+      '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(b.gist) + '</span>'
+    : '<span style="color:var(--ink4)">这一段没有落在任何 Beat 里（beats 那一半没载入）</span>';
+}
+
+/* ══════════════════════════════════════════════════════════
+   7  左栏
+   ══════════════════════════════════════════════════════════ */
+const hit = (...xs) => !S.q || xs.some(x=>x && String(x).toLowerCase().includes(S.q));
+
+function renderSide(){
+  if(!C)return;
+  const k=S.k;
+  $('tEntity').textContent=C.entities.filter(e=>entityKnownAt(e,k)).length+'/'+C.entities.length;
+  $('tSlot').textContent=readerState(k).length+'/'+C.slots.length;
+  document.querySelectorAll('.tab').forEach(t=>{ const active=t.dataset.tab===S.tab; t.classList.toggle('on',active); t.setAttribute('aria-selected',String(active)); });
+  const errN=ISSUES.filter(i=>i.level==='error').length;
+  $('tCheck').textContent=errN?String(errN):'✓';
+  const box=$('sideBody');
+  box.innerHTML=S.tab==='entity'?sideEntities(k):S.tab==='slot'?sideSlots(k):S.tab==='lex'?sideLex(k):sideCheck();
+  box.querySelectorAll('[data-pick]').forEach(el=>activate(el,()=>{
+    const [t,id]=el.dataset.pick.split(':');select(t,id);
+  }));
+}
+
+function sideEntities(k){
+  let h='';const groups=new Map();
+  for(const e of C.entities){const cat=entityCategory(e,k);if(!groups.has(cat))groups.set(cat,[]);groups.get(cat).push(e);}
+  for(const cat of KIND_CATEGORY_ORDER){
+    const es=(groups.get(cat)||[]).filter(e=>hit(e.label,e.id,displayName(e,k),e.note)).sort((a,b)=>firstAt(a)-firstAt(b));
+    if(!es.length)continue;
+    h+='<div class="sec"><div class="sec-h">'+esc(KIND_CATEGORY_ZH[cat]||cat)+' <span class="cnt">'+es.filter(e=>entityKnownAt(e,k)).length+'/'+es.length+'</span></div></div>';
+    for(const e of es){
+      const known=entityKnownAt(e,k),nm=displayName(e,k);
+      const n=C.slots.filter(s=>s.subject?.type==='entity'&&s.subject.id===e.id).filter(s=>{const st=evaluateSlot(s,k);return st.held.length||st.pending.length||st.refuted.length;}).length;
+      h+='<div class="row'+(known?'':' dim')+(S.sel&&S.sel.type==='entity'&&S.sel.id===e.id?' on':'')+'" tabindex="0" role="button" data-pick="entity:'+esc(e.id)+'"><span class="dot" style="background:'+(KIND_COLOR[cat]||'var(--ink4)')+'"></span><span class="nm">'+esc(nm)+(nm!==e.label?' <span class="sub">'+esc(e.label)+'</span>':'')+'</span><span class="cnt">'+(known?n+' 槽':'第 '+firstAt(e)+' 段')+'</span></div>';
+    }
+  }
+  return h||'<div class="emptyc">没有匹配的主体</div>';
+}
+function stateDot(st){
+  if (!st.held.length && !st.pending.length && !st.refuted.length) return 'var(--rule)';
+  if (st.held.length && st.pending.length) return 'var(--gold)';
+  if (st.held.length) return 'var(--verdi)';
+  if (st.pending.length) return 'var(--gold)';
+  return 'var(--cinnabar)';
+}
+
+function sideSlots(k){
+  let h='';const flagged=new Set(w11Flags(k).map(x=>x.slot.id)),groups=new Map();
+  for(const s of C.slots){const ref=s.subject||{},key=(ref.type||'?')+':'+(ref.id||'?');if(!groups.has(key))groups.set(key,{ref,slots:[]});groups.get(key).slots.push(s);}
+  for(const {ref,slots} of groups.values()){
+    const label=subjectLabel(ref);
+    const ss=slots.filter(s=>{const p=predOfSlot(s);return hit(label,ref.id,s.id,p&&p.name,C.disclosures.filter(d=>d.slot===s.id).map(d=>valueText(d.value,k)).join(' '));});
+    if(!ss.length)continue;
+    const vis=ss.filter(s=>{const st=evaluateSlot(s,k);return st.held.length||st.pending.length||st.refuted.length;}).length;
+    h+='<div class="sec"><div class="sec-h">'+esc(label)+' <span class="cnt">'+vis+'/'+ss.length+'</span></div></div>';
+    for(const s of ss){
+      const st=evaluateSlot(s,k),p=predOfSlot(s),n=st.held.length+st.pending.length+st.refuted.length;
+      const val=st.held.length?st.held.map(d=>valueText(d.value,k)).join(' | '):st.pending.length?st.pending.map(d=>valueText(d.value,k)).join(' | '):st.refuted.length?'（都被推翻了）':'—';
+      h+='<div class="row'+(n?'':' dim')+(S.sel&&S.sel.type==='slot'&&S.sel.id===s.id?' on':'')+'" tabindex="0" role="button" data-pick="slot:'+esc(s.id)+'"><span class="dot" style="background:'+stateDot(st)+'"></span><span class="nm">'+esc(p?p.name:s.predicate)+'<span class="sub"> '+esc(val)+'</span></span>'+(flagged.has(s.id)?'<span class="chip cin">互斥同真</span>':'')+'<span class="cnt">'+n+'</span></div>';
+    }
+  }
+  return h||'<div class="emptyc">没有匹配的槽</div>';
+}
+function sideLex(k){
+  let h='<div class="sec"><div class="sec-h">谓词 <span class="cnt">'+C.predicates.length+'</span></div></div>';
+  for(const p of C.predicates){
+    if(!hit(p.name,p.id,p.note))continue;
+    const used=C.slots.filter(s=>s.predicate===p.id).length;
+    h+='<div class="row'+(S.sel&&S.sel.type==='predicate'&&S.sel.id===p.id?' on':'')+'" tabindex="0" role="button" data-pick="predicate:'+esc(p.id)+'"><span class="nm">'+esc(p.name)+'<span class="sub"> '+(p.cardinality==='multi'?'多值':'单值')+' · 易变 '+({low:'低',medium:'中',high:'高'}[p.volatility]||p.volatility)+'</span></span><span class="cnt">'+used+' 槽</span></div>';
+  }
+  h+='<div class="sec"><div class="sec-h">类 <span class="cnt">'+C.kinds.length+'</span><span class="cnt" style="font-weight:400"> 文本给的，不是主体分类</span></div></div>';
+  for(const kd of C.kinds){
+    if(!hit(kd.name,kd.id,kd.note,kd.category))continue;
+    const refs=C.disclosures.filter(d=>d.at<=k&&d.value.t==='kind'&&d.value.id===kd.id&&d.slot).map(d=>slotB(d.slot)).filter(Boolean).map(s=>s.subject);
+    const uniq=[...new Map(refs.map(ref=>[(ref.type||'?')+':'+(ref.id||'?'),ref])).values()];
+    h+='<div class="row'+(uniq.length?'':' dim')+(S.sel&&S.sel.type==='kind'&&S.sel.id===kd.id?' on':'')+'" tabindex="0" role="button" data-pick="kind:'+esc(kd.id)+'"><span class="nm">'+esc(kd.name)+'<span class="sub"> '+esc(KIND_CATEGORY_ZH[kd.category]||kd.category||'')+(uniq.length?' · '+esc(uniq.map(ref=>subjectLabel(ref)).join('、')):'')+'</span></span><span class="cnt">'+uniq.length+'</span></div>';
+  }
+  return h;
+}
+function sideCheck(){
+  const errs = ISSUES.filter(i=>i.level==='error'), warns = ISSUES.filter(i=>i.level==='warn');
+  let h = '<div class="sec"><div class="sec-h">页面内置校验器</div>' +
+    '<div class="gloss">照 <b>memory-model-v4.md</b> 重新实现的一份，和 <b>schema.ts</b> 的 ' +
+    '<b>validate()</b> 相互独立。两边都对同一份数据报 0 错误才算数。</div></div>';
+  h += '<div class="vitem' + (errs.length?' bad':'') + '"><b>' + errs.length + '</b> 错误　<b>' +
+       warns.length + '</b> 提醒</div>';
+  for (const i of errs) h += '<div class="vitem bad"><span class="vat">' + esc(i.at) + '</span>' + esc(i.message) + '</div>';
+  for (const i of warns) h += '<div class="vitem warn"><span class="vat">' + esc(i.at) + '</span>' + esc(i.message) + '</div>';
+  if (!errs.length && !warns.length) h += '<div class="vitem">全部通过。</div>';
+  return h;
+}
+
+/* ══════════════════════════════════════════════════════════
+   8  检视器
+   ══════════════════════════════════════════════════════════ */
+
+const atLink = p => '<span class="at" tabindex="0" data-goto="'+p+'">第 '+p+' 段</span>';
+const pickLink = (t,id,txt,cls) =>
+  '<span class="chip click '+(cls||'')+'" tabindex="0" data-pick="'+esc(t)+':'+esc(id)+'">'+esc(txt)+'</span>';
+
+function srcChips(s){
+  const cls = { narrator:'', speech:'ind', thought:'sla', system:'ver', author:'gold', reader_inference:'cin' }[s.channel] || '';
+  let h = '<span class="chip ' + cls + '">' + CHANNEL_ZH[s.channel] +
+    (s.holder ? '：' + esc(displayName(ent(s.holder)||{label:s.holder,id:s.holder}, S.k)) : '') + '</span>';
+  if (s.hedge!=='plain') h += '<span class="chip gold">' + HEDGE_ZH[s.hedge] + '</span>';
+  return h;
+}
+function dclCard(d, cls){
+  const s = d.slot ? slotB(d.slot) : null;
+  const sup = supportOf(d, S.k);
+  let h = '<div class="dcl ' + cls + '">';
+  h += '<div class="dcl-h"><span>' + esc(d.id) + '</span><span class="at" data-goto="'+d.at+'">第 ' + d.at + ' 段</span>';
+  if (d.timeRef) h += '<span>时刻 ' + esc(d.timeRef) + '</span>';
+  h += '</div>';
+  if (d.refutes){
+    const t = dclB(d.refutes);
+    h += '<div class="dcl-v">反驳 ' + esc(d.refutes) + (t ? '（' + esc(valueText(t.value,S.k)) + '）' : '') + '</div>';
+  } else {
+    h += '<div class="dcl-v">' + esc(valueText(d.value, S.k)) + '</div>';
+    if (s && (!S.sel || S.sel.type!=='slot' || S.sel.id!==s.id))
+      h += '<div class="chips">' + pickLink('slot', s.id, slotLabel(s)) + '</div>';
+  }
+  h += '<div class="chips">' + srcChips(d.source) +
+    (sup.length ? '<span class="chip ver">支持 ' + sup.length + '</span>' : '') + '</div>';
+  if (d.inferredFrom && d.inferredFrom.length){
+    h += '<div class="chips"><span class="chip cin">推断自</span>' +
+      d.inferredFrom.map(id=>{ const ss=slotB(id); return pickLink('slot', id, ss?slotLabel(ss):id); }).join('') + '</div>';
+  }
+  if (d.note) h += '<div class="dcl-n">' + esc(d.note) + '</div>';
+  return h + '</div>';
+}
+
+function renderInspector(){
+  const box=$('ins');
+  if(!C){box.innerHTML='';return;}
+  if(!S.sel)box.innerHTML=insHome();
+  else{
+    const f={entity:insEntity,slot:insSlot,kind:insKind,predicate:insPredicate,disclosure:insDisclosure}[S.sel.type];
+    box.innerHTML=f?f(S.sel.id):'';
+  }
+  box.querySelectorAll('[data-pick]').forEach(el=>activate(el,()=>{
+    const [t,id]=el.dataset.pick.split(':');select(t,id);
+  }));
+  box.querySelectorAll('[data-ins-slot]').forEach(el=>activate(el,()=>select('slot',el.dataset.insSlot)));
+  box.querySelectorAll('[data-goto]').forEach(el=>activate(el,()=>setK(+el.dataset.goto)));
+}
+
+function insHome(){
+  const k = S.k;
+  const flags = w11Flags(k);
+  const lo = bounds(), gap = lo.get('M_b->M_c');
+  let h = '<div class="ins-kicker">读到这里为止</div><div class="ins-h">第 ' + k + ' 段的读者知道什么</div>' +
+    '<div class="ins-sub">左边挑一个主体或槽。下面这几件事是算出来的，不是存的。</div>';
+
+  h += '<div class="blk"><div class="blk-h"><span>这一段落在哪</span></div>';
+  const b = beatOf(k), sc = sceneOf(k);
+  h += b ? '<div class="kv"><dt>Beat</dt><dd>' + esc(b.id) + ' · ' + BEAT_TYPE_ZH[b.type] + ' · 第 ' +
+      b.paragraphs[0] + '–' + b.paragraphs[1] + ' 段</dd>' +
+      '<dt>时刻</dt><dd>' + (b.moment ? esc(b.moment) : '不停在时刻上（' + BEAT_TYPE_ZH[b.type] + '）') + '</dd>' +
+      (sc ? '<dt>场</dt><dd>' + esc(sc.id) + ' · ' + esc(sc.location) + ' · 视角 ' +
+        esc(displayName(ent(sc.pov)||{label:sc.pov,id:sc.pov},k)) + '</dd>' : '') + '</div>'
+    : '<div class="dcl-n">beats 那一半没载入。</div>';
+  h += '</div>';
+
+  if (flags.length){
+    h += '<div class="warnbox"><b>互斥同真 ' + flags.length + ' 处（W11）</b><br>' +
+      flags.map(st=>'「' + esc(slotLabel(st.slot)) + '」同时把 ' +
+        esc(st.held.map(d=>valueText(d.value,k)).join(' | ')) + ' 判成为真。' +
+        '这是个错答案：单值谓词只能有一个值。<br>' + pickLink('slot', st.slot.id, '看这个槽')).join('<br>') +
+      '<br>成因：两条披露挂同一个时刻、通道不同，第 5.6 节判成认识论并存，于是都留在「为真」里。' +
+      '出口只有一个——承认叙述位置可以在同一个时刻内部排序。</div>';
+  }
+
+  const st = readerState(k);
+  const rel = {};
+  for (const s of st) for (const r of s.relations) rel[r] = (rel[r]||0)+1;
+  h += '<div class="blk"><div class="blk-h"><span>第 5.6 节那张表命中几次</span></div>';
+  h += Object.keys(rel).length
+    ? '<div class="chips">' + Object.entries(rel).map(([r,n])=>'<span class="chip">' + RELATION_ZH[r] + ' ' + n + '</span>').join('') + '</div>'
+    : '<div class="dcl-n">还没有哪个槽同时有两条披露。</div>';
+  h += '</div>';
+
+  if (C.moments.length){
+    h += '<div class="blk"><div class="blk-h"><span>时刻</span></div>';
+    h += '<div class="gloss">时刻本身不带钟点，先后是关系算出来的。<br><b>M_b → M_c 下界：</b>' +
+      (gap===undefined || gap===-Infinity ? '推不出' : gap + ' 分钟') +
+      '<br>假设：' + esc(NOW_ASSUMPTION) + '</div>';
+    for (const m of C.moments){
+      const bts = C.beats.filter(x=>x.moment===m.id).map(x=>x.id);
+      const ds  = C.disclosures.filter(d=>d.timeRef===m.id);
+      h += '<div class="dcl"><div class="dcl-h"><span>' + esc(m.id) + '</span><span>' +
+        (m.grain==='point'?'时点':'时段') + '</span></div>' +
+        '<div class="dcl-v">' + esc(m.label || '（没有名字）') + '</div>' +
+        '<div class="chips">' +
+          (bts.length ? '<span class="chip ind beat-list">Beat 停在这：' + bts.join(' ') + '</span>' : '<span class="chip">没有 Beat 停在这</span>') +
+          (ds.length ? '<span class="chip cin">披露指向这：' + ds.length + ' 条</span>' : '') +
+        '</div>' + (m.note ? '<div class="dcl-n">' + esc(m.note) + '</div>' : '') + '</div>';
+    }
+    if (C.momentRelations.length){
+      h += '<div class="blk-h" style="margin-top:9px"><span>时刻关系</span></div>';
+      for (const r of C.momentRelations){
+        h += '<div class="dcl"><div class="dcl-v">' + esc(r.subject) + ' <b>' + MOMENT_PRED_ZH[r.predicate] + '</b> ' +
+          (r.anchor ? esc(r.anchor.ref) : '叙述当下@' + r.at) +
+          (r.offset ? '（' + r.offset.value + ' ' + r.offset.unit + '）' : '') + '</div>' +
+          '<div class="chips">' + srcChips(r.source) + '<span class="chip">' + atLink(r.at) + '</span></div>' +
+          (r.note ? '<div class="dcl-n">' + esc(r.note) + '</div>' : '') + '</div>';
+      }
+    }
+    h += '</div>';
+  }
+
+  if (C.findings && C.findings.length){
+    h += '<div class="blk"><div class="blk-h"><span>这一章暴露出来的事</span><span>' + C.findings.length + '</span></div>';
+    h += '<ol style="margin:0;padding-left:18px;font-size:11.5px;color:var(--ink2);line-height:1.65">' +
+      C.findings.map(f=>'<li style="margin-bottom:5px">' + esc(f) + '</li>').join('') + '</ol></div>';
+  }
+  return h;
+}
+
+function insEntity(id){
+  const e=ent(id);if(!e)return '';
+  const k=S.k,nm=displayName(e,k),known=entityKnownAt(e,k),cat=entityCategory(e,k);
+  let h='<div class="ins-kicker">主体 · '+esc(KIND_CATEGORY_ZH[cat]||cat)+'</div><div class="ins-h">'+esc(nm)+'</div><div class="ins-sub">'+esc(e.id)+(nm!==e.label?' · 库内 label：'+esc(e.label):'')+'</div>';
+  if(!known)h+='<div class="warnbox">读到第 '+k+' 段还没出场。第一条披露在'+atLink(firstAt(e))+'。</div>';
+  const intro=introAt(e,k);if(intro)h+='<div class="gloss"><b>介绍（读到这里为止）</b><br>'+esc(intro)+'</div>';if(e.note)h+='<div class="gloss">'+esc(e.note)+'</div>';
+  const tl=nameTimeline(e);
+  if(tl.length>1){const current=tl.filter(x=>x.at<=k).pop();h+='<div class="blk"><div class="blk-h"><span>它叫什么，随位置变</span><span>'+tl.length+' 次</span></div><div class="chips">'+tl.map(x=>'<span class="chip '+(current&&current.at===x.at?'ind ':'')+'click" data-goto="'+x.at+'">第 '+x.at+' 段起 '+esc(x.name)+'</span>').join('')+'</div><div class="dcl-n">口径：专名（最新）→ 叙述者最近一次给的称呼 → 任何人最早给的称呼 → 库内 label。中间那一档限定叙述者，否则角色随口起的外号会顶掉正名。这是查看器的显示口径，不是模型规则。</div></div>';}
+  const kindSlots=C.slots.filter(s=>s.subject?.type==='entity'&&s.subject.id===e.id&&(predOfSlot(s)||{}).name==='类'),kv=kindSlots.flatMap(s=>evaluateSlot(s,k).held).filter(d=>d.value.t==='kind');
+  h+='<div class="blk"><div class="blk-h"><span>类与分类</span></div><div class="kv"><dt>库内分类</dt><dd>'+esc(KIND_CATEGORY_ZH[cat]||cat)+' <span class="cnt">由关联 Kind.category 推导</span></dd><dt>文本给的类</dt><dd>'+(kv.length?kv.map(d=>pickLink('kind',d.value.id,(kind(d.value.id)||{}).name||d.value.id,'ver')).join(''):'<span class="cnt">读到这里还没有</span>')+'</dd></div></div>';
+  const ss=C.slots.filter(s=>s.subject?.type==='entity'&&s.subject.id===e.id).map(s=>evaluateSlot(s,k)),live=ss.filter(s=>s.held.length||s.pending.length||s.refuted.length);
+  h+='<div class="blk"><div class="blk-h"><span>槽</span><span>'+live.length+'/'+ss.length+'</span></div>';
+  for(const st of ss){const p=predOfSlot(st.slot),n=st.held.length+st.pending.length+st.refuted.length,val=st.held.length?st.held.map(d=>valueText(d.value,k)).join(' | '):st.pending.length?'悬而未决：'+st.pending.map(d=>valueText(d.value,k)).join(' | '):st.refuted.length?'（都被推翻了）':'还没有披露';h+='<div class="row'+(n?'':' dim')+'" style="border:0;padding:4px 0" data-ins-slot="'+esc(st.slot.id)+'"><span class="dot" style="background:'+stateDot(st)+'"></span><span class="nm">'+esc(p?p.name:st.slot.predicate)+'<span class="sub"> '+esc(val)+'</span></span><span class="cnt">'+n+'</span></div>';}
+  h+='</div>';const said=C.disclosures.filter(d=>d.source.holder===e.id&&d.at<=k);if(said.length)h+='<div class="blk"><div class="blk-h"><span>它说过的话产生的披露</span><span>'+said.length+'</span></div><div class="chips">'+said.map(d=>{const s2=d.slot?slotB(d.slot):null;return pickLink('slot',s2?s2.id:'',s2?slotLabel(s2):d.id);}).join('')+'</div></div>';
+  return h;
+}
+function insSlot(id){
+  const s=slotB(id);if(!s)return '';
+  const k=S.k,ref=s.subject||{},target=subjectRecord(ref),p=predOfSlot(s),st=evaluateSlot(s,k),all=C.disclosures.filter(d=>d.slot===s.id).sort((a,b)=>a.at-b.at),future=all.filter(d=>d.at>k),heldK=new Set(st.held.map(d=>valueKey(d.value))),bad=p&&p.cardinality==='single'&&heldK.size>1;
+  let h='<div class="ins-kicker">槽 · 主体 + 谓词</div><div class="ins-h">'+esc(p?p.name:s.predicate)+'</div><div class="ins-sub">'+pickLink(ref.type||'entity',ref.id,target?subjectLabel(ref):ref.id)+'<span class="chip mono">'+esc(s.id)+'</span></div><div class="kv"><dt>基数</dt><dd>'+(p&&p.cardinality==='multi'?'多值（值之间不互斥）':'单值（只能有一个值）')+'</dd><dt>易变度</dt><dd>'+({low:'低',medium:'中',high:'高'}[p&&p.volatility]||'—')+'</dd><dt>披露</dt><dd>'+all.filter(d=>d.at<=k).length+' 条（全章 '+all.length+'）</dd></div>';
+  if(s.note)h+='<div class="gloss">'+esc(s.note)+'</div>';if(p&&p.note)h+='<div class="gloss"><b>谓词：</b>'+esc(p.note)+'</div>';if(bad)h+='<div class="warnbox"><b>互斥同真（W11）</b><br>这是个单值谓词，读到第 '+k+' 段却有 '+heldK.size+' 个不同的值同时为真：'+esc(st.held.map(d=>valueText(d.value,k)).join(' | '))+'。两条披露挂同一个时刻、来源通道不同，按第 5.6 节判成<b>认识论并存</b>，于是都留在「为真」里。同一个时刻内部谁先谁后，模型现在说不出来。</div>';
+  h+='<div class="blk"><div class="blk-h"><span>读到第 '+k+' 段的求值</span><span>'+st.held.length+' 真 / '+st.pending.length+' 悬 / '+st.refuted.length+' 翻</span></div>'+(st.relations.length?'<div class="chips">'+st.relations.map(r=>'<span class="chip '+({compete:'cin',coexist:'gold',succeed:'ind',corroborate:'ver',candidate:'sla',accrue:''}[r]||'')+'">'+RELATION_ZH[r]+'</span>').join('')+'</div>':'');
+  if(st.held.length){h+='<div class="blk-h" style="margin-top:8px"><span style="color:var(--verdi)">为真</span></div>';for(const d of st.held)h+=dclCard(d,'held');}if(st.pending.length){h+='<div class="blk-h" style="margin-top:8px"><span style="color:var(--gold)">悬而未决</span></div>';for(const d of st.pending)h+=dclCard(d,'pend');}if(st.refuted.length){h+='<div class="blk-h" style="margin-top:8px"><span style="color:var(--cinnabar)">已被推翻</span></div>';for(const d of st.refuted)h+=dclCard(d,'dead');}if(!st.held.length&&!st.pending.length&&!st.refuted.length)h+='<div class="dcl-n">读到第 '+k+' 段，这个槽还是空的。</div>';h+='</div>';
+  if(st.held.length+st.pending.length>=2){const live=[...st.held,...st.pending].sort((a,b)=>a.at-b.at);h+='<div class="blk"><div class="blk-h"><span>两两判定</span></div>';for(let i=0;i<live.length;i++)for(let j=i+1;j<live.length;j++){const r=relationOf(live[i],live[j]);h+='<div class="dcl-n" style="padding:3px 0">'+esc(live[i].id)+' × '+esc(live[j].id)+' → <b style="color:var(--ink)">'+RELATION_ZH[r]+'</b>　时刻'+({same:'同一',disjoint:'错开',undecidable:'判不了'}[compareMoments(live[i].timeRef??null,live[j].timeRef??null)])+'，值'+(valueKey(live[i].value)===valueKey(live[j].value)?'相同':'不同')+'，通道'+(live[i].source.channel===live[j].source.channel?'相同':'不同')+'</div>';}h+='</div>';}
+  if(future.length){h+='<div class="blk"><div class="blk-h"><span>还没读到</span><span>'+future.length+'</span></div>';for(const d of future)h+=dclCard(d,'fut');h+='</div>';}return h;
+}
+function insKind(id){
+  const kd=kind(id);if(!kd)return '';const k=S.k,ds=C.disclosures.filter(d=>d.value.t==='kind'&&d.value.id===kd.id),now=ds.filter(d=>d.at<=k),own=C.slots.filter(s=>s.subject?.type==='kind'&&s.subject.id===kd.id);
+  let h='<div class="ins-kicker">类 · Kind.category：'+esc(KIND_CATEGORY_ZH[kd.category]||kd.category)+'</div><div class="ins-h">'+esc(kd.name)+'</div><div class="ins-sub">'+esc(kd.id)+'</div>';if(kd.note)h+='<div class="gloss">'+esc(kd.note)+'</div>';h+='<div class="gloss">Kind 是文本可披露的类，也可以直接作为 Slot 主语。粗分类来自 Kind.category，不是 Entity 字段。</div><div class="blk"><div class="blk-h"><span>谁属于这个类</span><span>'+now.length+'/'+ds.length+'</span></div>';
+  if(!now.length)h+='<div class="dcl-n">读到第 '+k+' 段还没有。</div>';for(const d of now)h+=dclCard(d,'held');for(const d of ds.filter(d=>d.at>k))h+=dclCard(d,'fut');h+='</div>';if(own.length){h+='<div class="blk"><div class="blk-h"><span>这个 Kind 自己的槽</span><span>'+own.length+'</span></div>';for(const s of own){const st=evaluateSlot(s,k),p=predOfSlot(s),n=st.held.length+st.pending.length+st.refuted.length,val=st.held.length?st.held.map(d=>valueText(d.value,k)).join(' | '):st.pending.length?st.pending.map(d=>valueText(d.value,k)).join(' | '):st.refuted.length?'（都被推翻了）':'还没有披露';h+='<div class="row'+(n?'':' dim')+'" data-ins-slot="'+esc(s.id)+'"><span class="dot" style="background:'+stateDot(st)+'"></span><span class="nm">'+esc(p?p.name:s.predicate)+'<span class="sub"> '+esc(val)+'</span></span><span class="cnt">'+n+'</span></div>';}h+='</div>';}return h;
+}
+function insPredicate(id){
+  const p=pred(id);if(!p)return '';const k=S.k,ss=C.slots.filter(s=>s.predicate===p.id);let h='<div class="ins-kicker">谓词</div><div class="ins-h">'+esc(p.name)+'</div><div class="ins-sub">'+esc(p.id)+'</div><div class="kv"><dt>基数</dt><dd>'+(p.cardinality==='multi'?'多值':'单值')+'</dd><dt>易变度</dt><dd>'+({low:'低',medium:'中',high:'高'}[p.volatility]||p.volatility)+'</dd><dt>槽</dt><dd>'+ss.length+'</dd></div>';if(p.note)h+='<div class="gloss">'+esc(p.note)+'</div>';h+='<div class="blk"><div class="blk-h"><span>用在哪些主体上</span></div>';for(const s of ss){const st=evaluateSlot(s,k);h+='<div class="row" style="border:0;padding:4px 0" data-ins-slot="'+esc(s.id)+'"><span class="dot" style="background:'+stateDot(st)+'"></span><span class="nm">'+esc(subjectLabel(s.subject))+'<span class="sub"> '+esc(st.held.map(d=>valueText(d.value,k)).join(' | ')||'—')+'</span></span></div>';}return h+'</div>';
+}
+function insDisclosure(id){
+  const d = dclB(id); if (!d) return '';
+  return '<div class="ins-kicker">披露</div><div class="ins-h">' + esc(valueText(d.value,S.k)) + '</div>' +
+    '<div class="ins-sub">' + esc(d.id) + '</div>' + dclCard(d, d.at<=S.k?'held':'fut');
+}
+
+/* ══════════════════════════════════════════════════════════
+   9  图
+   主体是节点，类是节点。边来自值是 ref 或 kind 的披露。
+   选中一个主体时，把它字面值的槽摊成叶子——槽是节点，不是字段。
+   ══════════════════════════════════════════════════════════ */
+const svg = $('graph');
+const SVGNS = 'http://www.w3.org/2000/svg';
+let NODES = [], LINKS = [], sim = null, dragging = null, viewW = 800, viewH = 600;
+
+function buildGraph(){
+  const k=S.k,prev=new Map(NODES.map(n=>[n.id,n])),nodes=[],links=[];const push=n=>{const old=prev.get(n.id);nodes.push(Object.assign(n,old?{x:old.x,y:old.y,vx:0,vy:0}:{}));return n;};
+  const kindKnown=kd=>!!kd&&C.disclosures.some(d=>d.at<=k&&d.slot&&(()=>{const s=slotB(d.slot);return s?.subject?.type==='kind'&&s.subject.id===kd.id;})());
+  for(const e of C.entities){if(S.hideUnknown&&!entityKnownAt(e,k))continue;const cat=entityCategory(e,k);push({id:e.id,kind:'entity',label:displayName(e,k),color:KIND_COLOR[cat]||'var(--ink4)',r:entityKnownAt(e,k)?11:7,faded:!entityKnownAt(e,k)});}
+  const usedKinds=new Set();for(const d of C.disclosures){if(d.at>k||!d.slot)continue;const s=slotB(d.slot);if(!s)continue;const source=subjectId(s);if(s.subject?.type==='kind'&&(!S.hideUnknown||kindKnown(kind(s.subject.id))))usedKinds.add(s.subject.id);if(d.value.t==='kind'&&(!S.hideUnknown||nodes.some(n=>n.id===source)))usedKinds.add(d.value.id);}
+  for(const kd of C.kinds)if(usedKinds.has(kd.id))push({id:kd.id,kind:'kind',label:kd.name,color:KIND_COLOR[kd.category]||'var(--ink3)',r:8,shape:'diamond'});
+  const has=id=>nodes.some(n=>n.id===id);for(const d of C.disclosures){if(d.at>k||!d.slot)continue;const s=slotB(d.slot);if(!s)continue;const a=subjectId(s);if(!has(a))continue;let b=null;if((d.value.t==='ref'||d.value.t==='kind')&&has(d.value.id))b=d.value.id;if(!b||a===b)continue;const p=predOfSlot(s),st=evaluateSlot(s,k);links.push({a,b,label:p?p.name:s.predicate,slot:s.id,cls:st.held.includes(d)?'held':st.refuted.includes(d)?'dead':'pend'});}
+  if(S.showSlots&&S.sel&&(S.sel.type==='entity'||S.sel.type==='kind'||S.sel.type==='slot')){const selected=S.sel.type==='slot'?subjectId(slotB(S.sel.id)||{}):S.sel.id;if(has(selected))for(const s of C.slots.filter(x=>subjectId(x)===selected)){const st=evaluateSlot(s,k);if(!st.held.length&&!st.pending.length&&!st.refuted.length)continue;if(C.disclosures.some(d=>d.slot===s.id&&d.at<=k&&(d.value.t==='ref'||d.value.t==='kind')))continue;const p=predOfSlot(s);push({id:'slot:'+s.id,kind:'slot',slot:s.id,r:5,color:stateDot(st),label:(p?p.name:s.predicate)+'：'+(st.held.concat(st.pending).map(d=>valueText(d.value,k))[0]||'—')});links.push({a:selected,b:'slot:'+s.id,label:'',slot:s.id,cls:'thin'});}}
+  NODES=nodes;LINKS=links;const cx=viewW/2,cy=viewH/2;NODES.forEach((n,i)=>{if(n.x===undefined){const a=i/Math.max(1,NODES.length)*Math.PI*2;n.x=cx+Math.cos(a)*Math.min(cx,cy)*.62;n.y=cy+Math.sin(a)*Math.min(cx,cy)*.62;n.vx=0;n.vy=0;}});
+}
+function tick(){
+  const cx = viewW/2, cy = viewH/2;
+  const idx = new Map(NODES.map(n=>[n.id,n]));
+  for (const n of NODES){ n.vx = (n.vx||0)*0.82; n.vy = (n.vy||0)*0.82; }
+  for (let i=0;i<NODES.length;i++) for (let j=i+1;j<NODES.length;j++){
+    const a = NODES[i], b = NODES[j];
+    let dx = b.x-a.x, dy = b.y-a.y, d2 = dx*dx+dy*dy;
+    if (d2 < 1) { dx = Math.random()-0.5; dy = Math.random()-0.5; d2 = 1; }
+    const d = Math.sqrt(d2), f = 5200/d2;
+    const ux = dx/d, uy = dy/d;
+    a.vx -= ux*f; a.vy -= uy*f; b.vx += ux*f; b.vy += uy*f;
+  }
+  for (const l of LINKS){
+    const a = idx.get(l.a), b = idx.get(l.b); if (!a||!b) continue;
+    const want = l.cls==='thin' ? 62 : 120;
+    const dx = b.x-a.x, dy = b.y-a.y, d = Math.hypot(dx,dy)||1;
+    const f = (d-want)*0.035, ux = dx/d, uy = dy/d;
+    a.vx += ux*f; a.vy += uy*f; b.vx -= ux*f; b.vy -= uy*f;
+  }
+  for (const n of NODES){
+    n.vx += (cx-n.x)*0.006; n.vy += (cy-n.y)*0.006;
+    if (n === dragging) { n.vx = n.vy = 0; continue; }
+    n.x += Math.max(-18,Math.min(18,n.vx));
+    n.y += Math.max(-18,Math.min(18,n.vy));
+    n.x = Math.max(24, Math.min(viewW-24, n.x));
+    n.y = Math.max(20, Math.min(viewH-20, n.y));
+  }
+}
+
+function paint(){
+  const idx = new Map(NODES.map(n=>[n.id,n]));
+  const selId = S.sel ? S.sel.id : null;
+  const selSlot = S.sel && S.sel.type==='slot' ? S.sel.id : null;
+  let h = '';
+  for (const l of LINKS){
+    const a = idx.get(l.a), b = idx.get(l.b); if (!a||!b) continue;
+    const on = selSlot===l.slot || selId===l.a || selId===l.b;
+    const stroke = l.cls==='dead' ? 'var(--cinnabar)' : on ? 'var(--indigo)' : 'var(--rule)';
+    const dash = l.cls==='pend' ? '4 3' : l.cls==='dead' ? '2 3' : '';
+    h += '<line x1="' + a.x + '" y1="' + a.y + '" x2="' + b.x + '" y2="' + b.y +
+      '" stroke="' + stroke + '" stroke-width="' + (on?2:1.3) + '"' +
+      (dash?' stroke-dasharray="' + dash + '"':'') + ' role="button" tabindex="0" aria-label="槽 ' + esc(l.label || l.slot) + '" data-slot="' + esc(l.slot) + '" style="cursor:pointer"></line>';
+    if (l.label && (on || LINKS.length<26))
+      h += '<text class="e-lab" x="' + ((a.x+b.x)/2) + '" y="' + ((a.y+b.y)/2-3) + '" text-anchor="middle">' + esc(l.label) + '</text>';
+  }
+  for (const n of NODES){
+    const on = selId===n.id || (selSlot && n.slot===selSlot);
+    const op = n.faded ? .38 : 1;
+    if (n.shape==='diamond')
+      h += '<rect x="' + (n.x-n.r) + '" y="' + (n.y-n.r) + '" width="' + n.r*2 + '" height="' + n.r*2 +
+        '" transform="rotate(45 ' + n.x + ' ' + n.y + ')" fill="var(--card)" stroke="' + n.color +
+        '" stroke-width="' + (on?3:2) + '" opacity="' + op + '" role="button" tabindex="0" aria-label="节点 ' + esc(n.label) + '" data-node="' + esc(n.id) + '" style="cursor:pointer"></rect>';
+    else
+      h += '<circle cx="' + n.x + '" cy="' + n.y + '" r="' + n.r + '" fill="' + (n.kind==='slot'?n.color:'var(--card)') +
+        '" stroke="' + n.color + '" stroke-width="' + (on?3.4:2.2) + '" opacity="' + op +
+        '" role="button" tabindex="0" aria-label="节点 ' + esc(n.label) + '" data-node="' + esc(n.id) + '" style="cursor:pointer"></circle>';
+    h += '<text class="n-lab' + (n.kind==='entity'?' big':'') + '" x="' + n.x + '" y="' + (n.y + n.r + 12) +
+      '" text-anchor="middle" opacity="' + op + '">' + esc(n.label) + '</text>';
+  }
+  svg.innerHTML = h;
+}
+
+let raf = null, cool = 0;
+/* 无头环境（jsdom）里没有 requestAnimationFrame。没有就不开动画循环，
+   改成一次性把该松弛的步数走完再画一帧——冒烟测试要能读到节点。 */
+const hasRAF = typeof requestAnimationFrame === 'function';
+function loop(){
+  if (cool > 0){ tick(); cool--; }
+  paint();
+  if (hasRAF) raf = requestAnimationFrame(loop);
+}
+function renderGraph(){
+  if(!C)return;
+  const r = svg.getBoundingClientRect();
+  viewW = r.width || 800; viewH = r.height || 600;
+  svg.setAttribute('viewBox', '0 0 ' + viewW + ' ' + viewH);
+  buildGraph();
+  cool = Math.max(cool, 150);
+  renderLegend();
+  if (!hasRAF){ while (cool > 0){ tick(); cool--; } paint(); }
+}
+function renderLegend(){
+  let h='';for(const cat of KIND_CATEGORY_ORDER)h+='<div><i style="background:'+(KIND_COLOR[cat]||'var(--ink4)')+'"></i>'+esc(KIND_CATEGORY_ZH[cat]||cat)+'（Kind.category）</div>';h+='<hr><div><i style="background:var(--card);border:2px solid var(--ink3);transform:rotate(45deg);border-radius:0"></i>Kind（文本给的）</div><div style="color:var(--ink3)">实线＝为真　虚线＝悬而未决　点线＝已被推翻</div><div style="color:var(--ink3)">选中主体后，它的字面值槽会摊成小点</div>';$('legend').innerHTML=h;
+}
+
+/* 图上的交互 */
+on(svg,'mousedown',ev=>{
+  const t = ev.target.closest('[data-node]');
+  if (!t) return;
+  dragging = NODES.find(n=>n.id===t.dataset.node) || null;
+  if (dragging) { svg.classList.add('drag'); dragging.moved = false; }
+});
+on(window,'mousemove',ev=>{
+  if (!dragging) return;
+  const r = svg.getBoundingClientRect();
+  dragging.x = ev.clientX - r.left; dragging.y = ev.clientY - r.top;
+  dragging.moved = true; cool = Math.max(cool, 40);
+});
+on(window,'mouseup',()=>{
+  if (dragging && !dragging.moved){
+    const n = dragging;
+    if (n.kind==='entity') select('entity', n.id);
+    else if (n.kind==='kind') select('kind', n.id);
+    else if (n.kind==='slot') select('slot', n.slot);
+  }
+  dragging = null; svg.classList.remove('drag');
+});
+on(svg,'click',ev=>{
+  const l = ev.target.closest('[data-slot]');
+  if (l && l.tagName==='line' && l.dataset.slot) select('slot', l.dataset.slot);
+});
+on(svg,'keydown',ev=>{
+  if (ev.key!=='Enter' && ev.key!==' ') return;
+  const nEl = ev.target.closest?.('[data-node]');
+  if (nEl){
+    const n = NODES.find(x=>x.id===nEl.dataset.node);
+    if (n){
+      if (n.kind==='entity') select('entity',n.id);
+      else if (n.kind==='kind') select('kind',n.id);
+      else if (n.kind==='slot') select('slot',n.slot);
+      ev.preventDefault();
+    }
+    return;
+  }
+  const l = ev.target.closest?.('[data-slot]');
+  if (l && l.dataset.slot){ select('slot',l.dataset.slot); ev.preventDefault(); }
+});
+on(window,'resize',()=>renderGraph());
+
+/* ══════════════════════════════════════════════════════════
+   10  接线
+   ══════════════════════════════════════════════════════════ */
+on($('slider'),'input', ev=>setK(+ev.target.value));
+on($('btnReset'),'click',()=>setK(1));
+on($('btnEnd'),'click',()=>setK(C.paragraphCount));
+on($('q'),'input', ev=>{ S.q = ev.target.value.trim().toLowerCase(); renderSide(); });
+on($('gSlots'),'click', ev=>{ S.showSlots = !S.showSlots; ev.target.classList.toggle('on', S.showSlots); renderGraph(); });
+on($('gHide'),'click',  ev=>{ S.hideUnknown = !S.hideUnknown; ev.target.classList.toggle('on', S.hideUnknown); renderGraph(); });
+on($('gRelax'),'click', ()=>{ NODES.forEach(n=>{ n.x=undefined; }); renderGraph(); });
+document.querySelectorAll('.tab').forEach(t=>on(t,'click',()=>{ S.tab = t.dataset.tab; renderSide(); }));
+on(window,'keydown',ev=>{
+  if (ev.target.tagName==='INPUT') return;
+  if (ev.key==='ArrowRight') { setK(S.k + (ev.shiftKey?5:1)); ev.preventDefault(); }
+  if (ev.key==='ArrowLeft')  { setK(S.k - (ev.shiftKey?5:1)); ev.preventDefault(); }
+  if (ev.key==='Escape') select(null,null);
+});
+document.querySelectorAll('.ov-track').forEach(t=>on(t,'click',ev=>{
+  const r = t.getBoundingClientRect();
+  setK(Math.round((ev.clientX-r.left)/r.width*C.paragraphCount) + 1);
+}));
+
+/* 拖进来的 JSON 按 schema 串认领是哪一半 */
+const dropEl = $('drop');
+on(window,'dragover',ev=>{ ev.preventDefault(); dropEl.classList.add('on'); });
+on(window,'dragleave',ev=>{ if (ev.clientX===0 && ev.clientY===0) dropEl.classList.remove('on'); });
+on(window,'drop',async ev=>{
+  ev.preventDefault(); dropEl.classList.remove('on');
+  for (const f of ev.dataTransfer.files){
+    try {
+      const j = JSON.parse(await f.text());
+      if (j.schema===MEM_SCHEMA) MEM = j;
+      else if (j.schema===BEATS_SCHEMA) BEATS = j;
+      else alert(f.name + ' 的 schema 串不认识：' + j.schema);
+    } catch (e) { alert(f.name + ' 解析失败：' + e.message); }
+  }
+  boot();
+});
+
+function boot(){
+  if(!MEM){
+    C=null;S.sel=null;NODES=[];LINKS=[];
+    $('sideBody').innerHTML='<div class="emptyc" style="padding:80px 14px">没有数据。跑一遍 <code>node --experimental-strip-types scripts/build-viewer.ts</code>，或者把 chapter-01.json 拖进来。</div>';
+    $('ins').innerHTML='';$('graph').innerHTML='';$('schemaTag').textContent='未载入数据';$('chapTitle').textContent='—';$('posK').textContent='—';$('statLine').textContent='—';$('beatLine').innerHTML='';
+    const b=$('vBadge');b.className='badge idle';b.textContent='未载入';
+    return;
+  }
+  C=merge(MEM,BEATS);_order=null;_bounds=null;ISSUES=check();S.k=Math.max(1,Math.min(S.k,C.paragraphCount));NODES=[];LINKS=[];
+  renderTop();renderPos();renderSide();renderInspector();renderGraph();if(hasRAF&&!raf)loop();
+}
+
+loadInline();
+boot();
+</script>
+</body>
+</html>

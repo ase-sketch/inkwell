@@ -1,0 +1,12 @@
+[install]
+linker = "hoisted"
+
+[test]
+pathIgnorePatterns = [
+    "product/**",
+    ".output/**",
+    ".nuxt/**",
+    ".agent/**",
+    ".agents/**",
+    "dist/**",
+]

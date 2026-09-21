@@ -1,0 +1,60 @@
+{
+    "name": "@notnotype/neuro-agent-harness",
+    "private": true,
+    "version": "0.1.0",
+    "description": "A host-extensible agent harness with append-only sessions, profiles, tools, event recovery, and pluggable storage.",
+    "license": "AGPL-3.0-only",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/notnotype/neuro-agent-harness.git"
+    },
+    "bugs": {
+        "url": "https://github.com/notnotype/neuro-agent-harness/issues"
+    },
+    "homepage": "https://github.com/notnotype/neuro-agent-harness#readme",
+    "type": "module",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js"
+        },
+        "./storage/memory": {
+            "types": "./dist/storage/memory.d.ts",
+            "import": "./dist/storage/memory.js"
+        },
+        "./storage/jsonl": {
+            "types": "./dist/storage/jsonl.d.ts",
+            "import": "./dist/storage/jsonl.js"
+        },
+        "./testing": {
+            "types": "./dist/testing/index.d.ts",
+            "import": "./dist/testing/index.js"
+        }
+    },
+    "files": [
+        "dist",
+        "README.md",
+        "CONTEXT.md",
+        "CHANGELOG.md",
+        "LICENSE"
+    ],
+    "scripts": {
+        "build": "tsc -p tsconfig.build.json",
+        "typecheck": "bun run build && tsc --noEmit -p tsconfig.json",
+        "test": "bun test --parallel=1",
+        "test:bounded": "bun scripts/test-with-timeout.ts",
+        "verify": "bun run typecheck && bun test --parallel=1",
+        "pack:smoke": "bun scripts/pack-smoke.ts",
+        "prepack": "bun run verify"
+    },
+    "engines": {
+        "node": ">=22.19.0"
+    },
+    "devDependencies": {
+        "@types/node": "^26.1.1",
+        "bun-types": "^1.3.14",
+        "typescript": "^7.0.2"
+    }
+}

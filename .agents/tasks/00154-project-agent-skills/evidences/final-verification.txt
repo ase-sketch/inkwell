@@ -1,0 +1,128 @@
+Final frozen verification window after Task README/context metadata update to 2026-08-24T09:13:27Z:
+
+- `bun run docs:check` -> exit code 0; `failures: []`; `checkedFiles: 5236`.
+- `bun x vitest run --config scripts/vitest.config.ts --testTimeout=15000 scripts/ci/agent-governance.test.ts` -> exit code 0; Test Files 1 passed; Tests 38 passed; Duration 18.88s.
+- `bun x tsc --noEmit -p scripts/tsconfig.json` -> exit code 0; no output.
+- `git diff --check -- .agents/skills .agents/README.md .agents/tasks/AGENTS.md .agents/tasks/00154-project-agent-skills scripts/ci/agent-governance-contract.ts scripts/ci/agent-governance.test.ts packages/neuro-book/docs/proposals/agent-skills-adaptation.md docs/proposals/p-005-development-workflow-governance.md` -> exit code 0; no whitespace output; staged diff empty.
+- `bun run governance:check` -> exit code 1; complete failures, verbatim:
+  - ownership 文件 hash 不一致：packages/neuro-book/.agents/tasks/135-agent-asset-install-protocol/README.md
+  - 迁移目标 hash 不一致：packages/neuro-book/.agents/tasks/135-agent-asset-install-protocol/README.md
+  - warnings: []
+- `test ! -e .agents/skills/agent-workflow-router/SKILL.md` -> passed; legacy router absent.
+
+Classification unchanged: two pre-existing Task 135 repository baseline hash failures; no new Task 00154 failure; governance non-zero remains recorded as failure.
+
+Report 状态卡片修正验证窗口（Task README/context 2026-08-24T10:23:44Z 更新后）：
+
+- `bun run docs:check` -> exit code 0; `failures: []`; `checkedFiles: 5237`。
+- `bun x vitest run --config scripts/vitest.config.ts --testTimeout=15000 scripts/ci/agent-governance.test.ts` -> exit code 0; Test Files 1 passed; Tests 38 passed; Duration 24.82s。
+- `bun x tsc --noEmit -p scripts/tsconfig.json` -> exit code 0; no output。
+- `git diff --check -- .agents/skills/report .agents/tasks/00154-project-agent-skills` -> exit code 0; no whitespace output; staged diff empty。
+- `bun run governance:check` -> exit code 1; complete failures, verbatim：
+  - ownership 文件 hash 不一致：packages/neuro-book/.agents/tasks/135-agent-asset-install-protocol/README.md
+  - 迁移目标 hash 不一致：packages/neuro-book/.agents/tasks/135-agent-asset-install-protocol/README.md
+  - warnings: []
+
+Classification unchanged：two pre-existing Task 135 repository baseline hash failures；no new Task 00154 failure；governance non-zero remains recorded as failure。
+
+最终冻结复核（Task README/context 2026-08-24T10:27:01Z 更新后）：
+
+- `bun run docs:check` -> exit code 0; `failures: []`; `checkedFiles: 5237`。
+- `bun x vitest run --config scripts/vitest.config.ts --testTimeout=15000 scripts/ci/agent-governance.test.ts` -> exit code 0; Test Files 1 passed; Tests 38 passed; Duration 26.00s。
+- `bun x tsc --noEmit -p scripts/tsconfig.json` -> exit code 0; no output。
+- `git diff --check -- .agents/skills/report .agents/tasks/00154-project-agent-skills` -> exit code 0; no whitespace output; staged diff empty。
+- `bun run governance:check` -> exit code 1; complete failures, verbatim：
+  - ownership 文件 hash 不一致：packages/neuro-book/.agents/tasks/135-agent-asset-install-protocol/README.md
+  - 迁移目标 hash 不一致：packages/neuro-book/.agents/tasks/135-agent-asset-install-protocol/README.md
+  - warnings: []
+
+Classification unchanged：two pre-existing Task 135 repository baseline hash failures；no new Task 00154 failure；governance non-zero remains recorded as failure。
+
+`load_rule` 命名修正验证窗口（2026-08-24T10:43:40Z 后）：
+
+- `test -f .agents/skills/load_rule/SKILL.md`：通过；实际入口存在。
+- `test ! -e .agents/skills/load-rule/SKILL.md`：通过；旧连字符入口不存在。
+- `bun x vitest run --config scripts/vitest.config.ts --testTimeout=15000 scripts/ci/agent-governance.test.ts`：exit code 0；Test Files 1 passed；Tests 38 passed；Duration 19.91s。
+- `bun x tsc --noEmit -p scripts/tsconfig.json`：exit code 0；无输出。
+- `bun run docs:check`：exit code 0；`failures: []`；`checkedFiles: 5238`。
+- `git diff --check`：exit code 0；无 whitespace 输出；staged diff 为空。
+- `bun run governance:check`：exit code 1；仍为同一两条 Task 135 基线失败，Warnings 为空。
+
+命名结论：用户指定的 `load_rule` 已成为实际目录、frontmatter `name`、索引、治理测试和当前合同名称；没有仅文档层映射。
+
+`load_role` 用户更正后的最终验证窗口（2026-08-24T11:09:17Z）：
+
+- `test -f .agents/skills/load_role/SKILL.md`：通过；实际入口存在。
+- `test ! -e .agents/skills/load_rule`、`test ! -e .agents/skills/load-rule`：通过；两个旧目录均不存在。
+- `test ! -e .agents/skills/agent-workflow-router/SKILL.md`：通过；旧 router 入口不存在。
+- `bun x vitest run --config scripts/vitest.config.ts --testTimeout=15000 scripts/ci/agent-governance.test.ts`：exit code 0；Test Files 1 passed；Tests 38 passed；Duration 25.42s。
+- `bun x tsc --noEmit -p scripts/tsconfig.json`：exit code 0；无输出。
+- `bun run docs:check`：exit code 0；`failures: []`；`checkedFiles: 5240`。
+- `git diff --check`：exit code 0；无 whitespace 输出；staged diff 为空。
+- `bun run governance:check`：exit code 1；Warnings 为空；完整失败原文仍仅为两条 Task 135 hash 基线失败：ownership 文件 hash 不一致、迁移目标 hash 不一致。
+
+本窗口还修复了 report Skill 的悬空 `AGENTS.md#汇报与提问` 引用、Revision 状态卡片的 `HEAD`/`latest verified`/一致性合同，并补充 Task 135 后续 hash 修复必须联动重算 `legacy-index.json.manifestSha256` 与 `.migration-complete.manifestSha256` 的说明。
+
+Task 135 基线修复窗口（开发者授权本地同步后）：
+
+- 当前物理文件 actual：`sha256:f61030bd56975e50a69edd99414a8c62c204ba151840d6f9e4d8b376c53591a7`。
+- `.agents/tasks/ownership.json` 对应 `file.sha256`、`.agents/tasks/legacy-index.json` 对应 `destinationSha256` 与 actual 一致。
+- 按 contract L871-L879 重算的完整 manifest：`sha256:bd0fe64ad664533a2826a1b31e1567f842cb3ca73c721338c667892cbe8be679`；`legacy-index.json` 与 `.migration-complete` 顶层 `manifestSha256` 一致。
+- `bun run governance:check`：exit code 0；`failures: []`；`warnings: []`。
+- `.omp/RULES.md:5` 的 `AGENTS.md#汇报与提问` 仍是范围外既有悬空指针；本 Task 未修改，不能据此宣称全仓悬空引用已清零。
+
+最终验证窗口（范围台账更新后，2026-08-24T11:39:53Z）：
+
+- `bun run docs:check`：exit code 0；`failures: []`；`checkedFiles: 5241`。
+- `bun x vitest run --config scripts/vitest.config.ts --testTimeout=15000 scripts/ci/agent-governance.test.ts`：exit code 0；Test Files 1 passed；Tests 38 passed；Duration 21.86s。
+- `bun x tsc --noEmit -p scripts/tsconfig.json`：exit code 0；无输出。
+- `bun run governance:check`：exit code 0；`failures: []`；`warnings: []`。
+- `git diff --check -- .agents/README.md .agents/skills .agents/tasks .agents/roles/tasker/AGENTS.md scripts/ci/agent-governance-contract.ts scripts/ci/agent-governance.test.ts packages/neuro-book/docs/proposals/agent-skills-adaptation.md docs/proposals/p-005-development-workflow-governance.md`：exit code 0；无 whitespace 输出；staged diff 为空。
+- 基线字段复核：actual、ownership `file.sha256`、migration `destinationSha256` 一致；`sourceRevision=306e563ad7a4d4a58354fa8d582ad9aa9b886e8c` 未变；`sourceSha256=sha256:00caa493f58eb042276d7b8292d97ec744562f106d2d83c583e5c5fe23ab096a` 未变；index 与 marker 的 manifest 均为 `sha256:bd0fe64ad664533a2826a1b31e1567f842cb3ca73c721338c667892cbe8be679`，与重算值一致。
+- 实际工作树范围：`.agents/tasks/ownership.json`、`.agents/tasks/legacy-index.json`、`.agents/tasks/.migration-complete` 是本轮授权后实际修改的基线登记文件；Task 135 README 仅读核对未修改。
+- `.omp/RULES.md:5` 的 `AGENTS.md#汇报与提问` 仍是未纳入本 Task 的范围外既有悬空指针；本窗口未修改它。
+
+状态真相源同步后的最终验证窗口（2026-08-24T11:45:11Z）：
+
+- Task README `updatedAt` 与 context 快照已同步到本轮状态；当前 Task 仍为 `verifying`。
+- `bun run docs:check`：exit code 0；`failures: []`；`checkedFiles: 5241`。
+- `bun x vitest run --config scripts/vitest.config.ts --testTimeout=15000 scripts/ci/agent-governance.test.ts`：exit code 0；Test Files 1 passed；Tests 38 passed；Duration 19.98s。
+- `bun x tsc --noEmit -p scripts/tsconfig.json`：exit code 0；无输出。
+- `bun run governance:check`：exit code 0；`failures: []`；`warnings: []`。
+- `git diff --check`：exit code 0；无 whitespace 输出；staged diff 为空。
+- 当前摘要已区分：Task 135 两条 hash 错误属于历史验证窗口；最新治理状态已通过，不再报告为当前失败。
+- `.omp/RULES.md:5` 的 `AGENTS.md#汇报与提问` 仍为范围外既有悬空指针，本 Task 未修改。
+
+Task README/context 时间同步后的最终验证窗口（2026-08-24T11:49:09Z）：
+
+- Task README `updatedAt` 与 context 快照均为 `2026-08-24T11:46:46Z`；Task 当前 `status: verifying`。
+- `bun run docs:check`：exit code 0；`failures: []`；`checkedFiles: 5241`。
+- `bun x vitest run --config scripts/vitest.config.ts --testTimeout=15000 scripts/ci/agent-governance.test.ts`：exit code 0；Test Files 1 passed；Tests 38 passed；Duration 18.36s。
+- `bun x tsc --noEmit -p scripts/tsconfig.json`：exit code 0；无输出。
+- `bun run governance:check`：exit code 0；`failures: []`；`warnings: []`。
+- `git diff --check`：exit code 0；无 whitespace 输出；staged diff 为空。
+- 当前治理摘要与验证结果一致：Task 135 两条 hash 错误仅属于历史窗口，当前治理门禁无失败。
+- `.omp/RULES.md:5` 的 `AGENTS.md#汇报与提问` 仍是范围外既有悬空指针，本 Task 未修改。
+
+本轮指针修复待验证窗口（2026-08-24T12:26:54Z 修改后）：
+
+- `.omp/RULES.md:5` 已从不存在的 `../AGENTS.md#汇报与提问` 改为现有 `.agents/skills/report/SKILL.md#报告格式`；该文件已纳入 Task 允许范围。
+本段记录修改后的待验证状态；真实 required 结果见紧随其后的 2026-08-24T12:31:18Z 窗口。
+
+指针修复后的真实验证窗口（2026-08-24T12:31:18Z）：
+
+- `bun run docs:check`：exit code 0；`failures: []`；`checkedFiles: 5242`。
+- `bun x vitest run --config scripts/vitest.config.ts --testTimeout=15000 scripts/ci/agent-governance.test.ts`：exit code 0；Test Files 1 passed；Tests 38 passed；Duration 26.01s。
+- `bun x tsc --noEmit -p scripts/tsconfig.json`：exit code 0；无输出。
+- `bun run governance:check`：exit code 0；`failures: []`；`warnings: []`。
+- `git diff --check -- .`：exit code 0；无 whitespace 输出。
+- `.omp/RULES.md:5` 与 `.agents/skills/report/SKILL.md` 的生效汇报格式链接均指向 `.agents/skills/report/SKILL.md#报告格式`；历史证据中的旧锚点文字仅保留为诊断记录。
+
+语义指针修正后的真实验证窗口（2026-08-24T12:42:36Z）：
+
+- `bun run docs:check`：exit code 0；`failures: []`；`checkedFiles: 5242`。
+- `bun x vitest run --config scripts/vitest.config.ts --testTimeout=15000 scripts/ci/agent-governance.test.ts`：exit code 0；Test Files 1 passed；Tests 38 passed；Duration 21.83s。
+- `bun x tsc --noEmit -p scripts/tsconfig.json`：exit code 0；无输出。
+- `bun run governance:check`：exit code 0；`failures: []`；`warnings: []`。
+- `git diff --check -- .`：exit code 0；无 whitespace 错误；命令同时输出 LF/CRLF 规范化 warning。
+- 生效文件 `.omp/RULES.md` 与 `.agents/skills/report/SKILL.md` 未命中 `AGENTS.md#汇报与提问`。

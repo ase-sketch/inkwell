@@ -1,0 +1,152 @@
+/tmp
+/.tmp-bun-install/
+/out-tsc
+
+/node_modules
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+/.pnp
+.pnp.js
+
+.vscode/*
+.env
+.env.local
+config.yaml
+dist/
+product/
+/server/generated/prisma
+.DS_Store
+.runtime
+.deploy/
+
+# Nuxt
+.nuxt
+.output
+.nitro
+.cache
+.nuxt-analyze
+
+# IDE
+.idea
+.claude/settings.local.json
+.claude/worktrees/
+# 开发 Agent 治理真相源：只跟踪 .agents，仓库运行态全部留在系统 Temp
+/.agent/
+# 用户管理的本地资产：只跟踪约定文件
+/.local/*
+!/.local/README.md
+/.agents/*
+!/.agents/AGENTS.md
+!/.agents/README.md
+!/.agents/roles/
+!/.agents/roles/**
+!/.agents/skills/
+!/.agents/skills/**
+!/.agents/issues/
+!/.agents/issues/**
+!/.agents/notes/
+!/.agents/notes/**
+!/.agents/works/
+!/.agents/works/**
+# playwright-cli 默认生成的浏览器快照与 console 产物，不进入 Git
+!/.agents/tasks/
+!/.agents/tasks/**
+/.agents/tasks/**/benchmarks/results/*.json
+.playwright-cli/
+# 外部工具产生的调试 trace（与运行时 .nbook/agent/traces 无关）
+.traces/
+/workspace/
+/logs/
+/coverage/
+**/AGENTS.LOCAL.md
+/.worktree/
+docs/.vitepress/dist
+docs/.vitepress/cache
+vitepress/.vitepress/cache
+vitepress/.vitepress/staged/
+vitepress/.vitepress/.temp/
+# 根 assets 仅保留本机历史运行残留；主应用发布资产归 packages/neuro-book/assets。
+/assets/
+# AIGC 检测 reference 语料（104 本版权书，I11 合规边界）：正文绝不入 git；catalog.json 元数据可进
+datasets/aigc-detection/books/
+datasets/aigc-detection/converted/
+server/agent/variables/generated-profile-variable-types.d.ts
+# 基准测试的原始结果：带本机 CPU 型号、内存、OS build 和绝对路径，只保留同目录 .md 摘要
+**/benchmarks/results/*.json
+# Crash dumps
+*.stackdump
+# Test output
+test-results/
+# Agent session / workspace runtime data (server-side)
+server/workspace/.nbook/
+server/.agent/
+# Temporary screenshots / assets
+t16-editor-heat.png
+/cache/
+
+# 收编自治项目的包级生成物、数据库、评测私有资产和运行态；源仓 .gitignore 不作为第二套规则复制。
+/packages/nb-history/*.sqlite
+/packages/nb-history/*.sqlite-wal
+/packages/nb-history/*.sqlite-shm
+/packages/nb-history/.tmp/
+/packages/*/.agent/
+/packages/*/.local/
+/packages/*/.worktree/
+/packages/nb-memory/*.log
+/packages/nb-ui/.nuxt/
+/packages/nb-ui/.output/
+/packages/nb-ui/.data/
+/packages/nb-ui/dist/*
+!/packages/nb-ui/dist/
+!/packages/nb-ui/dist/nb-ui.css
+/packages/nb-ui/coverage/
+/packages/nb-ui/*.log
+/packages/nb-ui/.agent/
+/packages/nb-ui/.playwright-cli/
+/packages/nb-ui/playground/node_modules/.cache/
+/packages/nb-ui/playground/.output/
+/packages/nb-ui/playground/.nuxt/
+/packages/neuro-agent-harness/dist/
+/packages/neuro-agent-harness/.agent/
+/packages/neuro-agent-harness/*.tgz
+/packages/neuro-agent-harness/*.log
+/packages/llmlint/.bun/
+/packages/llmlint/.agent/
+/packages/llmlint/data.db
+/packages/llmlint/data.db-journal
+/packages/llmlint/data.db-wal
+/packages/llmlint/data.db-shm
+/packages/llmlint/*.log
+/packages/llmlint/evals/fixture-report/
+/packages/llmlint/evals/report/
+/packages/llmlint/evals/tmp/
+/packages/llmlint/evals/.cache/
+/packages/llmlint/evals/eval.config.json
+/packages/llmlint/evals/corpus/
+/packages/llmlint/web/.nuxt/
+/packages/llmlint/web/.output/
+/packages/llmlint/web/dist/
+/packages/llmlint/web/.data/
+/packages/llmlint/web/.env
+/packages/llmlint/web/data.db
+/packages/llmlint/web/data.db-*
+/packages/llmlint/web/app/data/registry.json
+/packages/llmlint/web/app/data/rules-report.json
+/packages/llmlint/web/public/report.json
+/packages/llmlint/web/*.log
+/packages/*/bun.lock
+# 主应用 package 内的应用生成物由 packages/neuro-book/.gitignore 负责。
+# Manager test bundle outputs
+/.tmp-manager-external-yaml/
+/.tmp-manager-node-build/
+/.zcode/
+
+# 全局兜底：构建增量缓存、运行日志与 OS 残留；已跟踪文件不受 gitignore 影响。
+*.log
+*.tsbuildinfo
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/

@@ -1,0 +1,80 @@
+{
+  "schema": "nbook.evidence/v1",
+  "taskId": "00149-monorepo-workspace-consolidation",
+  "phase": "S6-workflow-params-side-channel",
+  "status": "blocked",
+  "implementationScope": [
+    "packages/nb-workflow/src/fingerprint.ts",
+    "packages/nb-workflow/src/runtime.ts",
+    "packages/nb-workflow/src/types.ts",
+    "packages/nb-workflow/src/runtime-events.ts",
+    "packages/neuro-book/server/agent/workflow/workflow-demo-service.ts",
+    "packages/neuro-book/server/agent/workflow/workflow-run-vm.ts",
+    "packages/neuro-book/server/agent/workflow/workflow-session-port.ts"
+  ],
+  "contract": {
+    "fingerprint": "sha256:<64 lowercase hex>; never raw JSON",
+    "params": "optional canonical JSON observation side channel; excluded from ActivityIdentity",
+    "publicProjection": "removes ActivityRecord.params and activity_started.params; strips only invocation usage.cost",
+    "legacy": "inline JSON fingerprints parsed only when params is absent; sha256 fingerprints are opaque"
+  },
+  "sourceT02Disposition": {
+    "decision": "approved-and-continue",
+    "approvedAt": "2026-08-18",
+    "commit": "0fdec90bac0456b67045185c99cb8b829e75bd6c",
+    "scope": "承认已发生的计划外源仓提交，并仅使用其等价内容作为迁移输入",
+    "sourceWritePolicy": "不允许新的原仓写操作",
+    "immutabilityGate": "approved-exception; not clean-green",
+    "evidence": "walkthroughs/009-leader-2026-08-17-source-read-only-violation.md"
+  },
+  "verification": {
+    "nbWorkflowFocused": "20 passed / 0 failed across fingerprint and activity-runtime tests",
+    "nbWorkflowFull": "103 passed / 0 failed across 13 files",
+    "nbWorkflowTypecheck": "bunx tsc --noEmit passed",
+    "paramsSmoke": {
+      "status": "completed",
+      "fingerprintPattern": "sha256:<64 lowercase hex>",
+      "activityRecordParams": "canonical JSON present",
+      "activityStartedParams": "canonical JSON present"
+    },
+    "neuroBookTypecheck": "bun run --cwd packages/neuro-book typecheck passed",
+    "neuroBookWorkflowFocused": "bun run --cwd packages/neuro-book test -- server/agent/workflow/workflow-demo-service.test.ts server/agent/workflow/workflow-run-vm.test.ts server/agent/workflow/workflow-session-port.test.ts: 3 files / 18 passed",
+    "neuroBookFull": "bun --cwd packages/neuro-book test -- --retry=3 passed after Profile SDK dependency-boundary repair: Test Files 416 passed | 1 skipped; Tests 3083 passed | 3 skipped; no unhandled worker error observed",
+    "rootTestCommand": "bun run test -- --retry=3 was not a valid root full-suite command because root package.json has no test script; no root tests were run",
+    "governance": "bun run governance:check passed after removing packages/neuro-book/.agent; failures=[]; warnings=[]",
+    "frozenInstall": "bun install --frozen-lockfile --linker hoisted passed; bun.lock sha256 f4c4d6307e6e39c38d6860a6fab8bd0dd8cdfa9e2464b6ca37ed200a4ce82200",
+    "otherWorkspacePackages": {
+      "nb-history": "49 passed / typecheck passed",
+      "nb-memory": "86 passed / typecheck passed",
+      "nb-ui": "189 passed / typecheck and build passed",
+      "neuro-agent-harness": "529 passed / typecheck, build, verify passed",
+      "neuro-book-contracts": "32 passed / typecheck passed",
+      "neuro-book-test-support": "7 passed / typecheck passed",
+      "neuro-book-manager": "330 passed / 3 skipped after retry=3; typecheck passed",
+      "owned-process": "15 passed / 3 skipped; typecheck passed",
+      "file-snapshot-cache": "44 passed / typecheck passed"
+    }
+  },
+  "inheritedFailures": [
+    "manifest allowlist audit remains blocked: nb-workflow unresolved=22 and mismatch=39; no target source copy is authorized",
+    "governance:worktree reports three canonical-root-outside registered worktrees; no prune/remove executed",
+    "package:windows-portable not run to completion: release source requires clean checkout, current migration worktree is intentionally dirty"
+  ],
+  "notAccepted": [
+    "real provider/model",
+    "private corpus",
+    "browser/manual acceptance",
+    "Docker/remote deployment",
+    "Windows runner",
+    "signed/public release"
+  ],
+  "checkpoint": {
+    "mainRepositoryMerge": "da3343919b52a482d562140517f8e4cd6229b9e3; parents ba694892a21fec57cfc176f43819f84fef3fdbc1 and 5e55c54e13cd67f6e19c5361931fca1fe9ae4241",
+    "checkpointTag": "t149-s6-main-app-physical-cutover-4f39cf8c (retained historical tag; not final)",
+    "status": "blocked; checkpoint evidence retained for physical cutover with unresolved inherited failures",
+    "workingTree": "clean; verified by git status --porcelain=v1 --untracked-files=all (no output) before and after this evidence correction commit; not a final green checkpoint",
+    "governance": "bun run governance:check last passed after removing packages/neuro-book/.agent; failures=[]; warnings=[]",
+    "desktopContract": "bun run test:desktop-contract passed; 11 files / 37 tests",
+    "diffCheck": "git diff --check && git diff --cached --check passed"
+  }
+}

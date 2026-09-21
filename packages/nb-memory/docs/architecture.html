@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>nb-memory 架构导览</title>
+<style>
+:root {
+    --bg: #0e1116;
+    --bg-soft: #151a22;
+    --bg-card: #1b212c;
+    --line: #2a323f;
+    --text: #dfe5ee;
+    --text-dim: #93a0b4;
+    --accent: #58c4dc;
+    --accent-2: #f0b429;
+    --ok: #56c271;
+    --warn: #e6825e;
+    --danger: #e05a6b;
+    --mono: ui-monospace, "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+}
+* { box-sizing: border-box; }
+body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    line-height: 1.7; font-size: 15px;
+}
+a { color: var(--accent); }
+code, .mono { font-family: var(--mono); font-size: 0.9em; }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+/* ── 页头 ───────────────────────────────────────────── */
+header { padding: 56px 0 32px; border-bottom: 1px solid var(--line); background: linear-gradient(180deg, #131a24, var(--bg)); }
+header h1 { margin: 0 0 8px; font-size: 34px; letter-spacing: 1px; }
+header h1 small { font-size: 15px; color: var(--text-dim); font-weight: 400; letter-spacing: 0; }
+header p.lede { margin: 0 0 24px; color: var(--text-dim); max-width: 720px; }
+.stats { display: flex; flex-wrap: wrap; gap: 12px; }
+.stat { background: var(--bg-card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 16px; min-width: 130px; }
+.stat b { display: block; font-size: 22px; color: var(--accent); font-family: var(--mono); }
+.stat span { font-size: 12px; color: var(--text-dim); }
+
+/* ── 导航 ───────────────────────────────────────────── */
+nav { position: sticky; top: 0; z-index: 10; background: rgba(14,17,22,.92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+nav .wrap { display: flex; gap: 20px; flex-wrap: wrap; padding-top: 12px; padding-bottom: 12px; }
+nav a { color: var(--text-dim); text-decoration: none; font-size: 14px; }
+nav a:hover { color: var(--accent); }
+
+/* ── 区块 ───────────────────────────────────────────── */
+section { padding: 48px 0; border-bottom: 1px solid var(--line); }
+section h2 { font-size: 24px; margin: 0 0 6px; }
+section h2 em { font-style: normal; color: var(--accent); font-family: var(--mono); font-size: 15px; margin-right: 10px; }
+section > .wrap > p.sub { color: var(--text-dim); margin: 0 0 28px; max-width: 760px; }
+h3 { font-size: 17px; margin: 28px 0 10px; }
+
+/* ── 形态图 ─────────────────────────────────────────── */
+.shape { display: grid; grid-template-columns: 220px 1fr; gap: 20px; align-items: start; }
+.layers { display: flex; flex-direction: column; gap: 10px; }
+.layer {
+    background: var(--bg-card); border: 1px solid var(--line); border-left: 3px solid var(--line);
+    border-radius: 8px; padding: 12px 14px; cursor: pointer; transition: .15s;
+}
+.layer:hover { border-color: var(--accent); }
+.layer.on { border-left-color: var(--accent); background: #1f2733; }
+.layer b { display: block; font-size: 15px; }
+.layer span { font-size: 12px; color: var(--text-dim); font-family: var(--mono); }
+.layer-detail { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 10px; padding: 20px 22px; min-height: 300px; }
+.layer-detail h4 { margin: 0 0 4px; font-size: 18px; }
+.layer-detail .role { color: var(--accent-2); font-size: 13px; margin-bottom: 14px; }
+.layer-detail ul { margin: 0 0 14px; padding-left: 20px; }
+.layer-detail li { margin-bottom: 6px; }
+pre {
+    background: #0b0e13; border: 1px solid var(--line); border-radius: 8px;
+    padding: 12px 14px; overflow-x: auto; font-family: var(--mono); font-size: 12.5px;
+    color: #b9c6d8; margin: 0 0 12px;
+}
+pre .k { color: var(--accent); } pre .s { color: var(--ok); } pre .n { color: var(--accent-2); }
+
+/* ── 写入链路 ───────────────────────────────────────── */
+.pipe { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+.pipe-step {
+    flex: 1 1 150px; background: var(--bg-card); border: 1px solid var(--line);
+    border-radius: 8px; padding: 10px 12px; cursor: pointer; transition: .15s;
+}
+.pipe-step.on { border-color: var(--accent); background: #1f2733; }
+.pipe-step b { display: block; font-size: 13px; }
+.pipe-step span { font-size: 11px; color: var(--text-dim); }
+.pipe-body { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; }
+
+/* ── 时间机器 ───────────────────────────────────────── */
+.machine { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+.tick-row { display: flex; align-items: center; gap: 16px; margin-bottom: 6px; }
+.tick-row label { font-size: 13px; color: var(--text-dim); white-space: nowrap; }
+.tick-row input[type=range] { flex: 1; accent-color: var(--accent); }
+.tick-badge { font-family: var(--mono); font-size: 20px; color: var(--accent); min-width: 96px; }
+.tick-badge small { color: var(--text-dim); font-size: 12px; }
+.q-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 6px; }
+.q-row button {
+    background: var(--bg-card); border: 1px solid var(--line); color: var(--text);
+    border-radius: 999px; padding: 5px 14px; font-size: 13px; cursor: pointer; font-family: inherit;
+}
+.q-row button:hover, .q-row button.on { border-color: var(--accent); color: var(--accent); }
+#query { width: 100%; background: #0b0e13; border: 1px solid var(--line); border-radius: 8px; color: var(--text); padding: 10px 12px; font-family: inherit; font-size: 14px; }
+.panes { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 18px; }
+.pane { background: var(--bg-card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.pane.leak { border-color: #4a2b30; }
+.pane h4 { margin: 0 0 4px; font-size: 14px; }
+.pane .hint { font-size: 12px; color: var(--text-dim); margin-bottom: 12px; }
+.hit { border-left: 2px solid var(--line); padding: 4px 0 4px 10px; margin-bottom: 8px; font-size: 13px; }
+.hit .meta { font-family: var(--mono); font-size: 11px; color: var(--text-dim); }
+.hit.card { border-left-color: var(--accent); }
+.hit.state { border-left-color: var(--accent-2); }
+.hit.fact { border-left-color: #3d4757; }
+.hit.leaked { border-left-color: var(--danger); }
+.tag { display: inline-block; font-size: 10px; padding: 0 6px; border-radius: 4px; margin-right: 6px; font-family: var(--mono); vertical-align: 1px; }
+.tag.card { background: #17323a; color: var(--accent); }
+.tag.state { background: #3a2f14; color: var(--accent-2); }
+.tag.fact { background: #232a35; color: var(--text-dim); }
+.tag.leak { background: #3a1c22; color: var(--danger); }
+.empty { color: var(--text-dim); font-size: 13px; font-style: italic; }
+.registry-strip { margin-top: 18px; }
+.subj { display: inline-block; background: var(--bg-card); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin: 0 8px 8px 0; font-size: 13px; }
+.subj.hidden-yet { opacity: .35; }
+.subj b { color: var(--accent); }
+.subj .al { font-size: 11px; color: var(--text-dim); font-family: var(--mono); display: block; }
+
+/* ── 表格 ───────────────────────────────────────────── */
+table { width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 16px; }
+th, td { border: 1px solid var(--line); padding: 8px 12px; text-align: left; vertical-align: top; }
+th { background: var(--bg-card); font-weight: 600; }
+td.num { font-family: var(--mono); }
+.good { color: var(--ok); } .bad { color: var(--danger); } .mid { color: var(--accent-2); }
+
+/* ── 融合图 ─────────────────────────────────────────── */
+.fuse { display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; align-items: center; }
+.fuse .path { background: var(--bg-card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.fuse .path h4 { margin: 0 0 6px; font-size: 14px; }
+.fuse .path p { margin: 0; font-size: 13px; color: var(--text-dim); }
+.fuse .arrow { font-size: 26px; color: var(--accent); }
+.note { background: #1a2027; border-left: 3px solid var(--accent-2); padding: 10px 14px; border-radius: 0 8px 8px 0; font-size: 13.5px; margin: 14px 0; }
+footer { padding: 32px 0 60px; color: var(--text-dim); font-size: 13px; }
+@media (max-width: 860px) {
+    .shape, .panes, .fuse { grid-template-columns: 1fr; }
+    .fuse .arrow { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- 页头 -->
+<header>
+    <div class="wrap">
+        <h1>nb-memory <small>NeuroBook 记忆框架 · Task 113 spike 产物</small></h1>
+        <p class="lede">给小说 / 长叙事用的记忆库。核心命题：<b>在任意历史时点提问，都不能泄漏那个时点之后才知道的事</b>——同一个人早期叫「粉色头发的女生」、第 11 拍才知道她叫艾琳娜，那么第 5 拍的提问就必须答不出名字。</p>
+        <div class="stats">
+            <div class="stat"><b>0%</b><span>时间泄漏率（对照组 22.2%）</span></div>
+            <div class="stat"><b>22</b><span>次 LLM 调用完成 20 章消解</span></div>
+            <div class="stat"><b>1237</b><span>行源码 · 零运行时依赖</span></div>
+            <div class="stat"><b>4</b><span>个 jsonl 文件即全部事实源</span></div>
+        </div>
+    </div>
+</header>
+
+<nav><div class="wrap">
+    <a href="#shape">① 形态</a>
+    <a href="#ingest">② 写入链路</a>
+    <a href="#machine">③ as-of 时间机器（可玩）</a>
+    <a href="#bitemporal">③b 两条时间轴</a>
+    <a href="#search">④ 检索融合</a>
+    <a href="#tradeoff">⑤ 设计取舍与成绩</a>
+    <a href="#api">⑥ API 与纪律</a>
+</div></nav>
+
+<!-- ① 形态 -->
+<section id="shape"><div class="wrap">
+    <h2><em>01</em>形态：一条原始流 + 三种派生记忆</h2>
+    <p class="sub">左边点一层，右边看它的职责、存储事件和为什么这么分。四层都是 append-only 的事件溯源 jsonl，向量索引与倒排索引是可删可重建的派生物。</p>
+    <div class="shape">
+        <div class="layers" id="layers"></div>
+        <div class="layer-detail" id="layerDetail"></div>
+    </div>
+    <div class="note"><b>为什么边不是存储对象？</b> 一条事实标了两个主体 id，它<b>本身就是一条边</b>。于是「图」塌缩成「注册表 + 倒排索引」，关系查询 = 按 id 对求交集——不需要边表、不需要图数据库，也就没有图膨胀。</div>
+</div></section>
+
+<!-- ② 写入链路 -->
+<section id="ingest"><div class="wrap">
+    <h2><em>02</em>写入链路：一批事实，一次联合调用</h2>
+    <p class="sub">消解不是事后跑图算法，而是<b>写入当场把称呼归一到 id</b>。整张注册表（几十个主体）全量进上下文，所以不存在「候选召回不到就凭空造一个新实体」这类静默错误。点每一步看细节。</p>
+    <div class="pipe" id="pipe"></div>
+    <div class="pipe-body" id="pipeBody"></div>
+</div></section>
+
+<!-- ③ 时间机器 -->
+<section id="machine"><div class="wrap">
+    <h2><em>03</em>as-of 时间机器</h2>
+    <p class="sub">下面是真跑的迷你版引擎：语料是 bench 的冒烟语料（24 条事实 / 三天校园日常），检索逻辑（BM25 分词打分、as-of 过滤、主体卡注入、状态失效区间）是从 <code>src/</code> 直译到本页的。拖动 tick 回到过去，看记忆库<b>当时</b>知道什么。</p>
+    <p class="sub" style="border-left:3px solid var(--accent);padding-left:12px;">这台机器演示的是<b>摄入序</b>那条轴。引擎另有一条<b>故事时间</b>轴，见下面第 03b 节——本页的交互只做了前者。</p>
+    <div class="machine">
+        <div class="tick-row">
+            <label>把记忆库拨回到</label>
+            <input type="range" id="tick" min="1" max="24" value="24">
+            <div class="tick-badge" id="tickBadge"></div>
+        </div>
+        <input id="query" placeholder="问点什么……">
+        <div class="q-row" id="presets"></div>
+        <div class="panes">
+            <div class="pane">
+                <h4>引擎在该时点检索到的片段</h4>
+                <div class="hint">主体卡（as-of 裁剪）→ 状态 → 事实，按融合分排序</div>
+                <div id="hits"></div>
+            </div>
+            <div class="pane leak">
+                <h4>关掉 as-of 过滤会多冒出来的东西</h4>
+                <div class="hint">这些片段来自该时点<b>之后</b>；对照组引擎正是在这里丢分</div>
+                <div id="leaks"></div>
+            </div>
+        </div>
+        <div class="registry-strip">
+            <h4 style="margin:0 0 8px;font-size:14px;">该时点的关键主体注册表</h4>
+            <div id="registry"></div>
+        </div>
+    </div>
+    <div class="note">本页只能跑<b>字面路（BM25）</b>——语义路要调 embedding 服务，离线页面做不到。真实引擎是「语义 + 字面」双路 RRF 融合，所以真实召回比这里更宽；但 as-of 过滤、主体卡、状态失效这三样与线上完全一致。</div>
+</div></section>
+
+<!-- ④ 检索融合 -->
+<!-- ③b 双时间轴 -->
+<section id="bitemporal"><div class="wrap">
+    <h2><em>03b</em>两条时间轴</h2>
+    <p class="sub">一条轴不够用，是被<b>倒叙</b>逼出来的：回忆章节的摄入序在推进，故事时间却在后退。单轴系统在这里必然出错——按摄入序排会把回忆排到最后，按故事时间排会丢掉「读者何时读到」。</p>
+    <table>
+        <tr><th style="width:120px;">轴</th><th style="width:130px;">是什么</th><th style="width:90px;">单调性</th><th>回答什么问题</th></tr>
+        <tr><td><code>tick</code></td><td>摄入序 / 叙事推进序</td><td><b>永远单调</b></td><td>叙事推进到这里时，（该视角）知道多少 → <b>知识边界</b></td></tr>
+        <tr><td><code>instant</code></td><td>故事时间秒数，可空</td><td><b>可回退</b></td><td>故事时间的这一刻，世界是什么样 → <b>世界状态</b></td></tr>
+    </table>
+    <p class="sub">举个具体的。一段倒叙讲主角十年前的事，它的 tick 排在当前章节之后，instant 却回到十年前：</p>
+    <table>
+        <tr><th style="width:200px;">查询</th><th>命中</th><th>为什么</th></tr>
+        <tr><td><code>asOfTick: 当前</code></td><td>包含那段倒叙</td><td>读者已经读到了</td></tr>
+        <tr><td><code>asOfTick: 倒叙之前</code></td><td>不含</td><td>读者还没读到</td></tr>
+        <tr><td><code>asOfInstant: 十年前</code></td><td><b>只有</b>那段倒叙</td><td>故事时间上只有它已经发生</td></tr>
+    </table>
+    <p class="sub">两条轴同为 AND，各自成立。别名的「何时得知同一性」也是双轴的——上帝视角关心 tick（读者何时知道），角色视角关心 instant（角色在故事时间的何时知道）。</p>
+    <p class="sub"><b>fail-closed</b>：查询给了某轴而记录缺该轴坐标，一律判不可见。无法安放的记录宁可漏召回，也不能泄漏进它可能并不属于的时间窗口。</p>
+</div></section>
+
+<section id="search"><div class="wrap">
+    <h2><em>04</em>检索：两条路，一套过滤</h2>    <p class="sub">语义路负责「意思相近」，字面路负责「专名一字不差」——账号名、道具名这类词在 embedding 空间里是召不回的，实测就栽在这上面。两路用 RRF 融合，不需要调权重。</p>
+    <div class="fuse">
+        <div class="path">
+            <h4>语义路 · embedding 余弦</h4>
+            <p>归一化距离 &gt; 1.15 截断。<b>先过滤再截断</b>，不是「超采一批再事后裁」——后者会让 as-of 之外的条目挤掉合法结果。</p>
+        </div>
+        <div class="arrow">⇢</div>
+        <div class="path">
+            <h4>字面路 · BM25（零依赖）</h4>
+            <p>中文按字 bigram、ASCII 按整词。不吃语义截断——补语义盲区正是它存在的理由。</p>
+        </div>
+    </div>
+    <div style="text-align:center;font-size:26px;color:var(--accent);margin:10px 0;">⇣</div>
+    <div class="path" style="background:var(--bg-card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;">
+        <h4 style="margin:0 0 6px;font-size:14px;">RRF 融合（k=60）</h4>
+        <p style="margin:0;font-size:13px;color:var(--text-dim);"><code class="mono">score = Σ 1 / (60 + rank + 1)</code>——只吃名次不吃分数尺度，两路量纲不同也能合。</p>
+    </div>
+    <div class="note"><b>红线：过滤对两路同权。</b> tick 与主体过滤在两条路上用的是同一个 <code>passesFilter</code>，字面路不给 as-of 开后门——有单测钉住。</div>
+    <h3>门面还会额外做三件事</h3>
+    <table>
+        <tr><th style="width:180px;">动作</th><th>目的</th></tr>
+        <tr><td>注入 as-of 主体卡</td><td>提问里提到的主体，注入一行档案：类型 + 当时已知的别名 + 当时版本的本体描述。后期才揭晓的身份不会漏进来。</td></tr>
+        <tr><td>按主体补充召回</td><td>每个提及主体额外取 3 条融合命中 + 2 条在效状态，不挤占主 limit。状态取「与问题最相关的 top2」而非全量——全量注入会让无关状态淹没被问的那条。</td></tr>
+        <tr><td>主体对求交</td><td>提问提到 ≥2 个主体时，直接查同时涉及两者的事实——这就是「边」的派生视图。</td></tr>
+    </table>
+</div></section>
+
+<!-- ⑤ 取舍与成绩 -->
+<section id="tradeoff"><div class="wrap">
+    <h2><em>05</em>设计取舍与实测成绩</h2>
+    <p class="sub">别名合并这件事，业界两种做法在 as-of 视角下都是错的。第三条路是把「何时得知」记进去。</p>
+    <table>
+        <tr><th style="width:150px;">做法</th><th>行为</th><th style="width:230px;">as-of 提问时的后果</th></tr>
+        <tr><td>全局合并<br><span style="color:var(--text-dim);font-size:12px;">（图引擎常见）</span></td><td>一旦得知「粉发女生 = 艾琳娜」，历史全部改写</td><td class="bad">第 5 拍提问也能答出名字 —— 泄漏</td></tr>
+        <tr><td>永不合并<br><span style="color:var(--text-dim);font-size:12px;">（纯 RAG 基线）</span></td><td>两个称呼永远是两个无关的东西</td><td class="bad">第 24 拍提问也串不起来 —— 漏召回</td></tr>
+        <tr><td><b>别名带 tick</b><br><span style="color:var(--text-dim);font-size:12px;">（nb-memory）</span></td><td>记「t≥11 起已知同一人」，合并是显式可审计事件</td><td class="good">t&lt;11 视作两实体，t≥11 打通 —— 两头都对</td></tr>
+    </table>
+    <h3>B1 基准同题集对照（fanpai-loli，20 章 / 338 事实）</h3>
+    <table>
+        <tr><th>指标</th><th>nb-memory</th><th>对照组（主仓在位内核等价物）</th></tr>
+        <tr><td>时间泄漏率</td><td class="num good">0%（跨全部 11 次跑）</td><td class="num bad">22.2%</td></tr>
+        <tr><td>实体消解正确率</td><td class="num good">76.3%（双跑均值，单跑峰值 94.4%）</td><td class="num">68.4%</td></tr>
+        <tr><td>历史时点提问正确率</td><td class="num good">71–100%</td><td class="num">57.1%</td></tr>
+        <tr><td>摄入成本</td><td class="num good">22 次 LLM / 约 3 分钟</td><td class="num">57 次 / 21 分钟</td></tr>
+        <tr><td>同实体被拆成多个主体</td><td class="num good">0</td><td class="num bad">存在</td></tr>
+        <tr><td>认知反转题</td><td class="num mid">37.5%（未达标）</td><td class="num">40%</td></tr>
+    </table>
+    <div class="note"><b>未达标的那一行照直说。</b> 认知反转题没做到目标值，归因是<b>状态检索命中率</b>（问「经济来源」而状态名叫「生计来源」，召不回）与<b>评测分辨率</b>（该类只有 8–11 道计分题，单跑分数在 25–75% 之间摆动，小于 20 个百分点的改动根本分辨不出来）。不是形态缺陷，但也没被证明有效——留给正式实现阶段，先把题量扩到 24 道以上再谈优化。</div>
+</div></section>
+
+<!-- ⑥ API -->
+<section id="api"><div class="wrap">
+    <h2><em>06</em>公开 API 与纪律</h2>
+    <pre><span class="k">import</span> {NbMemory, FsStorage, SqliteIndexStore, planHeuristically, executePlan} <span class="k">from</span> <span class="s">"@notnotype/nb-memory"</span>;
+
+<span class="k">const</span> memory = <span class="k">await</span> NbMemory.open({
+    storage: <span class="k">await</span> FsStorage.open(dir), embedder, llm,
+    indexStore: <span class="k">await</span> SqliteIndexStore.open({file, modelKey, filterableMeta: {speaker: <span class="s">"text"</span>}}),
+    deferEmbedding: <span class="k">true</span>,        <span class="n">// 摄入只落库，嵌入交给后台补</span>
+});
+
+<span class="n">// 摄入：原始内容进来，分块 → 抽取 → 联合消解 → 落库</span>
+<span class="k">await</span> memory.ingestRaw([{source: <span class="s">"chapter:01"</span>, text: 正文, instant: 86400n}], {pov: <span class="s">"character"</span>, povSubject: <span class="s">"我"</span>});
+<span class="k">await</span> memory.ingestBatch([{tick: 1, instant: 86400n, text: <span class="s">"……"</span>}]);   <span class="n">// 已抽好的事实</span>
+
+<span class="n">// 检索：语义 + 字面 RRF 融合；全部过滤对两路同权</span>
+<span class="k">await</span> memory.search(<span class="s">"粉发女孩是谁？"</span>, {asOfTick: 20});        <span class="n">// 知识边界口径</span>
+<span class="k">await</span> memory.search(<span class="s">"她住在哪？"</span>, {asOfInstant: 1000000n});   <span class="n">// 世界状态口径</span>
+
+<span class="n">// 多跳：问题里没有专名时，主体锚点先从时间窗口解出来</span>
+<span class="k">const</span> plan = planHeuristically(<span class="s">"昨天遇到的女孩，头发是什么颜色？"</span>, {now, secondsPerDay: 86400, registry: memory.registry});
+<span class="k">const</span> {hits, subjectsPerStep} = <span class="k">await</span> executePlan(memory, plan);
+
+<span class="k">await</span> memory.backfillVectors();   <span class="n">// 补齐未嵌入的向量</span>
+<span class="k">await</span> memory.stats();            <span class="n">// {entries, pendingVectors}——语义路是否降级</span>
+memory.dump()                    <span class="n">// 明文导出，可审查</span></pre>
+    <table>
+        <tr><th style="width:220px;">纪律</th><th>内容</th></tr>
+        <tr><td>jsonl 是唯一事实源</td><td>四个文件（episodes / facts / registry / state）事件溯源、可 git diff；向量与倒排都是派生物，删掉照常工作，只是慢一次。语义层因此可复现、可 A/B。</td></tr>
+        <tr><td>成本纪律</td><td>录入用 LLM（贵，可异步可批）；<b>检索基线永远是 0 次 LLM + 1 次 embed</b>。任何 LLM 增强都必须可选、可降级——规划挂了就退回朴素检索，绝不让增强路径变成必经之路。</td></tr>
+        <tr><td>消解是增强不是闸门</td><td>联合调用重试 3 次仍失败就跳过本批，事实照常落库（subjectIds 留空并计数）。摄入永不因 LLM 抽风而中断。</td></tr>
+        <tr><td>引擎不变式兜底，不赌提示词</td><td>「一个名字不能既是 A 的主名又是 B 的别名」——出现即为分身，批末自动合并修复。提示词写得再狠也只是第一道防线。</td></tr>
+        <tr><td>下推只能放宽，不能收紧</td><td>存储层的 SQL 过滤只负责少读几行，权威判据只有一份 <code>passesFilter</code>。「SQL 一份过滤、JS 另一份过滤」是让 as-of 零泄漏悄悄失效的最短路径，由差分测试逐位钉死。</td></tr>
+        <tr><td>tick 不是时间</td><td>「昨天」「上周」只在有 <code>instant</code> 时解析，否则如实记入 <code>unresolved</code>——硬映射成 tick 窗口会得到一个看似能用、实则随语料密度漂移的结果。</td></tr>
+        <tr><td>禁 better-sqlite3</td><td>它要 node-gyp 编译，Bun / Windows 装不上。<b>被禁的是这个包，不是 SQLite</b>——向量持久化就用 runtime 内置的 <code>bun:sqlite</code> / <code>node:sqlite</code>，零编译。</td></tr>
+    </table>
+</div></section>
+
+<footer><div class="wrap">
+    源码：<code>nb-memory/src</code>（1237 行）· 决策考古：<code>docs/adr/0001~0003</code> · 评测：sibling 仓 <code>nb-memory-bench</code> · spike 计划与逐轮跑分：<code>neuro-book/.agents/tasks/113-memory-system/</code>
+</div></footer>
+
+<script>
+"use strict";
+
+/* ════════ ① 形态：四层数据 ════════ */
+const LAYERS = [
+    {
+        key: "episode", name: "episode", file: "episodes.jsonl", role: "原始叙事，append-only",
+        title: "episode · 原始叙事流",
+        desc: "摄入进来的原始文本单元（一章、一段、一次汇报）。",
+        points: [
+            "<b>它的价值不是被检索，是让下面三层成为可重建的派生物。</b>同一批语料重跑一次摄入，蒸馏结果就变一次——实测过某引擎同配置两次摄入，实体正确率在 88.9% 与 55.6% 之间摆动。没有 episode 层，语义层不可复现、不可 A/B。",
+            "agent 记忆域不需要这一层：会话 JSONL 本身就是 episodes。",
+            "次要主体日后要升级成关键主体时，从这里重放补归一。"
+        ],
+        code: '{"id":"ep-001","tick":9,"time":"第二天上午","source":"chapter:02","text":"……"}'
+    },
+    {
+        key: "facts", name: "facts", file: "facts.jsonl", role: "happening · 永不失效",
+        title: "facts · 发生过的事",
+        desc: "happening：发生过就永远发生过，append-only，永不失效。",
+        points: [
+            "带 <code>subjectIds[]</code>——写入时就归一到主体 id。",
+            "<b>含 ≥2 个 id 的事实本身就是一条边</b>，关系查询 = 按 id 对求交集。不存边表。",
+            "次要主体（路人、一次性道具、普通地名）不归一，字面留在正文里靠 BM25 召回。",
+            "把 happening 从「图」里分流出去，是图不再膨胀的根本原因——被冻结的历史事件不该占据节点和边。"
+        ],
+        code: '{"id":"f011","tick":11,"time":"第二天上午",\n "text":"我认出艾琳娜就是第一天在公交车上我帮忙付车费的那个女生。",\n "subjectIds":["su-001"]}'
+    },
+    {
+        key: "registry", name: "registry", file: "registry.jsonl", role: "关键主体 · 事件溯源",
+        title: "registry · 关键主体注册表",
+        desc: "只登记值得长期追踪的实体：人物、势力、有状态的物品。刻意保持小（实测稳定收敛在 7–15 个）。",
+        points: [
+            "四种事件：<code>register</code> / <code>alias</code> / <code>ontology</code> / <code>merge</code>。内存态由重放构建，写入与重放共用同一条代码路径。",
+            "<b>别名带 sinceTick</b>：记的是「何时得知这是同一个人」，不是「这个称呼何时首次出现」。as-of 早于该时点就还是两个实体。",
+            "一行本体描述（这是什么）<b>显式更新</b>，不做滚动 summary——滚动 summary 会漂移，而这行字正是下一次消解调用的判据材料。旧版本全留着，as-of 取当时那版。",
+            "合并是显式事件，可审计、可回看，不是静默永久改写。"
+        ],
+        code: '{"op":"register","subject":{"id":"su-001","type":"character","name":"艾琳娜",…}}\n{"op":"alias","subjectId":"su-001","alias":"粉色头发的女生","sinceTick":11}\n{"op":"ontology","subjectId":"su-001","ontology":"从北方海港城市转来…","atTick":21}\n{"op":"merge","keepId":"su-001","dropId":"su-007","sinceTick":11}'
+    },
+    {
+        key: "state", name: "state", file: "state.jsonl", role: "可变状态 · 带失效区间",
+        title: "state · 轻量状态层",
+        desc: "会变的东西：态度、关系、处境、持有物、计划进度。",
+        points: [
+            "判据是<b>「读者问『现在怎么样了？』而答案会随剧情变化」</b>——不是「确定 vs 可能变」。",
+            "取代 = 旧条目 <code>invalidate</code> + 新条目 <code>set</code>，<b>失效不删除</b>：as-of 查询需要看到「当时有效」的旧认知。",
+            "两个事件：<code>set</code> / <code>invalidate</code>。查询 <code>activeAt(asOfTick, subjectId)</code> 返回该时点仍有效的条目。",
+            "起步自带轻量实现、不复用世界引擎存储——拆书发生在世界引擎初始化之前，摄入期的模糊中间态不适合直接灌进带 schema 校验的模拟引擎。"
+        ],
+        code: '{"op":"set","entry":{"id":"st-0001","subjectId":"su-001",\n  "topic":"艾琳娜对我的态度","view":"好像认出我却只点头走开，可能讨厌我","sinceTick":13}}\n{"op":"invalidate","id":"st-0001","atTick":19}\n{"op":"set","entry":{"id":"st-0002","subjectId":"su-001",\n  "topic":"艾琳娜对我的态度","view":"不是讨厌我，只是特别怕生","sinceTick":19}}'
+    }
+];
+
+const layersEl = document.getElementById("layers");
+const layerDetailEl = document.getElementById("layerDetail");
+LAYERS.forEach((layer, i) => {
+    const el = document.createElement("div");
+    el.className = "layer" + (i === 0 ? " on" : "");
+    el.innerHTML = "<b>" + layer.name + "</b><span>" + layer.file + " · " + layer.role + "</span>";
+    el.onclick = () => {
+        document.querySelectorAll(".layer").forEach((n) => n.classList.remove("on"));
+        el.classList.add("on");
+        renderLayer(layer);
+    };
+    layersEl.appendChild(el);
+});
+function renderLayer(layer) {
+    layerDetailEl.innerHTML =
+        "<h4>" + layer.title + "</h4><div class='role'>" + layer.desc + "</div><ul>" +
+        layer.points.map((p) => "<li>" + p + "</li>").join("") + "</ul>" +
+        "<pre>" + layer.code + "</pre>";
+}
+renderLayer(LAYERS[0]);
+
+/* ════════ ② 写入链路 ════════ */
+const PIPE = [
+    {
+        name: "攒批", hint: "16 条事实一批",
+        body: "<p>摄入成本按批算而不是按实体算：20 章 / 338 条事实 = <b>22 次 LLM 调用、约 3 分钟</b>（对照组 57 次 / 21 分钟）。批大小 16 是「上下文放得下 + 同一性揭晓大概率落在同批内」的折中。</p>"
+    },
+    {
+        name: "拼上下文", hint: "注册表全量 + 状态快照",
+        body: "<p>整张注册表（几十个主体，含 id / 类型 / 别名及其 tick / 本体描述）与在效状态快照一起进 prompt。<b>这是可靠性的来源</b>：图引擎靠模糊检索拉候选，漏召回就凭空多出一个实体（实测出现过同一个叙述者被拆成三个主体）；小注册表是封闭小世界，没有候选召回问题。</p><pre># 关键主体注册表（4 个）\n- id=su-001 type=character name=艾琳娜 别名=转校生(自tick10)：一年二班新来的转校生\n…\n# 状态层快照（在效认知 3 条）\n# 本批事实（16 条）\n0. (tick9 / 第二天上午) 班主任说今天有一位转校生加入我们班。</pre>"
+    },
+    {
+        name: "一次调用", hint: "产出 6 类操作",
+        body: "<p>一个 JSON 里同时回来六类操作：<code>register</code>（新主体）、<code>alias</code>（别名 + 得知同一性的 tick）、<code>merge</code>（修复早前拆错的分身）、<code>ontology</code>（本体描述更新）、<code>facts</code>（每条事实的 subjectIds）、<code>state</code>（状态变更提案）。</p><p>提示词里的铁律：<b>真名、代号、化名、笔名、网名、马甲、旧名的揭晓，一律挂 alias，绝不 register 成新主体</b>——「B」不是新出现的人，只是已登记主体的另一个称呼。</p>"
+    },
+    {
+        name: "落操作", hint: "先算后登 / id 归注册表",
+        body: "<ul><li><b>先算后登</b>：新主体的 registeredTick 取「本批中首次引用它的那条事实的 tick」，不是批首 tick——否则主体会提前十几拍就可见，as-of 出现缺口。</li><li><b>id 由注册表分配</b>：调用方不许自己数数。曾经用「当前主体数 + 1」生成 id，而合并后计数会收缩，新 id 撞上活主体直接抛异常炸穿整轮摄入。</li><li><b>别名 tick 收敛到本批范围</b>：同一性只可能由本批事实揭晓，越界即钳到边界。</li></ul>"
+    },
+    {
+        name: "不变式兜底", hint: "分身自动合并",
+        body: "<p>批末扫一遍：<b>一个名字不能既是 A 的主名、又是 B 的别名</b>。出现就是分身，自动 merge 修复。</p><p>为什么需要它：register 与 alias 在同一批里到达时，「这个名字已存在吗」的检查会被穿透——提示词写得再狠也拦不住。加了这条引擎级不变式后，分身数跨四次跑分稳定为 <b>0</b>。<b>不赌提示词</b>是这个库的一条通则。</p>"
+    },
+    {
+        name: "落库 + 取代", hint: "facts append / state 换代",
+        body: "<p>事实直接 append。状态提案则执行取代语义：同主体同 topic 的旧在效条目先 <code>invalidate</code>（打失效时点，不删），再 <code>set</code> 新条目。</p><div class='note' style='margin:8px 0 0;'><b>失败语义：消解是增强不是闸门。</b>联合调用重试 3 次仍失败、或操作应用段意外抛错，都只跳过本批并计数——事实照常落库，subjectIds 留空。摄入过程没有断点续跑，一次崩溃等于整轮白跑，所以这里绝不允许有能炸穿的路径。</div>"
+    }
+];
+const pipeEl = document.getElementById("pipe");
+const pipeBodyEl = document.getElementById("pipeBody");
+PIPE.forEach((step, i) => {
+    const el = document.createElement("div");
+    el.className = "pipe-step" + (i === 0 ? " on" : "");
+    el.innerHTML = "<b>" + (i + 1) + ". " + step.name + "</b><span>" + step.hint + "</span>";
+    el.onclick = () => {
+        document.querySelectorAll(".pipe-step").forEach((n) => n.classList.remove("on"));
+        el.classList.add("on");
+        pipeBodyEl.innerHTML = step.body;
+    };
+    pipeEl.appendChild(el);
+});
+pipeBodyEl.innerHTML = PIPE[0].body;
+
+/* ════════ ③ 时间机器：迷你引擎（自 src/ 直译） ════════ */
+
+/* 语料：nb-memory-bench 冒烟语料（三天校园日常，24 条事实） */
+const FACTS = [
+    [1, "第一天早上", "我背着新书包出门上学，在路口便利店买了饭团当早餐。", []],
+    [2, "第一天早上", "公交车上一个粉色头发的女生投币时发现没带钱包，我帮她付了两块钱车费。", []],
+    [3, "第一天早上", "粉色头发的女生小声道了谢，在青叶站比我先下了车。", []],
+    [4, "第一天上午", "开学典礼在体育馆举行，校长讲话很长，我差点睡着。", []],
+    [5, "第一天上午", "我被分到一年二班，座位在靠窗倒数第二排。", []],
+    [6, "第一天中午", "同桌大志借了我的橡皮，还回来的时候掰掉了一角。", ["su-002"]],
+    [7, "第一天下午", "红色头发的学姐在社团招新摊位拉我加入天文社，我说考虑考虑。", ["su-003", "su-004"]],
+    [8, "第一天傍晚", "放学路上下了小雨，我没带伞，跑回家时鞋子湿透了。", []],
+    [9, "第二天上午", "班主任说今天有一位转校生加入我们班。", []],
+    [10, "第二天上午", "转校生走进教室，是个粉色头发的女生，她自我介绍叫艾琳娜。", ["su-001"]],
+    [11, "第二天上午", "我认出艾琳娜就是第一天在公交车上我帮忙付车费的那个女生。", ["su-001"]],
+    [12, "第二天中午", "我在走廊和艾琳娜打招呼，她好像认出了我，但只是点点头就走开了。", ["su-001"]],
+    [13, "第二天中午", "我有点失落，心想艾琳娜是不是讨厌我。", ["su-001"]],
+    [14, "第二天下午", "数学小测我错了三道题，被老师点名订正。", []],
+    [15, "第二天下午", "大志告诉我艾琳娜是从北方的海港城市转来的。", ["su-002", "su-001"]],
+    [16, "第二天傍晚", "红色头发的学姐又来问我天文社的事，我答应周五去社团教室看看。", ["su-003", "su-004"]],
+    [17, "第三天上午", "艾琳娜主动坐到我旁边的空位，把两块钱车费还给了我。", ["su-001"]],
+    [18, "第三天上午", "艾琳娜说她前两天太紧张了不敢说话，她其实特别怕生。", ["su-001"]],
+    [19, "第三天上午", "我明白了艾琳娜不是讨厌我，她只是怕生。", ["su-001"]],
+    [20, "第三天中午", "艾琳娜和我一起在天台吃午饭，她的便当里全是鱼，她说她最喜欢吃鱼。", ["su-001"]],
+    [21, "第三天中午", "艾琳娜说她转学是因为父亲工作调动，她很想念海边的老家。", ["su-001"]],
+    [22, "第三天下午", "体育课自由活动，我和大志打篮球，输得很惨。", ["su-002"]],
+    [23, "第三天下午", "艾琳娜在看台上看我们打球，赛后她笑我投篮姿势像在扔纸团。", ["su-001"]],
+    [24, "第三天傍晚", "我和艾琳娜一起走到青叶站，约好明天一起坐公交上学。", ["su-001"]]
+].map(([tick, time, text, subjectIds], i) => ({
+    refId: "f" + String(i + 1).padStart(3, "0"), source: "fact", tick, time, text, subjectIds
+}));
+
+/* 注册表：别名带 sinceTick，本体描述保留历史版本 */
+const SUBJECTS = [
+    {
+        id: "su-001", type: "character", name: "艾琳娜", registeredTick: 10,
+        aliases: [{alias: "转校生", sinceTick: 10}, {alias: "粉色头发的女生", sinceTick: 11}],
+        ontology: [
+            {atTick: 10, text: "一年二班新来的转校生，粉色头发"},
+            {atTick: 19, text: "一年二班的转校生，粉色头发，性格怕生"},
+            {atTick: 21, text: "因父亲工作调动从北方海港城市转来的转校生，怕生，想念海边老家"}
+        ]
+    },
+    {
+        id: "su-002", type: "character", name: "大志", registeredTick: 6,
+        aliases: [{alias: "同桌", sinceTick: 6}],
+        ontology: [{atTick: 6, text: "我的同桌"}]
+    },
+    {
+        id: "su-003", type: "character", name: "红色头发的学姐", registeredTick: 7,
+        aliases: [],
+        ontology: [{atTick: 7, text: "天文社负责招新的学姐"}]
+    },
+    {
+        id: "su-004", type: "faction", name: "天文社", registeredTick: 7,
+        aliases: [],
+        ontology: [{atTick: 7, text: "学校社团，正在招新"}]
+    }
+];
+
+/* 状态层：取代 = 旧条目 invalidate + 新条目 set */
+const STATES = [
+    {refId: "st-0001", subjectId: "su-001", topic: "艾琳娜对我的态度", view: "好像认出我却只点头走开，可能是讨厌我", sinceTick: 13, invalidatedAtTick: 19},
+    {refId: "st-0002", subjectId: "su-001", topic: "艾琳娜对我的态度", view: "不是讨厌我，只是特别怕生、不敢说话", sinceTick: 19},
+    {refId: "st-0003", subjectId: "su-001", topic: "艾琳娜的来历", view: "因父亲工作调动从北方海港城市转来，想念海边老家", sinceTick: 21},
+    {refId: "st-0004", subjectId: "su-004", topic: "我加入天文社的意向", view: "被学姐拉去招新摊位，回答说考虑考虑", sinceTick: 7, invalidatedAtTick: 16},
+    {refId: "st-0005", subjectId: "su-004", topic: "我加入天文社的意向", view: "答应周五去社团教室看看", sinceTick: 16}
+].map((s) => ({
+    ...s, source: "state", text: s.topic + ": " + s.view, subjectIds: [s.subjectId],
+    tick: s.sinceTick /* 状态条目的生效时点 = sinceTick，as-of 过滤按它算 */
+}));
+
+const ENTRIES = [...FACTS, ...STATES];
+
+/* —— BM25（自 src/retrieval/bm25.ts 直译：中文字 bigram、ASCII 整词） —— */
+function tokenize(text) {
+    const terms = [];
+    for (const match of text.matchAll(/[a-zA-Z0-9]+|[一-鿿぀-ヿ]+/gu)) {
+        const seg = match[0];
+        if (/^[a-zA-Z0-9]/u.test(seg)) { terms.push(seg.toLowerCase()); continue; }
+        if (seg.length === 1) { terms.push(seg); continue; }
+        for (let i = 0; i < seg.length - 1; i++) terms.push(seg.slice(i, i + 2));
+    }
+    return terms;
+}
+const K1 = 1.2, B = 0.75;
+const DOCS = ENTRIES.map((e) => {
+    const tf = new Map();
+    const terms = tokenize(e.text);
+    for (const t of terms) tf.set(t, (tf.get(t) ?? 0) + 1);
+    return {tf, len: terms.length};
+});
+const DF = new Map();
+for (const doc of DOCS) for (const t of doc.tf.keys()) DF.set(t, (DF.get(t) ?? 0) + 1);
+const AVG_LEN = DOCS.reduce((s, d) => s + d.len, 0) / DOCS.length;
+function bm25(query) {
+    const scores = new Map();
+    for (const term of new Set(tokenize(query))) {
+        const df = DF.get(term);
+        if (df === undefined) continue;
+        const idf = Math.log(1 + (DOCS.length - df + 0.5) / (df + 0.5));
+        DOCS.forEach((doc, i) => {
+            const tf = doc.tf.get(term);
+            if (tf === undefined) return;
+            scores.set(i, (scores.get(i) ?? 0) + idf * (tf * (K1 + 1)) / (tf + K1 * (1 - B + B * doc.len / AVG_LEN)));
+        });
+    }
+    return scores;
+}
+
+/* —— as-of 过滤（自 src/retrieval/search.ts 直译） —— */
+function passesFilter(entry, asOf) {
+    if (entry.tick > asOf) return false;
+    if (entry.invalidatedAtTick !== undefined && entry.invalidatedAtTick <= asOf) return false;
+    return true;
+}
+
+/* —— 主体卡（自 src/core/subject-registry.ts 直译：别名按 sinceTick 裁剪、本体取当时版本） —— */
+function card(subject, asOf) {
+    if (subject.registeredTick > asOf) return null;
+    const aliases = subject.aliases.filter((a) => a.sinceTick <= asOf)
+        .map((a) => a.alias + "（自 tick" + a.sinceTick + " 得知是同一人/物）");
+    const ontology = [...subject.ontology].reverse().find((v) => v.atTick <= asOf);
+    if (!ontology) return null;
+    return "【主体档案】" + subject.name + "（" + subject.type +
+        (aliases.length ? "；别名：" + aliases.join("、") : "") + "）：" + ontology.text;
+}
+function mentionedIn(text, asOf) {
+    return SUBJECTS.filter((s) => {
+        if (s.registeredTick > asOf) return false;
+        const names = [s.name, ...s.aliases.filter((a) => a.sinceTick <= asOf).map((a) => a.alias)];
+        return names.some((n) => text.includes(n));
+    });
+}
+
+/* —— 渲染 —— */
+const tickEl = document.getElementById("tick");
+const tickBadgeEl = document.getElementById("tickBadge");
+const queryEl = document.getElementById("query");
+const hitsEl = document.getElementById("hits");
+const leaksEl = document.getElementById("leaks");
+const registryEl = document.getElementById("registry");
+
+const PRESETS = [
+    {q: "粉色头发的女生是谁？", tick: 5, why: "第 5 拍时还没人知道她叫什么"},
+    {q: "粉色头发的女生是谁？", tick: 24, why: "第 24 拍别名已打通"},
+    {q: "艾琳娜对我是什么态度？", tick: 15, why: "认知反转发生在第 19 拍之前"},
+    {q: "我加入天文社了吗？", tick: 10, why: "状态取代前"},
+    {q: "艾琳娜为什么转学？", tick: 24, why: "本体描述已更新到第三版"}
+];
+const presetsEl = document.getElementById("presets");
+PRESETS.forEach((p) => {
+    const b = document.createElement("button");
+    b.textContent = p.q + " @t" + p.tick;
+    b.title = p.why;
+    b.onclick = () => { queryEl.value = p.q; tickEl.value = p.tick; render(); };
+    presetsEl.appendChild(b);
+});
+
+function hitHtml(entry, score, kind) {
+    const tag = kind === "card" ? "<span class='tag card'>主体卡</span>"
+        : entry.source === "state" ? "<span class='tag state'>状态</span>"
+        : "<span class='tag fact'>事实</span>";
+    const validity = entry.source === "state"
+        ? "有效区间 t≥" + entry.sinceTick + (entry.invalidatedAtTick !== undefined ? "，至 t" + entry.invalidatedAtTick + " 失效" : "")
+        : "";
+    const meta = kind === "card"
+        ? "as-of 裁剪"
+        : "t" + entry.tick + (entry.time ? " · " + entry.time : "") + (validity ? " · " + validity : "") +
+          (score !== null ? " · 分 " + score.toFixed(2) : "");
+    return "<div class='hit " + (kind || entry.source) + "'>" + tag + entry.text +
+        "<div class='meta'>" + entry.refId + " · " + meta + "</div></div>";
+}
+
+function render() {
+    const asOf = Number(tickEl.value);
+    const query = queryEl.value.trim();
+    const fact = FACTS[asOf - 1];
+    tickBadgeEl.innerHTML = "t" + asOf + " <small>" + fact.time + "</small>";
+
+    /* 注册表条带 */
+    registryEl.innerHTML = SUBJECTS.map((s) => {
+        const text = card(s, asOf);
+        if (text === null) {
+            return "<div class='subj hidden-yet'><b>" + s.name + "</b> · 尚未登记（t" + s.registeredTick + " 起可见）</div>";
+        }
+        const aliases = s.aliases.filter((a) => a.sinceTick <= asOf);
+        return "<div class='subj'><b>" + s.name + "</b> <span style='color:var(--text-dim)'>[" + s.type + "]</span>" +
+            "<span class='al'>" + (aliases.length ? "别名：" + aliases.map((a) => a.alias + "(t≥" + a.sinceTick + ")").join("、") : "无别名") + "</span>" +
+            "<span class='al'>" + text.split("）：")[1] + "</span></div>";
+    }).join("");
+
+    if (query === "") { hitsEl.innerHTML = "<div class='empty'>输入一个问题</div>"; leaksEl.innerHTML = ""; return; }
+
+    /* 检索：主体卡注入 + 字面路打分 + as-of 过滤 */
+    const cards = mentionedIn(query, asOf).map((s) => ({subject: s, text: card(s, asOf)})).filter((c) => c.text !== null);
+    const scored = [...bm25(query).entries()].sort((a, b) => b[1] - a[1]);
+    const kept = scored.filter(([i]) => passesFilter(ENTRIES[i], asOf)).slice(0, 8);
+    const leaked = scored.filter(([i]) => ENTRIES[i].tick > asOf).slice(0, 6);
+
+    hitsEl.innerHTML =
+        cards.map((c) => hitHtml({refId: c.subject.id, text: c.text, source: "registry"}, null, "card")).join("") +
+        (kept.length ? kept.map(([i, s]) => hitHtml(ENTRIES[i], s)).join("")
+            : "<div class='empty'>字面路没有命中——真实引擎此时还有语义路兜底</div>");
+
+    leaksEl.innerHTML = leaked.length
+        ? leaked.map(([i, s]) =>
+            "<div class='hit leaked'><span class='tag leak'>t" + ENTRIES[i].tick + " 未来</span>" +
+            ENTRIES[i].text + "<div class='meta'>" + ENTRIES[i].refId + " · 分 " + s.toFixed(2) + " · 被 as-of 过滤挡下</div></div>").join("")
+        : "<div class='empty'>该问题在此时点没有未来片段会被误召回</div>";
+}
+
+tickEl.oninput = render;
+queryEl.oninput = render;
+queryEl.value = PRESETS[0].q;
+tickEl.value = PRESETS[0].tick;
+render();
+</script>
+</body>
+</html>

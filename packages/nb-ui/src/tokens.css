@@ -1,0 +1,192 @@
+/*
+ * 设计 token 层（编辑室草案 §4）+ 主题层基线。
+ *
+ * 事实源。排版 / 间距 / 圆角 / 层级 / 动效五组，**不随配色变化**，所以不进
+ * colorway/colorway-contract.ts 的配色契约，而是在这里一次性声明。名单与用途见 theme/tokens.ts。
+ *
+ * 文件后半段是**主题层基线**：主题负责填的那批变量的默认取值。分成两段而不是两个文件，
+ * 是因为它们的裁决规则完全一样（都在 :root，都被 [data-nb-theme] 覆盖），拆开只会让
+ * 「一个变量到底该去哪找」多一次跳转。
+ *
+ * 落地口径按 Task 146 的 D11：先在 nb-ui 实现并在组件上验证，NeuroBook 主仓保持零改动，
+ * 阶段 4 再合流回主仓 app/utils/theme/README.md 的变量总表。
+ *
+ * 组件只消费 semantic 角色（--text-sm / --radius-control / --elevation-popover …），
+ * 不直接写字面值。阶段 1 只定义，阶段 3 才在组件上全面替换裸值。
+ *
+ * **选择器只用 :root，不要加 .nb-ui-colorway**（2026-08-10 实测踩过）。
+ * applyColorway 会给每个配色宿主加 .nb-ui-colorway，而 html 和 body 都是宿主。原写法
+ * `:where(.nb-ui-colorway), :root` 会在 body 上把同一批 token **重新声明一遍**，于是任何
+ * 在 html 上做的覆盖（主题层就是这么做的）都会被 body 的重声明遮住——自定义 UI 主题
+ * 直接失效，且现象是「变量改了但元素没变」，很难查。
+ * token 不随配色变化，靠继承从 :root 下发就够，没有理由按宿主重复声明。
+ */
+
+:root {
+    /* ---- 4.1 排版 ---------------------------------------------------------- */
+    /* 界面字体。--font-reading 由编辑器 preferences 承载，不在主题层重复定义。 */
+    --font-ui: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+
+    /* --text-2xs 受限：只承载角标、序号、计数、时间戳，不得承载需要阅读的句子 */
+    --text-2xs: 11px;
+    --text-xs: 12px;
+    --text-sm: 13px;
+    --text-md: 14px;
+    --text-lg: 16px;
+    --text-xl: 20px;
+
+    --leading-tight: 1.3;
+    --leading-ui: 1.45;
+    --leading-reading: 1.85;
+
+    /* 字重只留三级；700 仅允许用于 ≥20px 的标题 */
+    --weight-normal: 400;
+    --weight-medium: 500;
+    --weight-strong: 600;
+
+    /* ---- 4.2 间距（4 的倍数，七级刻度） ------------------------------------- */
+    --space-1: 2px;
+    --space-2: 4px;
+    --space-3: 6px;
+    --space-4: 8px;
+    --space-5: 12px;
+    --space-6: 16px;
+    --space-7: 24px;
+    --space-8: 32px;
+
+    /* ---- 4.3 圆角（控件、面板、菜单、胶囊四档） ------------------------------ */
+    --radius-control: 6px;
+    --radius-panel: 10px;
+    --radius-menu: var(--radius-panel);
+    --radius-pill: 999px;
+
+    /* ---- 4.4 层级：主用底色分层，阴影只给真正浮起的元素 --------------------- */
+    /*
+     * 阴影一律走 --shadow-color（随主题变），禁止固定 rgba。
+     *
+     * 浮层这一档先取配色给的 --shadow-panel：它是 33 个配色变量之一，任何配色都会给，
+     * 且各配色**按明暗分别调过**。后面那个百分比写死的兜底只在配色也没装时才用——
+     * 8% 的黑压在暗色底上等于没有影子，浮层会和页面糊成一片，这是实测出来的：
+     * 浮层基座改吃 --elevation-popover 之后，没装主题的暗色消费方浮层直接失去了层级。
+     * 装了主题则由主题的 --elevation-popover 覆盖（主题选择器特异性更高）。
+     *
+     * --elevation-dialog 走另一档：它的消费方是 .nb-ui-dialog-surface（`src/styles.css`）。
+     * 不让它跟着取 --shadow-panel，是因为那会抹掉「对话框压得比浮层重」这个分档本身的意思——
+     * Apple 官方 UI Kit 里这两档的环境投影实测差了一倍（浮层 18/48，Save Dialog 36/100）。
+     * 代价说在明处：没装主题时对话框的阴影因此**不等于**配色给的 --shadow-panel，
+     * 而是下面这条兜底。这是本轮刻意换的，不是漏的。
+     */
+    --elevation-flat: none;
+    --elevation-popover: var(--shadow-panel, 0 4px 12px color-mix(in srgb, var(--shadow-color, #000) 8%, transparent));
+    --elevation-dialog: 0 16px 40px color-mix(in srgb, var(--shadow-color, #000) 14%, transparent);
+
+    /* ---- 4.5 动效：只用于解释空间关系，不做装饰 ---------------------------- */
+    --motion-fast: 120ms;
+    --motion-base: 180ms;
+    --motion-enter: 220ms;
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+    /* ==== 主题层基线 ========================================================
+     * 以下是**主题**（见 src/theme/）负责填的那批变量的默认取值。
+     * 默认口径 = 当前 nb-ui 的做法，所以「一个主题都没装」时界面照样成立——
+     * 能用，只是没有设计感。这是受支持的状态，不是降级。
+     *
+     * 主题在 :root[data-nb-theme="<id>"]（0,2,0）里给自己的取值，稳压这里的 :root（0,1,0），
+     * 与两者的引入顺序无关。 */
+
+    /* 展示字体与字距。多数主题与 --font-ui 同源，编辑室这类主题才换成衬线。 */
+    --font-display: var(--font-ui);
+    --tracking-ui: 0;
+
+    /* 控件与容器的尺寸刻度。密度是主题最明显的一个维度。 */
+    --control-h-sm: 28px;
+    --control-h-md: 32px;
+    --control-h-lg: 38px;
+    --control-px: 10px;
+    --panel-p: 16px;
+    --stack-gap: 16px;
+
+    /* 大控件的圆角单列一档。
+       原注释写着「Apple 只在 Large / X-Large 才走 capsule」——这条已被 Apple 官方的
+       macOS 27 UI Kit 推翻：Buttons 组里连 Mini（41×16）都是整颗胶囊。默认值仍取
+       --radius-control（不装主题时观感不变），要不要 pill 由主题自己决定。 */
+    --radius-control-lg: var(--radius-control);
+
+    /*
+     * 对话框的圆角单列一档，默认与浮层同值（不设即无变化）。
+     *
+     * 分开的理由是 Apple 自己就是分开的：macOS 27 UI Kit 里 Save Dialog 的圆角是 26px，
+     * 而菜单 / 下拉那一档明显更小。同一个 --radius-panel 兼顾两者的话，
+     * 26px 画在一个 170px 宽的下拉上会把首尾两项吃掉。
+     */
+    --radius-dialog: var(--radius-panel);
+
+    /*
+     * 这里曾经有 --corner-shape（超椭圆圆角）。已删：Chromium 的 backdrop-filter
+     * 不跟随 corner-shape 裁切，玻璃面上开这一档会在四角露出没被模糊的月牙。
+     * 完整判据与复查条件写在 `src/styles.css` 里 .nb-ui-popover-surface 上方那一段。
+     */
+
+    --border-w: 1px;
+    --surface-raise: none;
+    --inset-shadow: none;
+    --elevation-raised: none;
+
+    --focus-ring:
+        0 0 0 1px color-mix(in srgb, var(--accent-main) 35%, transparent),
+        0 0 0 3.5px color-mix(in srgb, var(--accent-main) 18%, transparent),
+        0 1px 6px color-mix(in srgb, var(--accent-main) 22%, transparent);
+    --focus-outline: color-mix(in srgb, var(--accent-main) 80%, var(--control-outline, var(--border-color)));
+
+    /* 角色映射——本轮最容易被忽略的一层。
+       控件的面用哪个配色变量、描边用不用色、分隔靠线还是靠底色，这是**主题决策不是颜色决策**；
+       没有这一层，「低 chrome」这类主题只能靠改组件来表达。
+       按钮与输入分成两组，因为「按钮透明、输入有底」是真实存在的组合。 */
+    --control-surface: var(--bg-input);
+    --control-outline: var(--border-color);
+    --button-surface: var(--bg-input);
+    --button-outline: var(--border-color);
+    --panel-surface: var(--bg-panel);
+    --panel-outline: var(--border-color);
+    --sidebar-surface: var(--bg-sidebar);
+    --toolbar-surface: var(--bg-panel);
+    --overlay-surface: var(--bg-panel);
+    /* 浮层的磨砂配方。默认 none：不装主题时浮层是实心的，与改动前一模一样。
+       它是**角色**不是材料——玻璃主题把它映射到自己的玻璃配方，别的主题不用管它存在。
+       独立成一个角色而不是让组件直接引用某套主题的 --glass-*，是因为库不能引用第三方
+       主题的变量名：那等于把「必须装某套主题」写进库。 */
+    --overlay-blur: none;
+    /* 浮层的镜面层（background-image）。玻璃之所以读起来是**一块材料**而不是一层半透明色，
+       靠的是面上那道光：模糊只交代「背后有东西」，镜面才交代「这里有一块东西挡着」。
+       默认 none，非玻璃主题不用管它存在。 */
+    --overlay-sheen: none;
+    /* 浮层里「当前项」的填充。默认取 --bg-hover，也就是配色表里那个**不透明**的悬停色，
+       所以不装主题时与改动前一模一样。
+       它必须是一个角色：玻璃主题下不透明的高亮等于在材料上挖了一块实心补丁——
+       整块面都透着背后，唯独选中那一行是死的。玻璃主题把它映射成半透明叠层，
+       高亮就变成「这块玻璃在这一行更亮了」，而不是「玻璃上贴了一张纸」。 */
+    --overlay-item-active: var(--bg-hover);
+    /* 操作条 / 表头这类「窄条 chrome」的底。玻璃主题下必须跟着透，否则一条实心带子
+       横在玻璃对话框中间，整块玻璃就破了。 */
+    --strip-surface: var(--bg-subtle);
+    --divider: var(--border-color);
+}
+
+/*
+ * 无障碍：用户要求减少动效时全部降为 0。
+ *
+ * 这里的 `!important` 不是偷懒，是这一段**必须赢**。此处是 `:root`（0,1,0），而任何主题都写在
+ * `:root[data-nb-theme="x"]`（0,2,0）里，特异性天然更高；主题包又来自第三方、选择器可以再往上加，
+ * 靠特异性或引入顺序都没有稳赢的写法。系统级无障碍偏好压过任意主题，是唯一正确的裁决方向。
+ *
+ * 边界：只覆盖这三个时长。缓动曲线、以及主题自己新增的动效变量（例 macOS 的 --glass-lift）
+ * 由主题在自己的 vars.css 里处理——库不知道它们叫什么。
+ */
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --motion-fast: 0ms !important;
+        --motion-base: 0ms !important;
+        --motion-enter: 0ms !important;
+    }
+}

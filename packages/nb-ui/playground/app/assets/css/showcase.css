@@ -1,0 +1,800 @@
+/*
+ * 对照页元素层（showcase）。
+ *
+ * 定位：**主题探索用的手写标记**，不是 nb-ui 的真组件。
+ * 之所以不直接用 nb-ui 组件来演示主题，是因为现有 28 个组件把尺寸刻度硬编码在模板里
+ * （Tabs.vue 里是 h-8 / px-2.5 / gap-1.5 / text-xs 这种），它们不消费 token，五套主题
+ * 里有四套会被这些裸值顶回去。这层的作用是先把「主题能不能表达」这件事验掉；
+ * 选定之后再把取值搬进 src/tokens.css，并在阶段 2 重写组件时消费它。
+ *
+ * 纪律：本文件只允许出现两类值——themes.css 的主题变量，和配色的 33 个颜色变量。
+ * 出现任何字面 px / 颜色，就说明主题契约缺了一项，应该去补契约而不是在这里写死。
+ */
+
+.sc-root {
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    line-height: var(--leading-ui);
+    letter-spacing: var(--tracking-ui);
+    color: var(--text-main);
+    background-color: var(--bg-main);
+    /* 窗体底纹。attachment: fixed 让它像桌面壁纸一样相对窗口固定，内容从它上面滚过去——
+       这是磨砂玻璃看起来「在窗口里」而不是「贴在内容上」的关键。非玻璃主题该变量为 none。 */
+    background-image: var(--window-backdrop);
+    background-attachment: fixed;
+}
+/* ── 主题对照页布局 ───────────────────────────────────────────────────────── */
+.sc-page-shell {
+    display: block;
+}
+
+.sc-page-content {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: var(--space-8);
+}
+
+.sc-display {
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: var(--weight-strong);
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-ui);
+}
+
+.sc-title {
+    font-size: var(--text-md);
+    font-weight: var(--weight-medium);
+    line-height: var(--leading-tight);
+}
+
+.sc-muted {
+    color: var(--text-muted);
+    font-size: var(--text-xs);
+}
+
+.sc-secondary {
+    color: var(--text-secondary);
+}
+
+.sc-mono {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+}
+
+/* ── 面板 ─────────────────────────────────────────────────────────────────── */
+/*
+ * 面板是**内容层**，所以它不是玻璃。这是 Apple 关于 Liquid Glass 最容易被违反的一条：
+ * 玻璃是导航 / 控件层的材料，浮在内容之上；给每张卡片、每个表格都套玻璃会把层级抹平，
+ * 而且会出现 glass-on-glass。玻璃在下面的 .sc-glass 里，只发给工具栏 / 侧栏 / 菜单 / 对话框。
+ */
+.sc-panel {
+    background: var(--panel-surface);
+    border: var(--border-w) solid var(--panel-outline);
+    border-radius: var(--radius-panel);
+    box-shadow: var(--elevation-raised);
+    overflow: hidden;
+}
+
+/* ── Liquid Glass 材料 ────────────────────────────────────────────────────── */
+/*
+ * 一块玻璃 = 四层，缺一层就退回 2013 年式毛玻璃：
+ *   ① 半透明的 tint          —— 没有它 backdrop-filter 看不见
+ *   ② backdrop-filter        —— blur + 提饱和 + 提亮
+ *   ③ 边缘折射 lensing       —— @supports 渐进增强，只有 Chromium 吃 url() backdrop-filter
+ *   ④ 镜面高光 rim           —— 见下面的 .sc-rim，**单独一个类**
+ * 非玻璃主题下这些变量全是 none，整个类是惰性的，不额外付出合成代价。
+ *
+ * ③④ 与 ①② 分成两个类，是上一版的实测教训：高光原本挂在 .sc-glass 上，于是工具栏和侧栏
+ * 各画了一圈自己的方角高光，而它们在 18px 圆角 + overflow: hidden 的窗口里，
+ * 高光在圆角处被斜切成一段（四角放大截图已证实）。概念上也错了——Apple 的玻璃是一块
+ * 有自己轮廓的浮起形状，贴在它内部的分区不是各自一块玻璃。
+ */
+.sc-glass {
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+}
+
+/*
+ * 镜面高光：只发给**整块**玻璃（窗口、菜单、对话框），不发给贴在里面的分区。
+ * 只描边缘（mask 挖空内部），所以整面不会发白。固定白边在浅底上会消失、在深底上会过亮，
+ * 也表达不了光源方向——这是常见的走样点。
+ *
+ * 刻意不给 z-index、也不给宿主 isolation: isolate 来收敛这个伪元素：靠「定位元素默认画在
+ * 流内非定位兄弟之上」这一条就够了，多一个层叠上下文只会多一处要维护的约束。
+ *
+ * 顺带纠正一条容易记反的事：按 Filter Effects Level 2 §3，isolation **不在** backdrop root
+ * 的触发清单里（清单是根元素、filter、opacity<1、mask*、clip-path、backdrop-filter、
+ * mix-blend-mode、will-change）。规范还特意注明 backdrop root 的触发面比层叠上下文窄——
+ * z-index、fixed/sticky、transform 都不触发。真正会切断后代取样的是 backdrop-filter 本身，
+ * 见 Dialog.vue 里遮罩与面板必须平级的那一处。（该规范目前是 editors' draft。）
+ */
+.sc-rim {
+    position: relative;
+}
+
+.sc-rim::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    background: var(--glass-rim);
+    box-shadow: var(--glass-rim-inset);
+    padding: 1.5px;
+    mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    -webkit-mask-composite: xor;
+}
+
+/* 边缘折射。@supports 只能测「声明是否被接受」，测不出渲染是否正确，所以基线一定要留住：
+   不支持时上面的 blur + rim 仍然成立，只是少了背景在边缘被挤压的那一下。 */
+@supports (backdrop-filter: url("#nb-lens")) {
+    .sc-glass {
+        backdrop-filter: var(--glass-lens);
+        -webkit-backdrop-filter: var(--glass-lens);
+    }
+}
+
+/* 大块玻璃：Apple 的规则是尺寸越大折射越明显、散射越柔和、阴影越深 */
+.sc-glass--strong {
+    backdrop-filter: var(--glass-blur-strong);
+    -webkit-backdrop-filter: var(--glass-blur-strong);
+}
+
+@supports (backdrop-filter: url("#nb-lens")) {
+    .sc-glass--strong {
+        backdrop-filter: var(--glass-lens-strong);
+        -webkit-backdrop-filter: var(--glass-lens-strong);
+    }
+}
+
+.sc-panel__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding: var(--space-4) var(--panel-p);
+    border-bottom: var(--border-w) solid var(--divider);
+}
+
+.sc-panel__body {
+    padding: var(--panel-p);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+}
+
+.sc-divider {
+    height: var(--border-w);
+    background: var(--divider);
+    border: 0;
+}
+
+/* ── 窗口：内容层实心，导航层浮在上面 ─────────────────────────────────────── */
+/*
+ * 玻璃需要「背后有东西」才看得见。所以窗口本体不铺底色，让 --window-backdrop 透上来；
+ * 内容区自己铺实心底（内容层不该是玻璃），侧栏和工具栏留空由玻璃承担。
+ * 这也是真实 macOS 窗口的构造：侧栏透出桌面，内容区不透。
+ *
+ * 工作台是非模态应用窗口，层级只到 popover；真正的模态 Dialog 继续使用 dialog 档，
+ * 不让一个写作工作台切片承受压住整页的对话框阴影。
+ */
+.sc-window {
+    border: var(--border-w) solid var(--panel-outline);
+    border-radius: var(--radius-panel);
+    box-shadow: var(--elevation-popover);
+    overflow: hidden;
+}
+
+.sc-content {
+    background: var(--panel-surface);
+}
+
+
+/* ── 工具栏 ───────────────────────────────────────────────────────────────── */
+.sc-toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-3) var(--panel-p);
+    background: var(--toolbar-surface);
+    border-bottom: var(--border-w) solid var(--divider);
+}
+
+/* ── 侧栏 ─────────────────────────────────────────────────────────────────── */
+/* Liquid Glass 的层级里侧栏是导航层，比内容区更透——这是角色映射，不是颜色。 */
+.sc-sidebar {
+    background: var(--sidebar-surface);
+}
+
+/* ── 按钮 ─────────────────────────────────────────────────────────────────── */
+/*
+ * min-width 是**成组按钮**的规矩，不是装饰：一排按钮里 2 字标签比 3 字标签窄一截，
+ * 整排看起来是参差的，用户读到的就是「这两个按钮大小不一样」。
+ * macOS 的推动按钮也有最小宽度，短标签不会被挤成一个小方块。
+ *
+ * 倍数挂在控件高上，所以主题改密度时按钮跟着走，不需要另记一个数
+ *（本文件不许出现字面 px，见文件头）。2.1 是让 2 字标签正好追平 3 字标签的那一档。
+ */
+.sc-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    height: var(--control-h-md);
+    min-width: calc(var(--control-h-md) * 2.1);
+    padding-inline: var(--control-px);
+    border: var(--border-w) solid var(--button-outline);
+    border-radius: var(--radius-control);
+    background-color: var(--button-surface);
+    background-image: var(--surface-raise);
+    box-shadow: var(--elevation-raised);
+    color: var(--text-main);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    letter-spacing: var(--tracking-ui);
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+        background-color var(--motion-fast) var(--ease-standard),
+        border-color var(--motion-fast) var(--ease-standard),
+        transform var(--motion-base) var(--ease-standard),
+        box-shadow var(--motion-fast) var(--ease-standard);
+}
+
+.sc-btn:hover:not(:disabled) {
+    background-color: var(--bg-hover);
+}
+
+/* Liquid Glass 里控件按下会短暂「浮起」并轻微放大，光从触点扩散。
+   这里只做 lift 那一半——光扩散要粒子/着色器，不在 CSS 变量层的能力范围内。
+   非玻璃主题 --glass-lift 为 none，行为不变。 */
+.sc-btn:active:not(:disabled) {
+    transform: var(--glass-lift);
+}
+
+.sc-btn:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+    border-color: var(--focus-outline);
+}
+
+.sc-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* 填充按钮的文字用 --text-inverse 而不是 --accent-text：
+   后者是「强调色的文字版本」（sepia #b85a2a / light #2563eb），不是反白文字，
+   用在填充面上会得到深色压深色。主题合同目前没有「填充面上的文字」这个角色，
+   --text-inverse 是唯一可借的——5 套预设里亮色主题都是白、暗色主题都是深色，成立。 */
+.sc-btn--primary {
+    background-color: var(--accent-main);
+    border-color: var(--accent-main);
+    color: var(--text-inverse);
+}
+
+.sc-btn--primary:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--accent-main) 86%, var(--text-main));
+}
+
+.sc-btn--danger {
+    background-color: var(--status-danger);
+    border-color: var(--status-danger);
+    color: var(--text-inverse);
+}
+
+.sc-btn--danger:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--status-danger) 86%, var(--text-main));
+}
+
+.sc-btn--ghost {
+    background-color: transparent;
+    background-image: none;
+    border-color: transparent;
+    box-shadow: none;
+    color: var(--text-secondary);
+}
+
+.sc-btn--ghost:hover:not(:disabled) {
+    background-color: var(--bg-hover);
+    color: var(--text-main);
+}
+
+.sc-btn--sm {
+    height: var(--control-h-sm);
+    min-width: calc(var(--control-h-sm) * 2.1);
+    font-size: var(--text-xs);
+    padding-inline: calc(var(--control-px) * 0.75);
+}
+
+.sc-btn--lg {
+    height: var(--control-h-lg);
+    min-width: calc(var(--control-h-lg) * 2.1);
+    border-radius: var(--radius-control-lg);
+    font-size: var(--text-md);
+    padding-inline: calc(var(--control-px) * 1.4);
+}
+
+.sc-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--control-h-md);
+    height: var(--control-h-md);
+    padding: 0;
+    border: var(--border-w) solid transparent;
+    border-radius: var(--radius-control);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background-color var(--motion-fast) var(--ease-standard);
+}
+
+.sc-icon-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-main);
+}
+
+.sc-icon-btn:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+    border-color: var(--focus-outline);
+}
+
+/* ── 输入 ─────────────────────────────────────────────────────────────────── */
+.sc-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.sc-label {
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+    color: var(--text-secondary);
+}
+
+.sc-hint {
+    font-size: var(--text-2xs);
+    color: var(--text-muted);
+}
+
+.sc-input,
+.sc-select,
+.sc-textarea {
+    width: 100%;
+    height: var(--control-h-md);
+    padding-inline: var(--control-px);
+    border: var(--border-w) solid var(--control-outline);
+    border-radius: var(--radius-control);
+    background: var(--control-surface);
+    box-shadow: var(--inset-shadow);
+    color: var(--text-main);
+    font: inherit;
+    font-size: var(--text-sm);
+    letter-spacing: var(--tracking-ui);
+    transition:
+        border-color var(--motion-fast) var(--ease-standard),
+        box-shadow var(--motion-fast) var(--ease-standard);
+}
+
+.sc-textarea {
+    height: auto;
+    min-height: calc(var(--control-h-md) * 2.4);
+    padding-block: var(--space-3);
+    resize: vertical;
+}
+
+.sc-input::placeholder,
+.sc-textarea::placeholder {
+    color: var(--text-muted);
+}
+
+.sc-input:hover,
+.sc-select:hover,
+.sc-textarea:hover {
+    border-color: var(--border-strong);
+}
+
+.sc-input:focus,
+.sc-select:focus,
+.sc-textarea:focus {
+    outline: none;
+    border-color: var(--focus-outline);
+    box-shadow: var(--inset-shadow), var(--focus-ring);
+}
+
+.sc-input--invalid,
+.sc-input--invalid:hover {
+    border-color: var(--status-danger);
+}
+
+.sc-input--invalid:focus {
+    border-color: var(--status-danger);
+    box-shadow: var(--inset-shadow), 0 0 0 3px color-mix(in srgb, var(--status-danger) 24%, transparent);
+}
+
+.sc-error {
+    font-size: var(--text-2xs);
+    color: var(--status-danger);
+}
+
+/* ── 分段控件 ─────────────────────────────────────────────────────────────── */
+.sc-seg {
+    display: inline-flex;
+    gap: var(--space-1);
+    padding: var(--space-1);
+    background: var(--bg-subtle);
+    border: var(--border-w) solid var(--control-outline);
+    border-radius: var(--radius-control);
+}
+
+.sc-seg__item {
+    height: calc(var(--control-h-sm) - var(--space-1) * 2);
+    padding-inline: calc(var(--control-px) * 0.8);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    border: 0;
+    border-radius: calc(var(--radius-control) - var(--space-1));
+    background: transparent;
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+    cursor: pointer;
+    transition: background-color var(--motion-fast) var(--ease-standard);
+}
+
+.sc-seg__item:hover {
+    color: var(--text-main);
+}
+
+.sc-seg__item[aria-pressed="true"] {
+    background: var(--bg-panel);
+    background-image: var(--surface-raise);
+    box-shadow: var(--elevation-raised);
+    color: var(--text-main);
+}
+
+/* ── 标签页 ───────────────────────────────────────────────────────────────── */
+.sc-tabs {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--space-2);
+    border-bottom: var(--border-w) solid var(--divider);
+}
+
+.sc-tab {
+    position: relative;
+    height: var(--control-h-md);
+    padding-inline: var(--control-px);
+    border: 0;
+    background: transparent;
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    cursor: pointer;
+}
+
+.sc-tab::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    /* 指示线画在容器边线之上，用绝对定位而不是负 margin：
+       负 margin 配 overflow 会制造 1px 的滚动溢出（Tabs.vue 现在就是这个毛病） */
+    bottom: calc(var(--border-w) * -1);
+    height: 2px;
+    background: transparent;
+    transition: background-color var(--motion-fast) var(--ease-standard);
+}
+
+.sc-tab:hover {
+    color: var(--text-main);
+}
+
+.sc-tab[aria-selected="true"] {
+    color: var(--text-main);
+}
+
+.sc-tab[aria-selected="true"]::after {
+    background: var(--accent-main);
+}
+
+/* ── 徽标 ─────────────────────────────────────────────────────────────────── */
+.sc-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    height: calc(var(--control-h-sm) * 0.72);
+    padding-inline: calc(var(--control-px) * 0.6);
+    border-radius: var(--radius-pill);
+    border: var(--border-w) solid transparent;
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-medium);
+    white-space: nowrap;
+}
+
+.sc-badge--neutral {
+    background: var(--bg-subtle);
+    border-color: var(--border-color);
+    color: var(--text-secondary);
+}
+.sc-badge--accent {
+    background: var(--accent-bg);
+    border-color: var(--border-accent);
+    color: var(--accent-main);
+}
+.sc-badge--success {
+    background: var(--status-success-bg);
+    border-color: var(--status-success-border);
+    color: var(--status-success);
+}
+.sc-badge--warning {
+    background: var(--status-warning-bg);
+    border-color: var(--status-warning-border);
+    color: var(--status-warning);
+}
+.sc-badge--danger {
+    background: var(--status-danger-bg);
+    border-color: var(--status-danger-border);
+    color: var(--status-danger);
+}
+.sc-badge--info {
+    background: var(--status-info-bg);
+    border-color: var(--status-info-border);
+    color: var(--status-info);
+}
+
+.sc-dot {
+    width: var(--space-2);
+    height: var(--space-2);
+    border-radius: var(--radius-pill);
+    background: currentColor;
+}
+
+/* ── 开关 ─────────────────────────────────────────────────────────────────── */
+.sc-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-4);
+    cursor: pointer;
+}
+
+.sc-switch__track {
+    position: relative;
+    width: calc(var(--control-h-sm) * 1.6);
+    height: calc(var(--control-h-sm) * 0.64);
+    border-radius: var(--radius-pill);
+    background: var(--bg-subtle);
+    border: var(--border-w) solid var(--control-outline);
+    transition: background-color var(--motion-base) var(--ease-standard);
+    flex: none;
+}
+
+.sc-switch__thumb {
+    position: absolute;
+    top: 50%;
+    left: var(--space-1);
+    translate: 0 -50%;
+    width: calc(var(--control-h-sm) * 0.64 - var(--space-2) - var(--border-w) * 2);
+    height: calc(var(--control-h-sm) * 0.64 - var(--space-2) - var(--border-w) * 2);
+    border-radius: var(--radius-pill);
+    background: var(--bg-panel);
+    box-shadow: var(--elevation-raised);
+    transition: left var(--motion-base) var(--ease-standard);
+}
+
+.sc-switch[aria-checked="true"] .sc-switch__track {
+    background: var(--accent-main);
+    border-color: var(--accent-main);
+}
+
+.sc-switch[aria-checked="true"] .sc-switch__thumb {
+    left: calc(100% - var(--control-h-sm) * 0.64 + var(--space-1) + var(--border-w));
+}
+
+/* ── 表格 ─────────────────────────────────────────────────────────────────── */
+.sc-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+}
+
+.sc-table th {
+    text-align: left;
+    padding: var(--space-3) var(--panel-p);
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-medium);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: var(--strip-surface);
+    border-bottom: var(--border-w) solid var(--divider);
+}
+
+.sc-table td {
+    padding: var(--space-4) var(--panel-p);
+    border-bottom: var(--border-w) solid var(--divider);
+    color: var(--text-secondary);
+}
+
+.sc-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.sc-table tbody tr:hover td {
+    background: var(--bg-hover);
+}
+
+.sc-table td:first-child {
+    color: var(--text-main);
+}
+
+/* ── 列表 / 章节树 ────────────────────────────────────────────────────────── */
+.sc-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.sc-list__item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    height: var(--control-h-md);
+    padding-inline: var(--space-4);
+    border-radius: var(--radius-control);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background-color var(--motion-fast) var(--ease-standard);
+}
+
+.sc-list__item:hover {
+    background: var(--bg-hover);
+    color: var(--text-main);
+}
+
+.sc-list__item[aria-current="true"] {
+    background: var(--accent-bg);
+    color: var(--accent-main);
+    font-weight: var(--weight-medium);
+}
+
+/* ── 浮层 ─────────────────────────────────────────────────────────────────── */
+.sc-popover {
+    background: var(--overlay-surface);
+    border: var(--border-w) solid var(--panel-outline);
+    border-radius: var(--radius-panel);
+    box-shadow: var(--elevation-popover);
+    padding: var(--space-2);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 180px;
+}
+
+.sc-popover__item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    height: var(--control-h-sm);
+    padding-inline: var(--space-4);
+    /* 同心律：嵌套形状的圆角随层次递减，否则内层圆角看起来会「偏心」。Apple 的官方落点是
+       UIKit 的 containerConcentricRadius 与 SwiftUI 的 ConcentricRectangle（半径按容器几何
+       自动算），但「子半径 = 父半径 − padding」这个公式**不是 HIG 原文**，只是够用的近似。 */
+    border-radius: max(2px, calc(var(--radius-panel) - var(--space-2)));
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    cursor: pointer;
+}
+
+.sc-popover__item:hover {
+    background: var(--bg-hover);
+    color: var(--text-main);
+}
+
+.sc-dialog {
+    background: var(--overlay-surface);
+    border: var(--border-w) solid var(--panel-outline);
+    border-radius: var(--radius-panel);
+    box-shadow: var(--elevation-dialog);
+    overflow: hidden;
+    width: 100%;
+}
+
+/*
+ * 头尾两条边栏的高度由**里面最高的那个控件**决定，不是由 padding 决定。
+ * 原来 padding 给到 --space-5（12px）、关闭按钮又是 --control-h-md（34px），
+ * 于是标题栏 59px——比它托着的那行 14px 标题高出四倍，整个对话框显得头重脚轻。
+ *
+ * 改法是两头一起收：padding 降一档，关闭按钮换 sm 档（它只是个图标，不需要主操作的点击面积）。
+ * 标题栏因此 45px、按钮栏 51px，按钮栏仍比标题栏高一点——那是对的，它托着的是真正的操作。
+ */
+.sc-dialog__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-4) var(--panel-p);
+    border-bottom: var(--border-w) solid var(--divider);
+}
+
+.sc-dialog__head .sc-icon-btn {
+    width: var(--control-h-sm);
+    height: var(--control-h-sm);
+}
+
+.sc-dialog__body {
+    padding: var(--panel-p);
+    color: var(--text-secondary);
+}
+
+.sc-dialog__foot {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-4);
+    padding: var(--space-4) var(--panel-p);
+    border-top: var(--border-w) solid var(--divider);
+    background: var(--strip-surface);
+}
+
+/*
+ * 对话框按钮比一般按钮再宽一档，且**彼此等宽**。
+ *
+ * 「取消」两个字、「放弃修改」四个字，按内容撑开就是 58px 对 86px——并排摆着一眼就看出
+ * 一个宽一个窄，读起来像两种控件。对话框是要用户做决定的地方，两个选项在视觉上应当对等，
+ * 宽度差会把注意力偏向更大的那个。这一档取值以最长的那个标签为准。
+ */
+.sc-dialog__foot .sc-btn {
+    min-width: calc(var(--control-h-md) * 2.6);
+}
+
+.sc-tooltip {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--space-2) var(--space-4);
+    border-radius: calc(var(--radius-control) * 0.8);
+    background: var(--text-main);
+    color: var(--bg-main);
+    font-size: var(--text-2xs);
+    box-shadow: var(--elevation-popover);
+}
+
+/* ── 杂项 ─────────────────────────────────────────────────────────────────── */
+.sc-kbd {
+    display: inline-flex;
+    align-items: center;
+    height: calc(var(--control-h-sm) * 0.7);
+    padding-inline: var(--space-3);
+    border: var(--border-w) solid var(--control-outline);
+    border-radius: calc(var(--radius-control) * 0.7);
+    background: var(--bg-subtle);
+    box-shadow: var(--elevation-raised);
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    color: var(--text-secondary);
+}
+
+.sc-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-8) var(--panel-p);
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.sc-swatch {
+    width: var(--space-7);
+    height: var(--space-7);
+    border-radius: var(--radius-control);
+    border: var(--border-w) solid var(--divider);
+}

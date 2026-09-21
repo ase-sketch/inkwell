@@ -1,0 +1,106 @@
+.nb-reference-chip,
+.nb-skill-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    max-width: min(100%, 24rem);
+    padding: 0.04rem 0.38rem;
+    border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+    border-radius: 0.8rem;
+    background: color-mix(in srgb, currentColor 9%, var(--bg-panel));
+    vertical-align: baseline;
+    line-height: 1.2;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 4%, transparent);
+}
+
+.nb-reference-chip {
+    color: var(--text-main);
+}
+
+.nb-skill-chip {
+    color: #b45309;
+}
+
+.nb-reference-chip__icon,
+.nb-skill-chip__icon {
+    flex: none;
+    width: 0.8rem;
+    height: 0.8rem;
+    opacity: 0.88;
+}
+
+.nb-reference-chip__label,
+.nb-skill-chip__label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.88em;
+    line-height: 1.25;
+    font-weight: 600;
+}
+
+.nb-reference-chip__badge,
+.nb-skill-chip__badge {
+    flex: none;
+    padding: 0.02rem 0.26rem;
+    border-radius: 0.6rem;
+    background: color-mix(in srgb, currentColor 12%, transparent);
+    color: color-mix(in srgb, currentColor 78%, var(--text-main));
+    font-size: 0.58rem;
+    line-height: 1.1;
+    letter-spacing: 0.08em;
+}
+
+.nb-reference-chip.is-chapter {
+    color: #2563eb;
+}
+
+.nb-reference-chip.is-volume {
+    color: #7c3aed;
+}
+
+.nb-reference-chip.is-lorebook,
+.nb-reference-chip.is-character {
+    color: #0f766e;
+}
+
+.nb-reference-chip.is-location,
+.nb-reference-chip.is-scene {
+    color: #0891b2;
+}
+
+.nb-reference-chip.is-item,
+.nb-reference-chip.is-thread {
+    color: #c2410c;
+}
+
+.nb-reference-chip.is-rule,
+.nb-reference-chip.is-plot {
+    color: #be123c;
+}
+
+.nb-reference-chip.is-note,
+.nb-reference-chip.is-pending {
+    color: #6b7280;
+}
+
+.nb-reference-chip.is-plan {
+    color: #4f46e5;
+}
+
+.nb-reference-chip.is-file {
+    color: #475569;
+}
+
+.nb-reference-chip.is-selection {
+    color: #7c2d12;
+}
+
+.nb-reference-chip.is-folder {
+    color: #b45309;
+}
+
+.nb-reference-chip.is-broken {
+    color: #dc2626;
+    text-decoration: line-through;
+}

@@ -1,0 +1,419 @@
+// Project Workspace SQLite schema. This database lives inside each Project
+// Workspace at .nbook/project.sqlite and is portable with the project.
+generator client {
+  provider = "prisma-client"
+  output   = "../server/generated/project-prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum StoryThreadStatus {
+  active
+  draft
+  paused
+  done
+  archived
+}
+
+enum StorySceneStatus {
+  draft
+  active
+  written
+  revised
+  archived
+}
+
+enum StoryRefTargetKind {
+  content
+  thread
+  scene
+}
+
+enum StoryRefVisibility {
+  author
+  reader
+}
+
+// 规划层:Promise 存储态(作者意图)。planted/echoed 等中间态从 beats 派生,不落库。
+enum StoryPromiseStatus {
+  open
+  fulfilled
+  abandoned
+}
+
+enum StoryPromiseImportance {
+  low
+  medium
+  high
+}
+
+// beat 类型:plant(建立)/advance(推进/呼应/投喂)/setback(反挫,含假揭露)/payoff(兑现)。
+enum StoryPromiseBeatKind {
+  plant
+  advance
+  setback
+  payoff
+}
+
+// 规划层:Decision 生命周期。dropped=问题因剧情改道失效(既没拍板也没被取代)。
+enum StoryDecisionStatus {
+  open
+  decided
+  superseded
+  dropped
+}
+
+// 本场主要行动者主动尝试的结果;null 仅=未填写(D29),非冲突场填 no_conflict,被动承受场填 passive。
+enum StorySceneOutcomeType {
+  yes_but
+  no_and
+  yes_and
+  no_but
+  yes
+  no
+  no_conflict
+  passive
+}
+
+// 张弛角色;节奏检查按承载树章序投影消费。
+enum StoryScenePacingRole {
+  setup
+  escalation
+  breather
+  climax
+  resolution
+}
+
+// MICE Quotient 线型:决定"这条线怎样才算关"(idea=谜底揭晓,character=身份认同达成)。
+enum StoryThreadMiceType {
+  milieu
+  idea
+  character
+  event
+}
+
+// Decision 主锚点类型;story=锚在全书层(无更窄外键),content 用 anchorPath 存内容节点路径。
+enum StoryDecisionAnchorKind {
+  story
+  act
+  chapter
+  thread
+  scene
+  promise
+  content
+}
+
+model ProjectMetadata {
+  key       String   @id
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model DatabaseLock {
+  key       Int      @id
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model Story {
+  id        Int             @id @default(autoincrement())
+  title     String
+  summary   String          @default("")
+  note      String?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @default(now()) @updatedAt
+  acts      StoryAct[]
+  chapters  StoryChapter[]
+  phases    StoryPhase[]
+  threads   StoryThread[]
+  scenes    StoryScene[]
+  promises  StoryPromise[]
+  decisions StoryDecision[]
+}
+
+// 承载树:Act(卷)。语义对应 manuscript 的 volume 层,但与文件系统切割;排序权威在 sortOrder,目录名前缀只是装饰。
+model StoryAct {
+  id                Int             @id @default(autoincrement())
+  storyId           Int
+  sortOrder         Int
+  name              String
+  title             String
+  summary           String          @default("")
+  note              String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @default(now()) @updatedAt
+  story             Story           @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  chapters          StoryChapter[]
+  anchoredDecisions StoryDecision[] @relation("StoryDecisionAnchorAct")
+
+  @@unique([storyId, name])
+  @@index([storyId, sortOrder])
+}
+
+// 承载树:Chapter(章)一等实体。与 manuscript 切割:Prose 文件通过 frontmatter `chapter: <name>` 反指本表 name,
+// 文件移动/改名不影响 Chapter;一个 Chapter 可关联多份 Prose(通常一份)。
+// brief* 字段组 = ChapterBrief(章级写作指令),全部可选、自由文本为主(防限死创造力),兼作写后审查依据;
+// 不保存动态世界状态(那是 World Engine 的职责),也不替代 Scene 剧情点。
+model StoryChapter {
+  id                    Int          @id @default(autoincrement())
+  storyId               Int
+  actId                 Int?
+  sortOrder             Int
+  name                  String
+  title                 String
+  note                  String?
+  briefGoal             String? // 章节目标 / 落点
+  briefPov              String? // 本章视角、叙述距离、切换限制
+  briefTone             String? // 语气 / 情绪温度 / 风格约束
+  briefPacing           String? // 节奏、悬念、下一章牵引
+  briefReaderKnows      String? // 信息控制:读者已知
+  briefProtagonistKnows String? // 信息控制:主角已知
+  briefMustHide         String? // 信息控制:必须隐藏
+  briefHintOnly         String? // 信息控制:可暗示但不可明说
+  briefOpening          String? // 开场钩子
+  briefEnding           String? // 章节落点 / 结尾定句
+  briefDoNotWrite       String? // 禁写事项
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @default(now()) @updatedAt
+  story                 Story           @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  act                   StoryAct?       @relation(fields: [actId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  scenes                StoryScene[]
+  promiseDeadlines      StoryPromise[]  @relation("StoryPromiseDeadlineChapter")
+  anchoredDecisions     StoryDecision[] @relation("StoryDecisionAnchorChapter")
+
+  @@unique([storyId, name])
+  @@index([storyId, actId, sortOrder])
+}
+
+model StoryPhase {
+  id        Int           @id @default(autoincrement())
+  storyId   Int
+  sortOrder Int
+  name      String
+  title     String
+  summary   String        @default("")
+  note      String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @default(now()) @updatedAt
+  story     Story         @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  threads   StoryThread[]
+
+  @@unique([storyId, name])
+  @@index([storyId, sortOrder])
+}
+
+model StoryThread {
+  id                Int                  @id @default(autoincrement())
+  storyId           Int
+  storyPhaseId      Int?
+  sortOrder         Int
+  name              String
+  title             String
+  isMainThread      Boolean              @default(false)
+  status            StoryThreadStatus    @default(draft)
+  miceType          StoryThreadMiceType? // 线型:决定"怎样才算关";null=未填写
+  summary           String               @default("")
+  tags              String               @default("[]")
+  writingTip        String?
+  note              String?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @default(now()) @updatedAt
+  story             Story                @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  storyPhase        StoryPhase?          @relation(fields: [storyPhaseId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  scenes            StoryScene[]
+  incomingSceneRefs StorySceneRef[]      @relation("StorySceneRefTargetThread")
+  anchoredDecisions StoryDecision[]      @relation("StoryDecisionAnchorThread")
+
+  @@unique([storyId, name])
+  @@index([storyId, storyPhaseId, sortOrder])
+  @@index([storyId, isMainThread, status])
+}
+
+model StoryScene {
+  id                 Int                    @id @default(autoincrement())
+  storyId            Int
+  threadId           Int
+  chapterId          Int?
+  threadSortOrder    Int
+  chapterSortOrder   Int?
+  title              String
+  status             StorySceneStatus       @default(draft)
+  outcomeType        StorySceneOutcomeType? // 本场主动尝试的结果;null 仅=未填写(D29)
+  pacingRole         StoryScenePacingRole?  // 张弛角色;null=未填写
+  summary            String                 @default("")
+  purpose            String?
+  writingTip         String?
+  note               String?
+  startInstant       BigInt?
+  endInstant         BigInt?
+  subjectIdsJson     String                 @default("[]")
+  locationSubjectId  String?
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @default(now()) @updatedAt
+  story              Story                  @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  thread             StoryThread            @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  chapter            StoryChapter?          @relation(fields: [chapterId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  refs               StorySceneRef[]        @relation("StorySceneRefs")
+  incomingSceneRefs  StorySceneRef[]        @relation("StorySceneRefTargetScene")
+  promiseBeats       StoryPromiseBeat[]
+  anchoredDecisions  StoryDecision[]        @relation("StoryDecisionAnchorScene")
+
+  @@unique([threadId, threadSortOrder])
+  @@index([threadId, threadSortOrder])
+  @@index([chapterId, chapterSortOrder])
+  @@index([storyId, status])
+  @@index([startInstant])
+}
+
+model StorySceneRef {
+  id                   Int                @id @default(autoincrement())
+  sceneId              Int
+  sortOrder            Int
+  relation             String
+  rawTarget            String
+  targetKind           StoryRefTargetKind
+  targetThreadId       Int?
+  targetSceneId        Int?
+  visibility           StoryRefVisibility @default(author)
+  note                 String?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @default(now()) @updatedAt
+  scene                StoryScene         @relation("StorySceneRefs", fields: [sceneId], references: [id], onDelete: Cascade)
+  targetThread         StoryThread?       @relation("StorySceneRefTargetThread", fields: [targetThreadId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  targetScene          StoryScene?        @relation("StorySceneRefTargetScene", fields: [targetSceneId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([sceneId, sortOrder])
+  @@index([targetThreadId])
+  @@index([targetSceneId])
+}
+
+// 规划层:对读者的债务(含伏笔)。不设 kind 分类——行为由字段有无驱动:
+// 有 deadlineChapterId 才有逾期概念,有 cadenceChapters 才有节奏提示,两者可同时存在(D2)。
+// 伏笔按兑现机制四分类走 tags 词表:setup_payoff/prophecy/motif/mirror(D8)。
+model StoryPromise {
+  id                Int                    @id @default(autoincrement())
+  storyId           Int
+  name              String                 // per-story 唯一 slug,供互指引用
+  title             String
+  status            StoryPromiseStatus     @default(open)
+  importance        StoryPromiseImportance @default(medium)
+  summary           String                 @default("") // 向读者许了什么(账本展示用)
+  payoffExpectation String?                // 兑现时预期的戏剧效果(只给兑现场 writer);null=未填写
+  cadenceChapters   Int?                   // 提示性参考节奏,非硬约束;null=无节奏提示
+  deadlineChapterId Int?                   // 兑现期限;null=无逾期概念
+  tags              String                 @default("[]") // 伏笔四词表 setup_payoff/prophecy/motif/mirror 等
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @default(now()) @updatedAt
+  story             Story                  @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  deadlineChapter   StoryChapter?          @relation("StoryPromiseDeadlineChapter", fields: [deadlineChapterId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  beats             StoryPromiseBeat[]
+  anchoredDecisions StoryDecision[]        @relation("StoryDecisionAnchorPromise")
+
+  @@unique([storyId, name])
+  @@index([storyId, status])
+}
+
+// Promise 在某场戏上的推进记录。同场同线仅一条,kind 取主导(D4)。
+// beat 计划/事实/不参与三态由 Scene.status 派生,不落字段(D5):
+// draft/active=计划,written/revised=事实,archived=不参与任何派生。
+model StoryPromiseBeat {
+  id        Int                  @id @default(autoincrement())
+  promiseId Int
+  sceneId   Int
+  kind      StoryPromiseBeatKind
+  note      String?              // 本次推进的规划说明:"只写到发烫,不许发光";null=无单独指示
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @default(now()) @updatedAt
+  promise   StoryPromise         @relation(fields: [promiseId], references: [id], onDelete: Cascade)
+  scene     StoryScene           @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+
+  @@unique([promiseId, sceneId])
+  @@index([sceneId])
+}
+
+// 规划层:ADR 式决策记录。open 态防 writer 写死,decided 态供审查与接手(D10/D11)。
+// 本批只建表,服务与工具随 Task 93 Slice 2 落地。
+model StoryDecision {
+  id                   Int                     @id @default(autoincrement())
+  storyId              Int
+  name                 String                  // per-story 唯一 slug(如 d-liya-truth)
+  title                String
+  status               StoryDecisionStatus     @default(open)
+  question             String                  // 待决问题(open 态核心)
+  options              String                  @default("[]") // [{option, note}]
+  deadlineChapterId    Int?                    // 必须在此章前拍板;null=无期限(读取时校验存在性,不建外键)
+  decision             String?                 // 结论;decided 时非空(服务层校验)
+  motivation           String?                 // 为什么;decided 时非空
+  rejectedAlternatives String                  @default("[]") // [{option, whyRejected}],decide 时从 options 未选项转换
+  risk                 String?                 // 刹车点;decided 时必填(服务层校验)
+  serves               String                  @default("[]") // ["promise://3","lorebook/character/chen-yao/"]
+  dependsOn            String                  @default("[]") // ["decision://2"]
+  supersededById       Int?
+  anchorKind           StoryDecisionAnchorKind @default(story)
+  anchorActId          Int?
+  anchorChapterId      Int?
+  anchorThreadId       Int?
+  anchorSceneId        Int?
+  anchorPromiseId      Int?
+  anchorPath           String?                 // anchorKind=content 时的 content-node 路径
+  note                 String?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @default(now()) @updatedAt
+  story                Story                   @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  // anchor 外键均 SetNull;读取时归一化:anchorKind 对应外键为 null 时视同 story(不做写时回退,D12)
+  anchorAct            StoryAct?               @relation("StoryDecisionAnchorAct", fields: [anchorActId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  anchorChapter        StoryChapter?           @relation("StoryDecisionAnchorChapter", fields: [anchorChapterId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  anchorThread         StoryThread?            @relation("StoryDecisionAnchorThread", fields: [anchorThreadId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  anchorScene          StoryScene?             @relation("StoryDecisionAnchorScene", fields: [anchorSceneId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  anchorPromise        StoryPromise?           @relation("StoryDecisionAnchorPromise", fields: [anchorPromiseId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  supersededBy         StoryDecision?          @relation("StoryDecisionSupersededBy", fields: [supersededById], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  supersedes           StoryDecision[]         @relation("StoryDecisionSupersededBy")
+
+  @@unique([storyId, name])
+  @@index([storyId, status])
+}
+
+model WorldSubject {
+  id        String          @id
+  type      String
+  name      String          @default("")
+  createdAt DateTime        @default(now())
+  patches   WorldPatch[]
+
+  @@index([type])
+}
+
+model WorldSlice {
+  id        String          @id @default(cuid())
+  instant   BigInt          @unique
+  title     String          @default("")
+  summary   String          @default("")
+  kind      String          @default("event")
+  createdAt DateTime        @default(now())
+  patches   WorldPatch[]
+
+  @@index([instant])
+}
+
+model WorldPatch {
+  id        String       @id @default(cuid())
+  sliceId   String
+  subjectId String
+  instant   BigInt
+  seq       Int          @default(0)
+  path      String
+  op        String
+  value     String?
+  summary   String?
+  text      String?
+  vector    Bytes?
+  model     String?
+  slice     WorldSlice   @relation(fields: [sliceId], references: [id], onDelete: Cascade)
+  subject   WorldSubject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@index([subjectId, instant, seq])
+  @@index([subjectId, path, instant])
+  @@index([path])
+}

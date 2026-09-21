@@ -1,0 +1,78 @@
+{
+  "task": "00158-notification-contrast-fix",
+  "issue": 177,
+  "supersededPr": 178,
+  "commits": [
+    {
+      "hash": "47cc0f08",
+      "subject": "fix(notification): 通知卡片改用主题状态色并满足 WCAG AA 对比度",
+      "files": 4,
+      "insertions": 289,
+      "deletions": 36,
+      "pushed": true
+    },
+    {
+      "hash": "18ed2d55",
+      "subject": "docs(notification): 标注对比度保证范围为内置主题",
+      "files": 1,
+      "insertions": 3,
+      "deletions": 0,
+      "pushed": true
+    },
+    {
+      "hash": "2116b7ec",
+      "subject": "docs(tasks): 补录 00158 通知对比度修复任务记录",
+      "files": 4,
+      "insertions": 184,
+      "deletions": 0,
+      "pushed": true,
+      "note": "原提交 541e13ce 因远端并发前进经 autostash rebase 重写为 2116b7ec"
+    }
+  ],
+  "remoteState": {
+    "branch": "master",
+    "localHead": "2116b7ec",
+    "originHead": "2116b7ec",
+    "synced": true
+  },
+  "verifications": [
+    {
+      "name": "主题聚焦+回归测试（6 文件）",
+      "command": "bun run --cwd packages/neuro-book test -- app/utils/theme/notification-tone.test.ts derive.test.ts resolve-theme.test.ts theme-editor.test.ts theme-io.test.ts theme-tokens.test.ts",
+      "result": "22 passed / 0 failed",
+      "tree": "rebased 47cc0f08"
+    },
+    {
+      "name": "通知色调测试（docs 提交后复跑）",
+      "command": "bun run --cwd packages/neuro-book test -- app/utils/theme/notification-tone.test.ts",
+      "result": "7 passed / 0 failed",
+      "tree": "18ed2d55"
+    },
+    {
+      "name": "typecheck",
+      "command": "bun run --cwd packages/neuro-book typecheck",
+      "result": "exit 0",
+      "tree": "47cc0f08（18ed2d55 仅 JSDoc 注释差异，未复跑）"
+    },
+    {
+      "name": "git diff --check",
+      "command": "git diff --check",
+      "result": "无空白错误（CRLF 提示为仓库级 autocrlf 通知，含未触碰文件）"
+    },
+    {
+      "name": "governance:check（Task 记录合同）",
+      "command": "bun run governance:check",
+      "result": "failures=[], warnings=[]"
+    }
+  ],
+  "contrastMatrix": {
+    "scope": "8 套内置主题 × 4 tone，colord a11y 插件计算合成背景与 --text-main 对比度",
+    "minimumRatio": {"value": 4.98, "at": "one-dark-pro/warning"},
+    "threshold": 4.5
+  },
+  "residualRisks": [
+    "浏览器人工验收未运行（未获授权）：真实渲染效果（blur 叠加、backdrop 内容、字体渲染）无证据覆盖",
+    "WCAG 保证仅覆盖内置主题；自定义主题核心色对无对比度校验，病态配置与全 IDE 同步退化",
+    "server/config/normalizer.ts normalizeThemeVars 不校验颜色语法，垃圾值可进入其他消费点（上游缺口，建议另立 Issue）"
+  ]
+}

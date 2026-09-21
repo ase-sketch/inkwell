@@ -1,0 +1,13 @@
+memory   C:\Users\notnotype\Documents\CodeRepository\GithubProjects\neuro-book\.agents\works\w00005-novel-understanding-spike\tasks\t02-novel-memory-model-design\chapter-01.json
+beats    C:\Users\notnotype\Documents\CodeRepository\GithubProjects\neuro-book\.agents\works\w00005-novel-understanding-spike\tasks\t02-novel-memory-model-design\evidences\chapter-01-beats.json
+counts   kind=9 entity=10 predicate=32 slot=50 disclosure=66 beat=24 scene=3 moment=5 momentRelation=4
+channel  author=1 speech=30 narrator=25 reader_inference=2 thought=5 system=3
+hedge    plain=63 其它=3
+load     S_su_kind:4  S_codex_kind:3  S_contract_state:3  S_vmg_appel:2  S_su_name:2
+relation 印证=4槽 并列累加=7槽 认识论并存=2槽
+moment   M_b → M_c 下界 3 分钟（假设：同一章内，叙述当下按段号单调不减。跨章不作任何假设（见 W9）。）
+slice    codex @8=黑色古书  @11=黑色古书  @30=墨丘利秘典  @77=墨丘利秘典
+
+viewer.html 已是最新。
+chapter-01-graph.html 已是最新。
+0 error / 0 warn

@@ -1,0 +1,234 @@
+/* ----------------------------------------------------
+ * Markdown 综合主题样式表
+ * 我们使用 .theme-{name} 顶级类进行样式隔离。
+ * ---------------------------------------------------- */
+
+/* ====================================================
+ * 1. GitHub 风格 (经典、表格和边框清晰)
+ * ==================================================== */
+.theme-github {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    word-wrap: break-word;
+}
+.theme-github h1, .theme-github h2 {
+    border-bottom: 1px solid var(--border-color, #d0d7de);
+    padding-bottom: 0.3em;
+}
+.theme-github h1, .theme-github h2, .theme-github h3, .theme-github h4 {
+    font-weight: 600;
+    margin-top: 24px;
+    margin-bottom: 16px;
+    color: var(--text-main);
+}
+.theme-github p { margin-top: 0; margin-bottom: 16px; }
+.theme-github blockquote {
+    padding: 0 1em;
+    color: var(--text-muted, #656d76);
+    border-left: 0.25em solid var(--border-color, #d0d7de);
+    margin: 0 0 16px 0;
+}
+.theme-github ul, .theme-github ol {
+    padding-left: 2em;
+    margin-top: 0;
+    margin-bottom: 16px;
+    list-style: initial;
+}
+.theme-github ul { list-style-type: disc; }
+.theme-github ol { list-style-type: decimal; }
+.theme-github li { margin-top: 0.25em; }
+.theme-github table {
+    display: block;
+    width: max-content;
+    max-width: 100%;
+    overflow: auto;
+    border-spacing: 0;
+    border-collapse: collapse;
+    margin-top: 0;
+    margin-bottom: 16px;
+}
+.theme-github table th,
+.theme-github table td {
+    padding: 6px 13px;
+    border: 1px solid var(--border-color, #d0d7de);
+}
+.theme-github table tr {
+    background-color: var(--bg-main, #ffffff);
+    border-top: 1px solid var(--border-color, #d0d7de);
+}
+.theme-github table tr:nth-child(2n) {
+    background-color: var(--bg-hover, #f6f8fa);
+}
+.theme-github table th {
+    font-weight: 600;
+}
+.theme-github code {
+    background-color: var(--bg-input, rgba(175,184,193,0.2));
+    border-radius: 6px;
+    padding: 0.2em 0.4em;
+    font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, monospace;
+    font-size: 85%;
+    margin: 0;
+}
+.theme-github pre {
+    background-color: var(--bg-hover, #f6f8fa);
+    border: 1px solid var(--border-color, #d0d7de);
+    border-radius: 6px;
+    padding: 16px;
+    overflow: auto;
+    font-size: 85%;
+    line-height: 1.45;
+    margin-bottom: 16px;
+}
+.theme-github pre code {
+    background-color: transparent;
+    padding: 0;
+    border: 0;
+}
+.theme-github a {
+    color: var(--accent-main);
+    text-decoration: underline;
+    text-underline-offset: 0.15rem;
+}
+
+/* ====================================================
+ * 2. Newsprint (衬线阅读向，古典雅致)
+ * ==================================================== */
+.theme-newsprint {
+    font-family: Georgia, "Times New Roman", Times, serif;
+    line-height: 1.8;
+    color: var(--text-main);
+}
+.theme-newsprint h1, .theme-newsprint h2, .theme-newsprint h3 {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-weight: bold;
+    color: var(--text-main);
+    margin-top: 1.5em;
+    margin-bottom: 0.8em;
+}
+.theme-newsprint h1, .theme-newsprint h2 {
+    border-bottom: 2px solid var(--border-color);
+}
+.theme-newsprint blockquote {
+    font-style: italic;
+    border-left: 4px solid var(--accent-main, #3b82f6);
+    padding-left: 1rem;
+    margin-left: 0;
+    margin-bottom: 1rem;
+    opacity: 0.85;
+}
+.theme-newsprint code {
+    background: var(--bg-main);
+    border: 1px solid var(--border-color);
+    border-radius: 2px;
+    padding: 0.1em 0.3em;
+    font-family: Consolas, "Courier New", Courier, monospace;
+    font-size: 0.85em;
+    color: var(--accent-text);
+}
+.theme-newsprint pre {
+    background: var(--bg-input);
+    padding: 1rem;
+    border-left: 4px solid var(--border-color);
+    overflow: auto;
+    margin-bottom: 1rem;
+}
+.theme-newsprint pre code {
+    background: transparent;
+    border: none;
+    color: inherit;
+}
+.theme-newsprint p { margin-bottom: 1rem; }
+.theme-newsprint ul, .theme-newsprint ol { 
+    padding-left: 2em; 
+    margin-bottom: 1rem; 
+    list-style: initial;
+}
+.theme-newsprint ul { list-style-type: disc; }
+.theme-newsprint ol { list-style-type: decimal; }
+
+.theme-newsprint table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+.theme-newsprint table th,
+.theme-newsprint table td {
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    text-align: left;
+}
+.theme-newsprint table th {
+    background-color: var(--bg-input);
+    font-weight: bold;
+}
+.theme-newsprint a { color: var(--text-main); font-weight: bold; text-decoration: underline; }
+
+/* ====================================================
+ * 3. Notion 风格 (极简、红色代码、大行距)
+ * ==================================================== */
+.theme-notion {
+    font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: var(--text-main);
+}
+.theme-notion h1, .theme-notion h2, .theme-notion h3 {
+    font-weight: 600;
+    margin-top: 1.4em;
+    margin-bottom: 2px;
+}
+.theme-notion p { margin-top: 5px; margin-bottom: 5px; }
+.theme-notion blockquote {
+    border-left: 3px solid currentColor;
+    padding-left: 1em;
+    font-size: 1.05em;
+    opacity: 0.8;
+}
+.theme-notion code {
+    color: #EB5757;
+    background: rgba(135,131,120,0.15);
+    border-radius: 3px;
+    padding: 0.1em 0.3em;
+    font-size: 85%;
+}
+.theme-notion pre {
+    background: rgba(135,131,120,0.05);
+    padding: 1rem;
+    border-radius: 3px;
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+    overflow-x: auto;
+}
+.theme-notion pre code {
+    color: inherit;
+    background: transparent;
+    padding: 0;
+}
+.theme-notion ul, .theme-notion ol { 
+    padding-left: 1.5em; 
+    margin-top: 5px; 
+    margin-bottom: 5px; 
+    list-style: initial;
+}
+.theme-notion ul { list-style-type: disc; }
+.theme-notion ol { list-style-type: decimal; }
+
+.theme-notion table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+.theme-notion table th,
+.theme-notion table td {
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+    text-align: left;
+}
+.theme-notion table th {
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 0.9em;
+}
+.theme-notion a { color: inherit; text-decoration: underline; opacity: 0.8; }

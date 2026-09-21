@@ -1,0 +1,98 @@
+{
+  "schema": "nbook.s3-single-source-evidence/v1",
+  "taskId": "00149-monorepo-workspace-consolidation",
+  "phase": "S3-single-source-integrations",
+  "workspace": {
+    "branch": "chore/t149-monorepo-workspace",
+    "worktree": ".worktree/monorepo-main-app-migration"
+  },
+  "changes": {
+    "historyPackage": "@notnotype/nb-history",
+    "workflowPackage": "@notnotype/nb-workflow",
+    "historyVendorRemoved": true,
+    "workflowVendorRemoved": true,
+    "historySyncRemoved": true,
+    "workflowSyncRemoved": true,
+    "llmlintSyncRemoved": true,
+    "llmlintTrackedRuntimeMirrorRemoved": true,
+    "llmlintProjectionSource": "packages/llmlint/skill",
+    "workflowPackageExports": ". -> ./src/index.ts"
+  },
+  "llmlintProjection": {
+    "sourceFiles": 123,
+    "bytes": 921649,
+    "manifestSha256": "ddfe2ab5c59d7a15dbacc7d9d7d062bd605be885245206b1002889654f13c111",
+    "generatedTarget": "assets/workspace/.nbook/agent/skills/llmlint",
+    "targetRemovedAfterSmoke": true,
+    "projectionBehaviorTests": "2 passed"
+  },
+  "verification": {
+    "governance": {
+      "command": "bun run governance:check",
+      "result": "passed",
+      "failures": [],
+      "warnings": []
+    },
+    "frozenInstall": {
+      "command": "bun install --frozen-lockfile --linker hoisted",
+      "result": "passed",
+      "installs": 1680,
+      "packages": 1938,
+      "lockSha256Before": "79a377863680ae48265ebc4277d44e5df1dce832e0b441f4b5c8ade1bb19f3a8",
+      "lockSha256After": "79a377863680ae48265ebc4277d44e5df1dce832e0b441f4b5c8ade1bb19f3a8"
+    },
+    "typecheck": {
+      "command": "bun run typecheck",
+      "result": "passed",
+      "scope": "Nuxt typecheck + desktop/electron typecheck"
+    },
+    "systemAssetsPrepare": {
+      "command": "bun run system-assets:prepare",
+      "result": "passed",
+      "variableDefinitions": 1,
+      "profiles": 14,
+      "staleProfilesCompiled": 0
+    },
+    "historyIntegration": {
+      "command": "bun run test -- server/workspace-history/nb-history-package-smoke.test.ts server/workspace-history/project-history.test.ts server/workspace-history/project-history-module.test.ts server/workspace-files/workspace-archive.test.ts server/api/workspace-history/revision-routes.test.ts",
+      "result": "5 files passed; 29 tests passed"
+    },
+    "workflowIntegration": {
+      "command": "bun run test -- server/agent/workflow/workflow-builtins.test.ts server/agent/workflow/workflow-session-port.test.ts server/agent/workflow/workflow-run-vm.test.ts server/agent/workflow/workflow-demo-service.test.ts server/api/agent/workflow/runs.post.test.ts",
+      "result": "5 files passed; 29 tests passed"
+    },
+    "llmlintSkill": {
+      "command": "bun run test -- server/agent/skills/llmlint.test.ts server/agent/skills/skill-catalog.test.ts",
+      "result": "2 files passed; 56 tests passed"
+    },
+    "systemAssetsTests": {
+      "command": "bun run test -- server/workspace-files/llmlint-skill-projection.test.ts server/workspace-files/system-assets-projection.test.ts server/workspace-files/system-assets-preflight-options.test.ts server/workspace-files/system-assets-preflight.test.ts server/workspace-files/system-workspace-assets.test.ts",
+      "result": "5 files passed; 11 tests passed"
+    },
+    "productClosure": {
+      "command": "bun run test -- scripts/build/product-runtime-module-closure.test.ts scripts/build/product-runtime-bundle.test.ts scripts/build/product-command-bundle.test.ts scripts/build/product-system-artifact-contract.test.ts scripts/build/product-package-island-imports.test.ts scripts/build/product-runtime-contract.test.ts",
+      "result": "6 files passed; 28 tests passed"
+    },
+    "rootRegression": {
+      "command": "bun run test -- --retry=3",
+      "result": "501 files passed / 1 skipped; 3498 tests passed / 14 skipped",
+      "expectedWarnings": "SQLite experimental warning; injected History maintenance warning; injected World Engine EBUSY warning; invalid workflow request validation warnings"
+    },
+    "diffCheck": {
+      "command": "git diff --check",
+      "result": "passed",
+      "notes": "Only expected Windows LF-to-CRLF warnings"
+    }
+  },
+  "installScriptPolicy": {
+    "command": "bun pm untrusted",
+    "blockedLifecycleScripts": 5,
+    "trusted": false,
+    "reason": "No S3 runtime or verification path requires enabling third-party lifecycle scripts; keep Bun fail-closed policy"
+  },
+  "knownBoundaries": [
+    "真实 provider/model、私有 corpus、Docker、远端部署、发布和生产 Product build 未在本阶段执行。",
+    "llmlint root verify 的 S0 别名缺口不属于本阶段变更；本阶段运行的是主应用 Skill catalog/CLI 集成测试。",
+    "历史 Task 正文中的旧 vendor/sync 考古引用保留；当前源码、入口文档和状态页已切换到 workspace package/projection 表述。"
+  ]
+}
