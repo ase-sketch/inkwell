@@ -12,6 +12,8 @@ const components = {
     ModelContext: dsl.ModelContext,
     AppendingSet: dsl.AppendingSet,
     FileChangeNotice: dsl.FileChangeNotice,
+    PromiseLedger: dsl.PromiseLedger,
+    MentionedEntities: dsl.MentionedEntities,
     Message: dsl.Message,
     AIMessage: dsl.AIMessage,
     ToolCall: dsl.ToolCall,
@@ -67,6 +69,8 @@ export namespace JSX {
         ModelContext: Parameters<typeof dsl.ModelContext>[0];
         AppendingSet: Parameters<typeof dsl.AppendingSet>[0];
         FileChangeNotice: Parameters<typeof dsl.FileChangeNotice>[0];
+        PromiseLedger: Record<string, never>;
+        MentionedEntities: Record<string, never>;
         Message: Parameters<typeof dsl.Message>[0];
         AIMessage: Parameters<typeof dsl.AIMessage>[0];
         ToolCall: Parameters<typeof dsl.ToolCall>[0];

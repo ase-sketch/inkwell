@@ -12,6 +12,8 @@ const components = {
     ModelContext: profileSdk.ModelContext,
     AppendingSet: profileSdk.AppendingSet,
     FileChangeNotice: profileSdk.FileChangeNotice,
+    PromiseLedger: profileSdk.PromiseLedger,
+    MentionedEntities: profileSdk.MentionedEntities,
     Message: profileSdk.Message,
     AIMessage: profileSdk.AIMessage,
     ToolCall: profileSdk.ToolCall,
@@ -68,6 +70,8 @@ export namespace JSX {
         ModelContext: Parameters<typeof profileSdk.ModelContext>[0];
         AppendingSet: Parameters<typeof profileSdk.AppendingSet>[0];
         FileChangeNotice: Parameters<typeof profileSdk.FileChangeNotice>[0];
+        PromiseLedger: Record<string, never>;
+        MentionedEntities: Record<string, never>;
         Message: Parameters<typeof profileSdk.Message>[0];
         AIMessage: Parameters<typeof profileSdk.AIMessage>[0];
         ToolCall: Parameters<typeof profileSdk.ToolCall>[0];

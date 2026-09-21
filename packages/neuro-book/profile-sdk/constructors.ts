@@ -3,6 +3,8 @@ import type {
     ProfileBuiltinNode,
     ProfileDslChild,
     ProfileFileChangeNoticeNode,
+    ProfilePromiseLedgerNode,
+    ProfileMentionedEntitiesNode,
     ProfileFragmentNode,
     ProfileIfNode,
     ProfileImportProps,
@@ -56,6 +58,16 @@ export function AppendingSet(props: ChildrenProps): ProfileSetNode {
 /** 声明 Profile 的文件变更提醒模式。 */
 export function FileChangeNotice(props: {mode: "off" | "minimal" | "full"}): ProfileFileChangeNoticeNode {
     return {kind: "FileChangeNotice", mode: props.mode};
+}
+
+/** 声明 Profile 的读者债务账本恒定注入。 */
+export function PromiseLedger(): ProfilePromiseLedgerNode {
+    return {kind: "PromiseLedger"};
+}
+
+/** 声明 Profile 的提及实体按需注入。 */
+export function MentionedEntities(): ProfileMentionedEntitiesNode {
+    return {kind: "MentionedEntities"};
 }
 
 /** 定义用户消息节点；role 合法性由宿主 materializer 校验。 */

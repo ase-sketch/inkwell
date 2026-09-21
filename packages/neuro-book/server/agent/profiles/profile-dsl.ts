@@ -20,6 +20,8 @@ import type {
     ProfileDslChild,
     ProfileDslNode,
     ProfileFileChangeNoticeNode,
+    ProfilePromiseLedgerNode,
+    ProfileMentionedEntitiesNode,
     ProfileFragmentNode,
     ProfileIfNode,
     ProfileImportAs,
@@ -43,6 +45,8 @@ export type {
     ProfileDslChild,
     ProfileDslNode,
     ProfileFileChangeNoticeNode,
+    ProfilePromiseLedgerNode,
+    ProfileMentionedEntitiesNode,
     ProfileFragmentNode,
     ProfileIfNode,
     ProfileImportAs,
@@ -194,17 +198,19 @@ export function validateProfileTurnPlan(profileKey: string, plan: ProfileTurnPla
         }
         validateProfileRuntimeStateWrite(profileKey, write.value);
     }
-    if ((plan.turnContexts?.length ?? 0) > 1) {
-        throw new Error(`profile ${profileKey} 第一版只允许声明一个 FileChangeNotice。`);
-    }
+    const seenKinds = new Set<string>();
     for (const context of plan.turnContexts ?? []) {
         if (
-            context.kind !== "file-change-notice"
+            !["file-change-notice", "promise-ledger", "mentioned-entities"].includes(context.kind)
             || !Number.isInteger(context.appendingIndex)
             || context.appendingIndex < 0
         ) {
             throw new Error(`profile ${profileKey} turnContexts 非法。`);
         }
+        if (seenKinds.has(context.kind)) {
+            throw new Error(`profile ${profileKey} 声明了重复的 turnContext kind: ${context.kind}。`);
+        }
+        seenKinds.add(context.kind);
     }
 }
 
@@ -274,6 +280,28 @@ export function FileChangeNotice(props: {mode: FileChangeAwareness}): ProfileFil
     return {
         kind: "FileChangeNotice",
         mode: props.mode,
+    };
+}
+
+/**
+ * Profile 控制的读者债务账本恒定注入。
+ *
+ * 必须作为 AppendingSet 的直接子节点。
+ */
+export function PromiseLedger(): ProfilePromiseLedgerNode {
+    return {
+        kind: "PromiseLedger",
+    };
+}
+
+/**
+ * Profile 控制的提及实体按需注入。
+ *
+ * 必须作为 AppendingSet 的直接子节点。
+ */
+export function MentionedEntities(): ProfileMentionedEntitiesNode {
+    return {
+        kind: "MentionedEntities",
     };
 }
 
@@ -775,18 +803,40 @@ async function renderChild(state: CompileState, zone: RenderZone, child: Profile
         const messages: StoredAgentMessage[] = [];
         const baseIndex = state.plan.appendingMessages?.length ?? 0;
         for (const appendingChild of child.children) {
-            if (appendingChild && !Array.isArray(appendingChild) && typeof appendingChild === "object" && appendingChild.kind === "FileChangeNotice") {
-                if (appendingChild.mode !== "off") {
+            if (appendingChild && !Array.isArray(appendingChild) && typeof appendingChild === "object") {
+                if (appendingChild.kind === "FileChangeNotice") {
+                    if (appendingChild.mode !== "off") {
+                        state.plan.turnContexts = [
+                            ...state.plan.turnContexts ?? [],
+                            {
+                                kind: "file-change-notice",
+                                mode: appendingChild.mode,
+                                appendingIndex: baseIndex + messages.length,
+                            },
+                        ];
+                    }
+                    continue;
+                }
+                if (appendingChild.kind === "PromiseLedger") {
                     state.plan.turnContexts = [
                         ...state.plan.turnContexts ?? [],
                         {
-                            kind: "file-change-notice",
-                            mode: appendingChild.mode,
+                            kind: "promise-ledger",
                             appendingIndex: baseIndex + messages.length,
                         },
                     ];
+                    continue;
                 }
-                continue;
+                if (appendingChild.kind === "MentionedEntities") {
+                    state.plan.turnContexts = [
+                        ...state.plan.turnContexts ?? [],
+                        {
+                            kind: "mentioned-entities",
+                            appendingIndex: baseIndex + messages.length,
+                        },
+                    ];
+                    continue;
+                }
             }
             messages.push(...await renderChild(state, "appending", appendingChild));
         }
@@ -795,6 +845,12 @@ async function renderChild(state: CompileState, zone: RenderZone, child: Profile
     }
     if (child.kind === "FileChangeNotice") {
         throw new Error("FileChangeNotice 必须作为 AppendingSet 的直接子节点。");
+    }
+    if (child.kind === "PromiseLedger") {
+        throw new Error("PromiseLedger 必须作为 AppendingSet 的直接子节点。");
+    }
+    if (child.kind === "MentionedEntities") {
+        throw new Error("MentionedEntities 必须作为 AppendingSet 的直接子节点。");
     }
     if (child.kind === "Reminder") {
         if (zone !== "appending" && zone !== "model") {

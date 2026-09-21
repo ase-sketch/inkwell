@@ -563,6 +563,8 @@ export class NeuroAgentHarness {
     private readonly waitingAbortRecoveryInvocations = new Set<string>();
     private readonly invocationAcceptances = new Map<string, InvocationAcceptanceTracker>();
     private readonly invocationClientStates = new Map<string, ClientStateSnapshot | undefined>();
+    /** M2a：本轮 invocation 的用户输入，供 profile turn context 物化使用；terminal 时释放。 */
+    private readonly invocationPendingUserMessages = new Map<string, StoredUserMessage>();
     private readonly invocationVariableStates = new Map<string, VariableInvocationState>();
     private readonly invocationRuntimeStates = new Map<string, RunRuntimeState>();
     /** waiting/resume 期间保留 invocation 级模型覆盖；terminal 时随 invocation 状态一并释放。 */
@@ -1708,6 +1710,10 @@ export class NeuroAgentHarness {
         this.steerableSessions.add(input.sessionId);
         this.abortControllers.set(input.sessionId, abortController);
         this.invocationClientStates.set(invocationId, input.clientState);
+        if (pendingUserMessage) {
+            // M2a：本轮输入在 provider turn 2+ 仍需参与 mentioned-entities 触发。
+            this.invocationPendingUserMessages.set(invocationId, pendingUserMessage);
+        }
         this.invocationVariableStates.set(invocationId, {
             readFingerprints: new Map(),
             clientOverlay: normalizeClientState(input.clientState),
@@ -4063,6 +4069,9 @@ export class NeuroAgentHarness {
             project: configTarget.project,
             sessionId: snapshot.metadata.sessionId,
             diffMaxChars: runtimeSettings.fileChangeNotice.diffMaxChars,
+            // M2a：mentioned-entities 的触发源来自本轮输入与当前编辑器文件。
+            pendingUserMessage: options.pendingUserMessage,
+            selectedFilePath: readStudioSelectedFilePath(options.clientState),
         });
         const preparedWithTurnContext: ProfileTurnPlan = {
             ...prepared,
@@ -4807,6 +4816,9 @@ export class NeuroAgentHarness {
             project: this.projectForInvocation(frame.invocationId),
             sessionId: frame.sessionId,
             diffMaxChars: frame.fileChangeDiffMaxChars ?? 512,
+            // M2a：mentioned-entities 的触发源来自本轮输入与当前编辑器文件。
+            pendingUserMessage: this.invocationPendingUserMessages.get(frame.invocationId),
+            selectedFilePath: readStudioSelectedFilePath(this.invocationClientStates.get(frame.invocationId)),
         });
         const messages = materialized.insertions
             .sort((left, right) => left.appendingIndex - right.appendingIndex)
@@ -6897,6 +6909,7 @@ export class NeuroAgentHarness {
             this.waitingAbortRecoveryInvocations.delete(`${String(sessionId)}:${invocationId}`);
             this.invocationAbortGates.delete(invocationId);
             this.invocationClientStates.delete(invocationId);
+            this.invocationPendingUserMessages.delete(invocationId);
             this.invocationVariableStates.delete(invocationId);
             this.invocationRuntimeStates.delete(invocationId);
             this.invocationModelOverrides.delete(invocationId);
@@ -8393,6 +8406,16 @@ function createInvocationCompletion(): InvocationCompletion {
         },
     };
     return completion;
+}
+
+/**
+ * M2a：从 invocation client state 读取当前编辑器选中的 Project Workspace 文件。
+ *
+ * 只做读取与窄化，章节语义（是否 manuscript 章节 index.md）由 profile turn context 物化器判定。
+ */
+function readStudioSelectedFilePath(clientState: ClientStateSnapshot | undefined): string | null {
+    const selected = clientState?.studio?.selectedFilePath;
+    return typeof selected === "string" && selected.trim() ? selected : null;
 }
 
 /** 创建只会向公开调用方发布一次强制取消结果的 gate。 */

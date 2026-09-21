@@ -13,6 +13,8 @@ import {
     AgentCatalog,
     AppendingSet,
     FileChangeNotice,
+    PromiseLedger,
+    MentionedEntities,
     HistorySet,
     If,
     Import,
@@ -234,6 +236,125 @@ describe("profile TSX DSL", () => {
             mode: "full",
             appendingIndex: 1,
         }]);
+    });
+
+    it("PromiseLedger 和 MentionedEntities 由 Profile 在 AppendingSet 中声明位置", async () => {
+        const profile = defineRuntimeAgentProfile({
+            manifest: {key: "test.turn-contexts", name: "Turn Contexts"},
+            initialSchema: Type.Object({}),
+            tools: profileToolsFromKeys([]),
+            context() {
+                return ProfilePrompt({
+                    children: AppendingSet({
+                        children: [
+                            Message({children: "M1"}),
+                            FileChangeNotice({mode: "minimal"}),
+                            Message({children: "M2"}),
+                            PromiseLedger(),
+                            MentionedEntities(),
+                            Message({children: "M3"}),
+                        ],
+                    }),
+                });
+            },
+        });
+
+        const plan = await profile.prepare!(context());
+
+        expect((plan.appendingMessages ?? []).map(messageText)).toEqual(["M1", "M2", "M3"]);
+        expect(plan.turnContexts).toEqual([
+            {
+                kind: "file-change-notice",
+                mode: "minimal",
+                appendingIndex: 1,
+            },
+            {
+                kind: "promise-ledger",
+                appendingIndex: 2,
+            },
+            {
+                kind: "mentioned-entities",
+                appendingIndex: 2,
+            },
+        ]);
+    });
+
+    it("PromiseLedger 和 MentionedEntities 必须作为 AppendingSet 的直接子节点", async () => {
+        const profileWithLedgerInModel = defineRuntimeAgentProfile({
+            manifest: {key: "test.bad-ledger", name: "Bad Ledger"},
+            initialSchema: Type.Object({}),
+            tools: profileToolsFromKeys([]),
+            context() {
+                return ProfilePrompt({
+                    children: ModelContext({
+                        children: [PromiseLedger()],
+                    }),
+                });
+            },
+        });
+
+        await expect(profileWithLedgerInModel.prepare!(context())).rejects.toThrow("PromiseLedger 必须作为 AppendingSet 的直接子节点。");
+
+        const profileWithEntitiesInModel = defineRuntimeAgentProfile({
+            manifest: {key: "test.bad-entities", name: "Bad Entities"},
+            initialSchema: Type.Object({}),
+            tools: profileToolsFromKeys([]),
+            context() {
+                return ProfilePrompt({
+                    children: ModelContext({
+                        children: [MentionedEntities()],
+                    }),
+                });
+            },
+        });
+
+        await expect(profileWithEntitiesInModel.prepare!(context())).rejects.toThrow("MentionedEntities 必须作为 AppendingSet 的直接子节点。");
+    });
+
+    it("validateProfileTurnPlan 允许多个不同 kind turnContexts，同 kind 重复时报错指明具体 kind", () => {
+        // 不同 kind 共存通过校验
+        expect(() => validateProfileTurnPlan("test.dsl", {
+            turnContexts: [
+                {kind: "file-change-notice", mode: "minimal", appendingIndex: 0},
+                {kind: "promise-ledger", appendingIndex: 1},
+                {kind: "mentioned-entities", appendingIndex: 2},
+            ],
+        })).not.toThrow();
+
+        // 同 kind 重复报错指明 kind
+        expect(() => validateProfileTurnPlan("test.dsl", {
+            turnContexts: [
+                {kind: "promise-ledger", appendingIndex: 0},
+                {kind: "promise-ledger", appendingIndex: 1},
+            ],
+        })).toThrow("profile test.dsl 声明了重复的 turnContext kind: promise-ledger。");
+
+        expect(() => validateProfileTurnPlan("test.dsl", {
+            turnContexts: [
+                {kind: "file-change-notice", mode: "minimal", appendingIndex: 0},
+                {kind: "file-change-notice", mode: "full", appendingIndex: 1},
+            ],
+        })).toThrow("profile test.dsl 声明了重复的 turnContext kind: file-change-notice。");
+
+        expect(() => validateProfileTurnPlan("test.dsl", {
+            turnContexts: [
+                {kind: "mentioned-entities", appendingIndex: 0},
+                {kind: "mentioned-entities", appendingIndex: 1},
+            ],
+        })).toThrow("profile test.dsl 声明了重复的 turnContext kind: mentioned-entities。");
+
+        // 未知 kind 或非法 appendingIndex
+        expect(() => validateProfileTurnPlan("test.dsl", {
+            turnContexts: [
+                {kind: "unknown-kind" as any, appendingIndex: 0},
+            ],
+        })).toThrow("profile test.dsl turnContexts 非法。");
+
+        expect(() => validateProfileTurnPlan("test.dsl", {
+            turnContexts: [
+                {kind: "promise-ledger", appendingIndex: -1},
+            ],
+        })).toThrow("profile test.dsl turnContexts 非法。");
     });
 
     it("使用 profile runtimeDefaults compaction 配置", () => {

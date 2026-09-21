@@ -1,7 +1,7 @@
 # HANDOFF — Inkwell 交接文档
 
 > 给在本工作区新开会话的 Agent：按本文档接手，不用问用户已经敲定的事。
-> 交接时间：**2026-09-21**。状态：**M0 ✅ / M1a ✅ / M1b ✅ / M1c ✅（代写引擎整体下线，已收口推送）**；下一步进 **M2a**（M2 细化已敲定：M2a 上下文三件套 → M2c Skill 骨架 → M2b 卡文追问，见路线拍板 5）。
+> 交接时间：**2026-09-22**。状态：**M0 ✅ / M1a ✅ / M1b ✅ / M1c ✅ / M2a ✅（长篇上下文三件套，AI 门禁全绿已收口推送；里程碑手工验收待用户）**；下一步进 **M2c**（Skill 双轨骨架，验收口径见 docs/milestones.md）。
 
 ## 第一步：按顺序读这些文档
 
@@ -39,11 +39,12 @@ Inkwell = fork neuro-book 改造的小说创作辅助 agent：苏格拉底式追
 
 - [x] **M0** — Fork 基座跑通（2026-09-20）
 - [x] **M1a** — 访谈引擎行为闭环（2026-09-20；用户实测通过：阻塞追问 + 逐层不跳层）
-  - ⚠️ 挂账：三块齐备后的 lorebook 落盘未实测（用户访谈未走完三阶段），仍未回归
+  - ⚠️ 挂账部分消解（M2a）：落盘回归已有机器层承接（interview-anchor-writeback.test.ts：schema 解析链 + 编译后 prompt 静态断言 13 条）；**真实 LLM 端到端落盘仍未实测**（需用户走完一次三阶段访谈）
 - [x] **M1b — Codex 布局重排**（2026-09-21 用户手工验收通过，三批收口提交：壳代码 / harness 测试修复 / 调研文档，已推送 origin）
   - 交付：Codex 式壳、首次引导卡、会话归档/重命名、设定 9 类目全量、暖色编辑风、大纲/细纲文稿；演进记录与验收证据见归属笔记
 - [x] **M1c — 代写引擎整体下线**（2026-09-21 收口）：6 代写/RP profile + writer.home 54 文件 + 代写 SDK 底层 + 2 代写工作流 + rp-tick 文档删除；leader 提示词与参考文档改写为不代写主链；14 测试文件同步；验收=编译 EXIT=0 / app 487 绿 / typecheck EXIT=0 / server 3 红全为既有（stash 对照实验验证）。原范围备注：爆炸半径已侦察复核（6 profiles + writer.home 54 文件 + SDK 底层 + 代写工作流 + 14 个测试文件）；write-review-loop 一并下线、world.engine 保留、chapter-writing.md 评测旅程归档（2026-09-21 拍板）；inline.editor 实测为整个内联 AI 编辑功能本体（NovelPromptBar+controller+会话注入+兼容层），已拍板移出 M1c、M2.5 再定；决策笔记 .agents/notes/proposed/simplification/2026-09-21-writer-engine-removal.md
-- [ ] 里程碑线：M2a 上下文三件套 → M2c Skill 骨架 → M2b 卡文追问 → M2.5 码字基本盘 → M2.7 知识库呈现层 → M3 审稿质疑 → M4 资料阅读 → M5 访谈归档
+- [x] **M2a — 长篇上下文三件套**（2026-09-22 收口）：promise-ledger 恒定注入（open 伏笔每轮注入，10 条/1500 字符上限）+ mentioned-entities 按需注入（用户输入+当前章节正文触发，title/aliases/slug 匹配 lorebook，top-5/800 字符）+ 锚点规范（anchors schema 字段 + lorebook-anchors.md 三来源口径 + interview/leader 沉淀 prompt 同步）。机制面：turnContext 上限按 kind 放开、harness +23 行最小接线、当前章节口径服务。验收=agent 域 1491 绿/3 红全为既有基线、profile 编译 EXIT=0、新增测试 37 条全绿+变异测试实证。决策笔记 .agents/notes/implemented/feature/2026-09-22-m2a-context-injection.md（含已知限制：章节就绪门保守、followup 轮无用户输入触发、lorebook 全量扫描无缓存）。**手工验收待用户**（milestones M2a 节场景）
+- [ ] 里程碑线：~~M2a~~ → M2c Skill 骨架 → M2b 卡文追问 → M2.5 码字基本盘 → M2.7 知识库呈现层 → M3 审稿质疑 → M4 资料阅读 → M5 访谈归档
 
 ## 路线拍板（2026-09-21 全部敲定，勿重开）
 
@@ -85,6 +86,8 @@ Inkwell = fork neuro-book 改造的小说创作辅助 agent：苏格拉底式追
 - **新壳主区情境**由纯函数 `app/utils/ide-shell-layout.ts` 推导（`resolveIdeShellView`）；资产投影在 `app/utils/writing-assets.ts`（正文/大纲/细纲三投影）
 - **主题纪律**：只消费 `app/utils/theme/README.md` 登记变量；不足时优先用现有变量组合，不新增 Tailwind 调色板
 - `outline/` 节点会稳定产生 1 条 `external-content-node` WARN（content-node 根之外）。**对作者不可见**（新壳无 workspaceIssues UI），未处理；要清除需慎重（改 content-node 语义面大）
+- **测试框架纪律**：官方 runner 是 vitest（package.json test=vitest run，345 个测试文件 vitest 导入）；bun test 能兼容跑 vitest 导入，但 vitest 跑不了 bun:test 导入——**新测试一律 from "vitest"**（M2a 曾有两个文件误用 bun:test 已修）
+- `assets/workspace/` 下文件（profile 源、模板、.compiled 产物）被 .gitignore 的 workspace/ 规则通配忽略，提交一律 git add -f
 - **全量 `server/` 测试既有红（2026-09-21 M1c 后实测，Windows）：3 条**——`profile-compile-worker-preview` 1 条（dry-run preview，stash 对照实验证明与改动无关）、`world-engine-profile` 1 条（`NEURO_BOOK_REPOSITORY_ROOT` 未设）、`file-tools` 1–2 条（bash 用例 Windows 环境抖动）。M1c 前的 9 条记录（rp-profiles/simulation-director/profile-sdk-contract/workspace-files）已随代写下线消解。**`app/` 侧全绿，不要拿 server 的红当自己改坏的**
 
 ## 工作纪律

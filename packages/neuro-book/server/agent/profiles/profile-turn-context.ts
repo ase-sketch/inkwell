@@ -1,7 +1,24 @@
-import type {StoredAgentMessage} from "nbook/server/agent/messages/stored-types";
-import {createStoredUserMessage} from "nbook/server/agent/messages/message-utils";
-import {requireReadyModuleHandle} from "nbook/server/workspace-files/project-session";
+import type {StoredAgentMessage, StoredUserMessage} from "nbook/server/agent/messages/stored-types";
+import {createStoredUserMessage, messageText} from "nbook/server/agent/messages/message-utils";
+import {
+    activateReadyProjectModule,
+    requireReadyModuleHandle,
+} from "nbook/server/workspace-files/project-session";
 import type {ReadyProjectSessionRef} from "nbook/server/workspace-files/project-session-types";
+import {PROJECT_PLOT_WORLD_MODULE_TOKEN} from "nbook/server/plot";
+import {
+    readWorkspaceTextFile,
+    scanWorkspaceTree,
+    type WorkspaceFileNode,
+} from "nbook/server/workspace-files/workspace-files";
+import {absoluteFsPath} from "nbook/server/runtime/paths/file-path";
+import {appLogger} from "nbook/server/app-logs/logger";
+import {
+    parseManuscriptChapterPath,
+    readChapterContent,
+    resolveCurrentChapter,
+} from "nbook/server/agent/context/current-chapter-context";
+import type {StoryPromiseDto} from "nbook/shared/dto/plot.dto";
 import {
     advanceAgentCursor,
     PROJECT_HISTORY_MODULE_TOKEN,
@@ -22,12 +39,25 @@ import type {OperationActor, UnseenGroup} from "@notnotype/nb-history";
 
 export type FileChangeAwareness = "off" | "minimal" | "full";
 
-export type ProfileTurnContextPlan = {
-    kind: "file-change-notice";
-    mode: "minimal" | "full";
-    /** 在 AppendingSet 静态消息中的插入位置。 */
-    appendingIndex: number;
-};
+export type ProfileTurnContextKind = "file-change-notice" | "promise-ledger" | "mentioned-entities";
+
+export type ProfileTurnContextPlan =
+    | {
+        kind: "file-change-notice";
+        mode: "minimal" | "full";
+        /** 在 AppendingSet 静态消息中的插入位置。 */
+        appendingIndex: number;
+    }
+    | {
+        kind: "promise-ledger";
+        /** 在 AppendingSet 静态消息中的插入位置。 */
+        appendingIndex: number;
+    }
+    | {
+        kind: "mentioned-entities";
+        /** 在 AppendingSet 静态消息中的插入位置。 */
+        appendingIndex: number;
+    };
 
 export type ProfileTurnContextSettlement = {
     kind: "file-change-notice";
@@ -50,10 +80,24 @@ export type MaterializedProfileTurnContext = {
  * Profile Workbench dry-run 占位：展示节点位置与模式，但不读取真实 Project history。
  */
 export function previewProfileTurnContexts(plans: ProfileTurnContextPlan[], diffMaxChars = DEFAULT_AGENT_DIFF_MAX_CHARS): MaterializedProfileTurnContext["insertions"] {
-    return plans.map((plan) => ({
-        appendingIndex: plan.appendingIndex,
-        message: createStoredUserMessage(`<file-change-notice runtime-data="preview" mode="${plan.mode}" diff-max-chars="${diffMaxChars}">\nGenerated at runtime from project file changes not yet seen by this session.\n</file-change-notice>`),
-    }));
+    return plans.map((plan) => {
+        if (plan.kind === "file-change-notice") {
+            return {
+                appendingIndex: plan.appendingIndex,
+                message: createStoredUserMessage(`<file-change-notice runtime-data="preview" mode="${plan.mode}" diff-max-chars="${diffMaxChars}">\nGenerated at runtime from project file changes not yet seen by this session.\n</file-change-notice>`),
+            };
+        }
+        if (plan.kind === "promise-ledger") {
+            return {
+                appendingIndex: plan.appendingIndex,
+                message: createStoredUserMessage(`<promise-ledger runtime-data="preview">\nGenerated at runtime from open story promises.\n</promise-ledger>`),
+            };
+        }
+        return {
+            appendingIndex: plan.appendingIndex,
+            message: createStoredUserMessage(`<mentioned-entities runtime-data="preview">\nGenerated at runtime from mentioned entities.\n</mentioned-entities>`),
+        };
+    });
 }
 
 /**
@@ -66,10 +110,16 @@ export async function materializeProfileTurnContexts(input: {
     project: ReadyProjectSessionRef | null;
     sessionId: number;
     diffMaxChars: number;
+    /** 本轮用户输入；mentioned-entities 的触发源之一。 */
+    pendingUserMessage?: StoredUserMessage | null;
+    /** 当前打开的编辑器文件；仅当指向 manuscript 章节 index.md 时参与 mentioned-entities。 */
+    selectedFilePath?: string | null;
 }): Promise<MaterializedProfileTurnContext> {
     if (!input.project || input.plans.length === 0) {
         return {insertions: [], settlements: []};
     }
+    const insertions: MaterializedProfileTurnContext["insertions"] = [];
+    const settlements: ProfileTurnContextSettlement[] = [];
     let history: ProjectHistoryHandle;
     try {
         history = requireReadyModuleHandle(
@@ -79,9 +129,30 @@ export async function materializeProfileTurnContexts(input: {
     } catch {
         return {insertions: [], settlements: []};
     }
-    const insertions: MaterializedProfileTurnContext["insertions"] = [];
-    const settlements: ProfileTurnContextSettlement[] = [];
     for (const plan of input.plans) {
+        if (plan.kind === "promise-ledger") {
+            const text = await materializePromiseLedger(input.project);
+            if (text) {
+                insertions.push({
+                    appendingIndex: plan.appendingIndex,
+                    message: createStoredUserMessage(text),
+                });
+            }
+            continue;
+        }
+        if (plan.kind === "mentioned-entities") {
+            const text = await materializeMentionedEntities(input.project, {
+                pendingUserMessage: input.pendingUserMessage ?? null,
+                selectedFilePath: input.selectedFilePath ?? null,
+            });
+            if (text) {
+                insertions.push({
+                    appendingIndex: plan.appendingIndex,
+                    message: createStoredUserMessage(text),
+                });
+            }
+            continue;
+        }
         const groups = await readUnseenForAgent(history, input.sessionId);
         if (groups.length === 0) {
             continue;
@@ -104,6 +175,313 @@ export async function materializeProfileTurnContexts(input: {
     }
     return {insertions, settlements};
 }
+
+
+/**
+ * M2a 伏笔账本注入预算：首版内置于物化器，不进组件 props。
+ */
+export const PROMISE_LEDGER_MAX_ITEMS = 10;
+export const PROMISE_LEDGER_MAX_CHARS = 1500;
+
+/** M2a 提及实体注入预算。 */
+export const MENTIONED_ENTITIES_MAX_ITEMS = 5;
+export const MENTIONED_ENTITIES_MAX_BODY_CHARS = 800;
+
+/** 注入文本给模型统一定位：背景资料，供讨论参考，不逐字复述给用户。 */
+const PROMISE_LEDGER_PREAMBLE = "以下是背景资料，供你讨论时参考，不要逐字复述给用户。它是本项目当前未兑现的伏笔（Promise）账本，不是用户本轮的要求。";
+const MENTIONED_ENTITIES_PREAMBLE = "以下是背景资料，供你讨论时参考，不要逐字复述给用户。它们与用户本轮输入或当前章节正文直接相关，只在被提及时提供参考。";
+
+/**
+ * 物化 promise-ledger：经 Plot 模块句柄取未决伏笔。
+ *
+ * 零 open、取数失败或 Plot 模块不可用时返回 null（跳过注入）；异常只记 warn，不影响本轮对话。
+ */
+async function materializePromiseLedger(project: ReadyProjectSessionRef): Promise<string | null> {
+    try {
+        const plotWorld = await activateReadyProjectModule(project, PROJECT_PLOT_WORLD_MODULE_TOKEN);
+        const promises = await plotWorld.plot.listStoryPromises();
+        const open = promises.filter((promise) => promise.status === "open");
+        if (open.length === 0) {
+            return null;
+        }
+        return renderPromiseLedger(open);
+    } catch (error) {
+        await appLogger.warn("agent.profileTurnContext.promiseLedgerSkipped", {
+            reason: error instanceof Error ? error.message : String(error),
+        }, "promise-ledger 物化失败，跳过本轮注入。");
+        return null;
+    }
+}
+
+/**
+ * 渲染伏笔账本正文；超出条数或字符预算时截断并标注剩余条数。
+ */
+export function renderPromiseLedger(promises: StoryPromiseDto[]): string {
+    const header = ["<promise-ledger>", PROMISE_LEDGER_PREAMBLE];
+    const footer = ["</promise-ledger>"];
+    const lines: string[] = [];
+    let omitted = promises.length;
+    for (const promise of promises.slice(0, PROMISE_LEDGER_MAX_ITEMS)) {
+        const rendered = renderPromiseEntry(promise);
+        const rest = omitted - 1;
+        const candidate = rest > 0 ? [...lines, ...rendered, omittedPromiseLine(rest)] : [...lines, ...rendered];
+        if (charCount([...header, ...candidate, ...footer].join("\n")) > PROMISE_LEDGER_MAX_CHARS) {
+            break;
+        }
+        lines.push(...rendered);
+        omitted = rest;
+    }
+    if (omitted > 0) {
+        lines.push(omittedPromiseLine(omitted));
+    }
+    return [...header, ...lines, ...footer].join("\n");
+}
+
+/** 单条伏笔：结构化字段 + 来源 id，便于模型与人回溯账本。 */
+function renderPromiseEntry(promise: StoryPromiseDto): string[] {
+    const title = promise.title ? promise.title.trim() : "";
+    const label = title && title !== promise.name ? promise.name + "（" + title + "）" : promise.name;
+    const lines = ["- " + label + " [id=" + promise.id + "] importance=" + promise.importance];
+    const summary = compactLine(promise.summary);
+    if (summary) {
+        lines.push("  summary: " + summary);
+    }
+    if (promise.deadlineChapter) {
+        lines.push("  deadline: " + promise.deadlineChapter.title + "（" + promise.deadlineChapter.name + "）");
+    }
+    return lines;
+}
+
+/** 被预算截掉、未展开的伏笔数量。 */
+function omittedPromiseLine(count: number): string {
+    return "- 还有 " + String(count) + " 条未注入。";
+}
+
+/**
+ * 物化 mentioned-entities：扫描 lorebook 内容节点，按用户输入 + 当前章节正文命中。
+ *
+ * 零命中、扫描失败或模块不可用时返回 null（跳过注入）；异常只记 warn。
+ */
+async function materializeMentionedEntities(
+    project: ReadyProjectSessionRef,
+    input: {pendingUserMessage: StoredUserMessage | null; selectedFilePath: string | null},
+): Promise<string | null> {
+    const userText = input.pendingUserMessage ? messageText(input.pendingUserMessage).trim() : "";
+    if (!userText && !input.selectedFilePath) {
+        return null;
+    }
+    try {
+        const trigger = await resolveChapterTrigger(project, input.selectedFilePath);
+        if (!userText && !trigger.chapterBody) {
+            // 触发源为空时不做整棵 workspace 扫描。
+            return null;
+        }
+        const nodes = await scanWorkspaceTree({
+            root: absoluteFsPath(project.workspace.root),
+            pathPredicate: (entry) => trigger.chapterPath === null || entry.relativePath !== trigger.chapterPath,
+        });
+        const matches = matchLorebookEntries(nodes, [userText, trigger.chapterBody]);
+        if (matches.length === 0) {
+            return null;
+        }
+        const entries: Array<{path: string; title: string; body: string}> = [];
+        for (const match of matches) {
+            entries.push({
+                path: match.path,
+                title: match.title,
+                body: await readEntryBody(project.workspace.root, match.path),
+            });
+        }
+        return renderMentionedEntities(entries, trigger.chapterName);
+    } catch (error) {
+        await appLogger.warn("agent.profileTurnContext.mentionedEntitiesSkipped", {
+            reason: error instanceof Error ? error.message : String(error),
+        }, "mentioned-entities 物化失败，跳过本轮注入。");
+        return null;
+    }
+}
+
+/** 当前章节触发源；拿不到章节时只有用户输入参与匹配。 */
+type ChapterTrigger = {
+    chapterPath: string | null;
+    chapterName: string | null;
+    chapterBody: string | null;
+};
+
+const NO_CHAPTER_TRIGGER: ChapterTrigger = {chapterPath: null, chapterName: null, chapterBody: null};
+
+/**
+ * 解析当前章节触发源。
+ *
+ * 口径：selectedFilePath 必须指向 manuscript 章节 index.md，且该章能经 Plot 关联到 StoryChapter；
+ * 任一步拿不到就降级为只用用户输入，不抛错。
+ */
+async function resolveChapterTrigger(
+    project: ReadyProjectSessionRef,
+    selectedFilePath: string | null,
+): Promise<ChapterTrigger> {
+    const parsed = parseManuscriptChapterPath(selectedFilePath);
+    if (!parsed) {
+        return NO_CHAPTER_TRIGGER;
+    }
+    try {
+        const chapter = await resolveCurrentChapter(selectedFilePath, {project});
+        if (!chapter) {
+            return NO_CHAPTER_TRIGGER;
+        }
+        return {
+            chapterPath: parsed.manuscriptPath,
+            chapterName: chapter.chapterName,
+            chapterBody: await readChapterContent(parsed.manuscriptPath, {project}),
+        };
+    } catch {
+        return NO_CHAPTER_TRIGGER;
+    }
+}
+
+/** lorebook 内容节点匹配结果。 */
+type LorebookMatch = {
+    path: string;
+    title: string;
+    aliases: string[];
+    score: number;
+};
+
+/**
+ * 扫描 lorebook 内容节点目录，按 title / aliases / 目录 slug 命中排序。
+ *
+ * 匹配口径：中文直接子串包含；纯 ASCII 词按词边界匹配，避免 "art" 命中 "start"。
+ */
+export function matchLorebookEntries(nodes: WorkspaceFileNode[], triggerTexts: Array<string | null>): LorebookMatch[] {
+    const haystack = triggerTexts
+        .filter((text): text is string => typeof text === "string" && text.trim().length > 0)
+        .join("\n");
+    if (!haystack) {
+        return [];
+    }
+    const matches: LorebookMatch[] = [];
+    for (const node of nodes) {
+        if (!node.isDirectory || !node.contentNode || !node.path.startsWith("lorebook/")) {
+            continue;
+        }
+        const directory = node.path.replace(/\/+$/u, "");
+        const title = typeof node.frontmatter.title === "string" ? node.frontmatter.title.trim() : node.title.trim();
+        const aliases = Array.isArray(node.frontmatter.aliases)
+            ? node.frontmatter.aliases.filter((alias): alias is string => typeof alias === "string" && alias.trim().length > 0)
+            : [];
+        const slug = directory.slice(directory.lastIndexOf("/") + 1);
+        let score = 0;
+        if (title && containsTrigger(haystack, title)) {
+            score += 100 + charCount(title);
+        }
+        for (const alias of aliases) {
+            if (containsTrigger(haystack, alias)) {
+                score += 60 + charCount(alias);
+            }
+        }
+        if (containsTrigger(haystack, slug)) {
+            score += 20 + charCount(slug);
+        }
+        if (score > 0) {
+            matches.push({path: directory, title: title || slug, aliases, score});
+        }
+    }
+    return matches
+        .sort((left, right) => right.score - left.score || left.path.localeCompare(right.path))
+        .slice(0, MENTIONED_ENTITIES_MAX_ITEMS);
+}
+
+/** 中文按子串包含；纯 ASCII 词按词边界匹配。 */
+export function containsTrigger(haystack: string, needle: string): boolean {
+    const value = needle.trim();
+    if (!value) {
+        return false;
+    }
+    if (!/^[\x20-\x7e]+$/u.test(value)) {
+        return haystack.includes(value);
+    }
+    const lowerHaystack = haystack.toLowerCase();
+    const lowerValue = value.toLowerCase();
+    let index = lowerHaystack.indexOf(lowerValue);
+    while (index >= 0) {
+        const before = lowerHaystack.slice(index - 1, index);
+        const after = lowerHaystack.slice(index + lowerValue.length, index + lowerValue.length + 1);
+        if (!isAsciiWordChar(before) && !isAsciiWordChar(after)) {
+            return true;
+        }
+        index = lowerHaystack.indexOf(lowerValue, index + 1);
+    }
+    return false;
+}
+
+/** ASCII 词字符判定；英文触发词只在这些字符之外才算独立命中。 */
+function isAsciiWordChar(value: string): boolean {
+    return /[0-9a-z]/u.test(value);
+}
+
+/** 读取条目正文；失败时按空正文处理，不影响其余条目。 */
+async function readEntryBody(workspaceRoot: string, directory: string): Promise<string> {
+    try {
+        const content = await readWorkspaceTextFile(absoluteFsPath(workspaceRoot), directory + "/index.md");
+        return parseLorebookBody(content);
+    } catch (error) {
+        await appLogger.warn("agent.profileTurnContext.entityBodyUnreadable", {
+            path: directory,
+            reason: error instanceof Error ? error.message : String(error),
+        }, "lorebook 条目正文读取失败，按空正文注入。");
+        return "";
+    }
+}
+
+/** 去掉 frontmatter，只保留条目正文。 */
+export function parseLorebookBody(content: string): string {
+    const matched = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/u.exec(content);
+    return (matched ? content.slice(matched[0].length) : content).trim();
+}
+
+/** 渲染提及实体正文；逐条标注 lorebook 来源路径，单条正文超预算时截断。 */
+export function renderMentionedEntities(
+    entries: Array<{path: string; title: string; body: string}>,
+    chapterName: string | null = null,
+): string {
+    const trigger = chapterName ? "用户本轮输入与当前章节正文" : "用户本轮输入";
+    const lines = ["<mentioned-entities>", MENTIONED_ENTITIES_PREAMBLE, "触发来源：" + trigger + "。"];
+    for (const entry of entries) {
+        lines.push("## " + entry.title);
+        lines.push("来源：" + entry.path + "/index.md");
+        const body = compactBody(entry.body);
+        if (!body) {
+            lines.push("（本条暂无正文。）");
+            continue;
+        }
+        const truncated = charCount(body) > MENTIONED_ENTITIES_MAX_BODY_CHARS;
+        lines.push(truncated ? truncate(body, MENTIONED_ENTITIES_MAX_BODY_CHARS) + "…（本条正文已截断）" : body);
+    }
+    lines.push("</mentioned-entities>");
+    return lines.join("\n");
+}
+
+/** 按字符预算截断。 */
+function truncate(value: string, maxChars: number): string {
+    const characters = Array.from(value);
+    return characters.length <= maxChars ? value : characters.slice(0, maxChars).join("");
+}
+
+/** 单行化 optional 字段，避免注入文本出现空行噪声。 */
+function compactLine(value: string | null | undefined): string {
+    return typeof value === "string" ? value.replace(/\s+/gu, " ").trim() : "";
+}
+
+/** 正文保留原有换行，只压缩超长连续空行。 */
+function compactBody(value: string): string {
+    return value.replace(/\n{3,}/gu, "\n\n").trim();
+}
+
+/** Agent 字符预算按 Unicode code point 计数，与既有提醒保持一致。 */
+function charCount(value: string): number {
+    return Array.from(value).length;
+}
+
 
 /**
  * 把动态 AppendingSet 消息插回 profile 声明的位置。

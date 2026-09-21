@@ -28,6 +28,14 @@ export const WorkspaceContentRefSchema = z.object({
     note: z.string().nullable().describe("引用说明。"),
 }).describe("结构化引用。");
 
+export const WorkspaceContentAnchorSchema = z.object({
+    chapter: z.string().min(1).describe("manuscript 章节目录名（如 001-chapter）或 Plot 章节 name。"),
+    quote: z.string().min(1).describe("原文引用片段。"),
+    note: z.string().optional().describe("锚点说明或出处备注。"),
+}).describe("条目章节与原文引用锚点。");
+
+export type WorkspaceContentAnchor = z.infer<typeof WorkspaceContentAnchorSchema>;
+
 export const WorkspaceRetrievalSchema = z.object({
     enabled: z.boolean().describe("是否允许该内容节点进入 AI 自动检索候选。"),
     trigger: z.string().nullable().describe("自然语言触发条件；为空表示不需要额外触发判断。"),
@@ -55,6 +63,7 @@ export const WorkspaceContentFrontmatterSchema = z.looseObject({
     tags: z.array(z.string()).describe("中文短标签列表。标签必须有明确分类意义、易理解、可复用；不要为了填字段随意设置标签。"),
     summary: z.string().describe("节点摘要。"),
     refs: z.array(WorkspaceContentRefSchema).describe("结构化引用列表。"),
+    anchors: z.array(WorkspaceContentAnchorSchema).optional().describe("条目锚点列表，记录设定在正文或大纲中的出处章节与原文引用。"),
     retrieval: WorkspaceRetrievalSchema,
     governance: WorkspaceGovernanceSchema,
     ext: FreeObjectSchema,
@@ -99,6 +108,7 @@ export function createWorkspaceContentFrontmatterDefaults(input: {
         tags: [],
         summary: "",
         refs: [],
+        anchors: [],
         retrieval: {
             enabled: true,
             trigger: null,
