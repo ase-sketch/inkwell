@@ -44,4 +44,6 @@ Date: 2026-09-22
 
 - 服务端测试：注入 16 条（profile-turn-context-injection.test.ts，真实 fs 夹具）+ 落盘回归 13 条（interview-anchor-writeback.test.ts，真实 YAML+Zod 解析链 + 编译后 prompt 静态断言）+ schema 8 条 + turn-context/dsl/章节口径 既有与新增全绿；变异测试证明测试绑定行为（去 open 过滤 → 2 红；关 alias/预算/截断 → 6 红，均还原）。
 - 编译：两个改动 profile 编译 EXIT=0。
-- 里程碑验收（docs/milestones.md M2a 节）：≥30 条目、≥5 未决伏笔文稿上抽查 3 轮注入 + 随机抽 5 条正文后 AI 沉淀条目查锚点——由用户手工试用完成（最终验收）。
+- 里程碑验收（docs/milestones.md M2a 节）：**2026-09-22 真实 LLM 实证通过**——新项目 m2a-yan-shou-2（32 条目含 24 干扰项、7 伏笔=5 open+1 fulfilled+1 abandoned、章节正文），leader.default 四轮真实对话：6/6 次 promise-ledger 注入精确（5 open 全覆盖、0 已闭泄漏）；6/6 次 mentioned-entities 精确（别名「云哥/楼主」与 title 全命中、章节正文命中黑鸦堡、零无关泄漏）；模型实际引用注入内容作答，并主动引用锚点规范拒绝在无正文依据时编造 quote（正确区分 interview/generated 口径）。锚点机器门禁由 m2a-context-acceptance.test.ts 常驻。
+- 已知小问题（后续抛光，不阻塞）：用户输入含「lorebook」一词时目录 slug 会命中 lorebook 根节点（世界书说明文件）造成轻度过命中。
+- API 驱动教训：Nitro 路由后缀不进 URL——/api/projects/open.post 会被 SPA fallback 吃掉返回 200 HTML，正确路径是 /api/projects/open；项目数据面需要先 open + presence SSE 保活（presence 归零进 grace 后数据面 409）。
