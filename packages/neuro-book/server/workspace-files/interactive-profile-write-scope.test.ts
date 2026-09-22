@@ -9,7 +9,7 @@ import {closeAllProjects, openProject} from "nbook/server/workspace-files/projec
 import type {ReadyProjectSessionRef} from "nbook/server/workspace-files/project-session-types";
 
 /** 持有写入域白名单的交互型 profile。 */
-const INTERACTIVE_PROFILES = ["leader.default", "interview.new-book"] as const;
+const INTERACTIVE_PROFILES = ["leader.default", "interview.new-book", "interview.stuck"] as const;
 /** 非交互型 profile：必须完全不受写入域影响。 */
 const NON_INTERACTIVE_PROFILE = "leader.assets";
 const WRITE_OPERATIONS = ["write", "edit", "apply_patch"] as const;

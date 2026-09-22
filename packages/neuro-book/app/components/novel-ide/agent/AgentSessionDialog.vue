@@ -180,6 +180,8 @@ function profileDisplayName(profileKey: string): string {
     switch (profileKey) {
         case "leader.assets": return t("agent.profiles.leaderAssets");
         case "leader.default": return t("agent.profiles.leaderDefault");
+        case "interview.new-book": return t("agent.profiles.interviewNewBook");
+        case "interview.stuck": return t("agent.profiles.interviewStuck");
         case "summarizer": return t("agent.profiles.summarizer");
         case "memory.curator": return t("agent.profiles.memoryCurator");
         case "researcher": return t("agent.profiles.researcher");

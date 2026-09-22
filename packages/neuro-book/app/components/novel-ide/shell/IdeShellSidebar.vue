@@ -3,7 +3,7 @@ import NovelIdeAccountMenu from "nbook/app/components/novel-ide/NovelIdeAccountM
 import Tooltip from "nbook/app/components/common/Tooltip.vue";
 import {useResizablePanel} from "nbook/app/composables/useResizablePanel";
 import {useNovelIdeStore} from "nbook/app/stores/novel-ide";
-import {groupSessionsByRecency, type IdeRailEntryId} from "nbook/app/utils/ide-shell-layout";
+import {formatSessionRelativeTime, groupSessionsByRecency, type IdeRailEntryId} from "nbook/app/utils/ide-shell-layout";
 import type {AuthUserDto} from "nbook/shared/dto/auth.dto";
 import type {AgentSessionSummaryDto} from "nbook/shared/dto/agent-session.dto";
 
@@ -212,19 +212,22 @@ function sessionDotClass(session: AgentSessionSummaryDto): string {
                     </h3>
                     <div
                         v-else
-                        class="group flex h-8 w-full items-center rounded-md transition-colors"
+                        class="group flex min-h-[38px] w-full items-center rounded-md py-1 transition-colors"
                         :class="row.session.sessionId === activeSessionId ? 'bg-[var(--bg-hover)]' : 'hover:bg-[var(--bg-hover)]'"
                     >
                         <button
                             type="button"
-                            class="flex h-full min-w-0 flex-1 items-center gap-2 px-2.5 text-left text-[12px]"
+                            class="flex min-w-0 flex-1 items-start gap-2 px-2.5 text-left text-[12px]"
                             :class="row.session.sessionId === activeSessionId ? 'font-medium text-[var(--text-main)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-main)]'"
                             :data-session-id="row.session.sessionId"
                             :title="sessionTitle(row.session)"
                             @click="emit('select-session', row.session.sessionId)"
                         >
-                            <span class="h-1.5 w-1.5 shrink-0 rounded-full" :class="sessionDotClass(row.session)"></span>
-                            <span class="min-w-0 flex-1 truncate">{{ sessionTitle(row.session) }}</span>
+                            <span class="mt-1 h-1.5 w-1.5 shrink-0 rounded-full" :class="sessionDotClass(row.session)"></span>
+                            <div class="min-w-0 flex-1">
+                                <div class="truncate leading-tight">{{ sessionTitle(row.session) }}</div>
+                                <div class="mt-0.5 truncate text-[10px] text-[var(--text-muted)]">{{ formatSessionRelativeTime(row.session.updatedAt) }}</div>
+                            </div>
                         </button>
                         <span class="flex shrink-0 items-center gap-0.5 pr-1.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
                             <button

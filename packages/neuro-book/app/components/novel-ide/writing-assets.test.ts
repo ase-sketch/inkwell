@@ -20,6 +20,8 @@ import {
     resolveOutlineTitle,
     resolveWritingAssetKind,
     resolveWritingAssetLabel,
+    resolveWritingNodeDisplayLabel,
+    isRawWritingDirectoryName,
 } from "nbook/app/utils/writing-assets";
 
 function node(overrides: Partial<WorkspaceFileNode> & {path: string}): WorkspaceFileNode {
@@ -307,7 +309,25 @@ describe("Outline and beat projection", () => {
         expect(resolveWritingAssetLabel("outline/001-volume")).toBe("第 1 卷");
         expect(resolveWritingAssetLabel("outline/001-volume/003-chapter")).toBe("第 3 章");
         expect(resolveWritingAssetLabel("manuscript/001-volume/001-chapter/index.md")).toBe("第 1 章");
+        // 支持 001-vol / 001-ch / 002-out 简写
+        expect(resolveWritingAssetLabel("manuscript/001-vol")).toBe("第 1 卷");
+        expect(resolveWritingAssetLabel("manuscript/001-vol/001-ch")).toBe("第 1 章");
+        expect(resolveWritingAssetLabel("manuscript/001-vol/001-ch/index.md")).toBe("第 1 章");
+        expect(resolveWritingAssetLabel("outline/002-out")).toBe("大纲 2");
         // 认不出来的路径原样返回，界面不会拿到空标题。
         expect(resolveWritingAssetLabel("outline/notes.md")).toBe("notes.md");
+    });
+
+    it("resolveWritingNodeDisplayLabel 能兜底原始目录名并保留作者自定义标题", () => {
+        // 原始目录名与 index.md 兜底翻译成作者向标签
+        expect(resolveWritingNodeDisplayLabel({path: "manuscript/001-vol", title: "001-vol"})).toBe("第 1 卷");
+        expect(resolveWritingNodeDisplayLabel({path: "manuscript/001-vol/001-ch", title: "001-ch"})).toBe("第 1 章");
+        expect(resolveWritingNodeDisplayLabel({path: "manuscript/001-volume/001-chapter", title: "001-chapter"})).toBe("第 1 章");
+        expect(resolveWritingNodeDisplayLabel({path: "manuscript/001-vol/001-ch/index.md", title: "index.md"})).toBe("第 1 章");
+        expect(resolveWritingNodeDisplayLabel({path: "manuscript/001-vol", title: ""})).toBe("第 1 卷");
+
+        // 作者显式输入的真实自定义标题必须被保留
+        expect(resolveWritingNodeDisplayLabel({path: "manuscript/001-vol/001-ch", title: "第一章 破晓"})).toBe("第一章 破晓");
+        expect(resolveWritingNodeDisplayLabel({path: "outline/notes.md", title: "世界观设定初稿"})).toBe("世界观设定初稿");
     });
 });

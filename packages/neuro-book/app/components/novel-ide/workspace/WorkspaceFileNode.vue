@@ -16,6 +16,7 @@ import {
     readWorkspaceLorebookType,
 } from "nbook/app/components/novel-ide/workspace/workspace-entry-meta";
 import {readLucideIconClass} from "nbook/app/utils/lucide-icons";
+import {resolveWritingAssetLabel, resolveWritingNodeDisplayLabel} from "nbook/app/utils/writing-assets";
 
 const props = withDefaults(defineProps<{
     node: WorkspaceTreeNode;
@@ -70,12 +71,31 @@ const displayIconClass = computed(() => {
     return iconClass.value;
 });
 const nodeName = computed(() => basename(props.node.path).replace(/\.md$/i, ""));
-const nodeTitle = computed(() => {
-    if (isWorkspaceContentDirectoryNode(props.node) && (!props.node.title || props.node.title.toLowerCase() === "index.md")) {
-        return nodeName.value || props.node.path;
+const nodeTitle = computed(() => resolveWritingNodeDisplayLabel(props.node));
+
+function humanizeEntryType(entryType: string | null | undefined): string {
+    if (!entryType) return "";
+    switch (entryType) {
+        case "volume": return "卷";
+        case "chapter": return "章节";
+        case "outline": return "大纲";
+        case "beat": return "细纲";
+        case "thread": return "线程";
+        case "scene": return "场景";
+        case "plot": return "情节";
+        case "character": return "人物";
+        case "location": return "地点";
+        case "faction": return "势力";
+        case "item": return "物品";
+        case "rule": return "规则";
+        case "world": return "世界观";
+        case "note": return "笔记";
+        case "plan": return "计划";
+        case "folder": return "目录";
+        case "file": return "文件";
+        default: return entryType;
     }
-    return props.node.title || nodeName.value || props.node.path;
-});
+}
 let selectTimer: number | null = null;
 
 /**
@@ -184,14 +204,14 @@ function basename(filePath: string): string {
  */
 function resolveDirectoryMeta(name: string): {icon: string; colorClass: string; label: string} | null {
     if (name === "lorebook") {
-        return {icon: "i-lucide-library", colorClass: "text-[var(--accent-text)]", label: "lore"};
+        return {icon: "i-lucide-library", colorClass: "text-[var(--accent-text)]", label: "设定"};
     }
     if (name === "manuscript" || name === "chapter" || name === "chapters") {
-        return {icon: "i-lucide-book-open-text", colorClass: "text-[var(--status-info)]", label: "chapter"};
+        return {icon: "i-lucide-book-open-text", colorClass: "text-[var(--status-info)]", label: "正文"};
     }
     if (name === "location" || name === "character" || name === "item" || name === "rule" || name === "note") {
         const meta = getWorkspaceLorebookTypeMeta(name);
-        return {icon: meta.icon, colorClass: meta.iconClass.split(" ")[0] ?? "text-[var(--text-main)]", label: name};
+        return {icon: meta.icon, colorClass: meta.iconClass.split(" ")[0] ?? "text-[var(--text-main)]", label: humanizeEntryType(name)};
     }
     return null;
 }
@@ -298,13 +318,13 @@ onUnmounted(() => {
                     {{ nodeName }}
                 </span>
                 <span v-else-if="node.entryType" class="max-w-[84px] shrink-0 truncate text-[10px] opacity-60">
-                    {{ node.entryType }}
+                    {{ humanizeEntryType(node.entryType) }}
                 </span>
                 <span v-else-if="directoryMeta" class="max-w-[72px] shrink-0 truncate text-right text-[10px] opacity-45">
                     {{ directoryMeta.label }}
                 </span>
                 <span v-else-if="isContentIndexFile" class="shrink-0 text-[10px] text-[var(--text-muted)] opacity-45">
-                    node
+                    正文
                 </span>
                 <span v-if="isLorebookEntry" class="ml-auto h-1.5 w-1.5 shrink-0 rounded-full" :class="statusIndicatorClass" :title="statusLabel"></span>
                 <span v-else-if="node.status" class="ml-auto h-1.5 w-1.5 shrink-0 rounded-full" :class="node.status === 'active' ? 'bg-[var(--status-success)]' : node.status === 'pending' ? 'bg-[var(--status-info)]' : node.status === 'draft' ? 'bg-[var(--status-warning)]' : 'bg-[var(--text-muted)]'" :title="node.status"></span>

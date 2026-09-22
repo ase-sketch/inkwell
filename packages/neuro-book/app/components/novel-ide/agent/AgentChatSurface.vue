@@ -392,6 +392,7 @@ const createProfileOptions = computed<LeaderCreateProfileOption[]>(() => {
         options.push(
             {profileKey: "leader.default", label: profileDisplayName("leader.default"), iconClass: profileIconClass("leader.default")},
             {profileKey: "interview.new-book", label: profileDisplayName("interview.new-book"), iconClass: profileIconClass("interview.new-book")},
+            {profileKey: "interview.stuck", label: profileDisplayName("interview.stuck"), iconClass: profileIconClass("interview.stuck")},
         );
     }
     const seen = new Set<string>();
@@ -657,6 +658,7 @@ function profileDisplayName(profileKey: string): string {
         case "leader.assets": return t("agent.profiles.leaderAssets");
         case "leader.default": return t("agent.profiles.leaderDefault");
         case "interview.new-book": return t("agent.profiles.interviewNewBook");
+        case "interview.stuck": return t("agent.profiles.interviewStuck");
         default: return profileKey;
     }
 }
@@ -669,6 +671,7 @@ function profileIconClass(profileKey: string): string {
         case "leader.assets": return "i-lucide-folder-heart";
         case "leader.default": return "i-lucide-sparkles";
         case "interview.new-book": return "i-lucide-book-open-text";
+        case "interview.stuck": return "i-lucide-life-buoy";
         default: return "i-lucide-bot";
     }
 }
@@ -1095,11 +1098,21 @@ const ensureSessionReadyInternal = async (
     if (!acceptsActivation(attempt)) {
         return sessions.value;
     }
-    if (sessionListTotal.value === 0) {
+    if (sessionListTotal.value === 0 || list.length === 0) {
         surfaceActivation.markEmpty(attempt, sessionScopeKey.value);
-    } else {
-        surfaceActivation.markUnselected(attempt, sessionScopeKey.value);
+        return list;
     }
+    const mostRecent = [...list].sort((left, right) => right.updatedAt - left.updatedAt)[0];
+    if (mostRecent) {
+        const loaded = await loadSession(mostRecent.sessionId, {
+            attempt,
+            recoverMissing: true,
+        });
+        if (loaded.status === "loaded" || loaded.status === "superseded") {
+            return sessions.value;
+        }
+    }
+    surfaceActivation.markUnselected(attempt, sessionScopeKey.value);
     return list;
 };
 
@@ -3823,6 +3836,10 @@ defineExpose({
     archiveSessionFromDialog,
     restoreSessionFromDialog,
     renameSessionFromDialog,
+    sendMessage: async (text: string): Promise<void> => {
+        inputText.value = text;
+        await send();
+    },
 });
 
 /**
@@ -4368,6 +4385,7 @@ function saveLastSession(sessionId: number, sessionIdentity: AgentSessionIdentit
                 <IdeChatEmptyState
                     :selected="surfaceActivation.state.value.status !== 'unselected'"
                     :current-user="props.currentUser"
+                    :profile-key="activeSummary?.profileKey"
                     @start-interview="void createSessionFromHeader('interview.new-book')"
                 />
             </div>

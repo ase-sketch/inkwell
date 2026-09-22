@@ -2,7 +2,14 @@
 import {storeToRefs} from "pinia";
 import WorkspaceFileTree from "nbook/app/components/novel-ide/workspace/WorkspaceFileTree.vue";
 import {useNovelIdeStore, type WorkspaceFileNode} from "nbook/app/stores/novel-ide";
-import {groupBeatDocuments, projectBeatTree, projectOutlineTree, resolveWritingAssetLabel} from "nbook/app/utils/writing-assets";
+import {
+    groupBeatDocuments,
+    projectBeatTree,
+    projectOutlineTree,
+    projectWritingTree,
+    resolveWritingAssetLabel,
+    resolveWritingNodeDisplayLabel,
+} from "nbook/app/utils/writing-assets";
 
 /**
  * 写作资产面板：正文 / 大纲 / 细纲三个分区，各区自带新建按钮。
@@ -23,13 +30,24 @@ const outlineExpandedPaths = ref<string[]>([]);
 const beatExpandedPaths = ref<string[]>([]);
 const collapsedSections = ref<string[]>([]);
 
+function humanizeWritingNode(node: WorkspaceFileNode): WorkspaceFileNode {
+    const displayTitle = resolveWritingNodeDisplayLabel(node);
+    if (displayTitle !== node.title) {
+        return {...node, title: displayTitle};
+    }
+    return node;
+}
+
 /** 作者视角的正文树：只保留 manuscript/，内部文件不进这里。 */
-const writingNodes = computed(() => projectWritingTree(workspaceTree.value));
+const writingNodes = computed(() => projectWritingTree(workspaceTree.value).map(humanizeWritingNode));
 /** 大纲（总纲）：outline/ 根层文档。 */
-const outlineNodes = computed(() => projectOutlineTree(workspaceTree.value));
+const outlineNodes = computed(() => projectOutlineTree(workspaceTree.value).map(humanizeWritingNode));
 /** 细纲：outline/<NNN>-volume/<NNN>-chapter，与正文卷章同构。 */
-const beatNodes = computed(() => projectBeatTree(workspaceTree.value));
-const beatGroups = computed(() => groupBeatDocuments(beatNodes.value));
+const beatNodes = computed(() => projectBeatTree(workspaceTree.value).map(humanizeWritingNode));
+const beatGroups = computed(() => groupBeatDocuments(beatNodes.value).map((group) => ({
+    ...group,
+    entries: group.entries.map(humanizeWritingNode),
+})));
 
 /** 目录默认展开，让作者一眼看到自己有哪几章。 */
 function defaultExpandedPaths(nodes: WorkspaceFileNode[]): string[] {
@@ -62,13 +80,9 @@ function toggleSection(id: string): void {
         : [...collapsedSections.value, id];
 }
 
-/** 细纲行标签：目录节点没有标题时翻译成作者话。 */
+/** 节点标签：目录节点没有标题或为机器名时翻译成作者话。 */
 function nodeLabel(node: WorkspaceFileNode): string {
-    const title = node.title.trim();
-    if (title && !/^index\.md$/i.test(title)) {
-        return title;
-    }
-    return resolveWritingAssetLabel(node.path);
+    return resolveWritingNodeDisplayLabel(node);
 }
 </script>
 

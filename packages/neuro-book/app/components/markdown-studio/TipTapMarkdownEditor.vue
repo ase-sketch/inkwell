@@ -79,6 +79,7 @@ const emit = defineEmits<{
     (e: "inline-comments-change", comments: MarkdownInlineCommentItem[]): void;
     (e: "inline-comment-select", index: number): void;
     (e: "inline-ai-reference", reference: InlineEditReference): void;
+    (e: "stuck-interview", reference: InlineEditReference): void;
 }>();
 
 const {prompt} = useDialog();
@@ -804,6 +805,41 @@ function addAiReferenceFromSelection(): void {
 }
 
 /**
+ * 从当前选区触发卡文追问。
+ */
+function startStuckInterviewFromSelection(): void {
+    const currentEditor = editor.value;
+    const path = props.activePath.trim();
+    if (!path) {
+        notification.warning(t("markdownStudio.editor.currentPathMissing"));
+        return;
+    }
+
+    const text = selectedClipboardText().trim();
+    if (!text) {
+        notification.warning(t("markdownStudio.editor.selectBodyFirst"));
+        return;
+    }
+
+    const locatedFromEditor: SelectionRangeLocation = currentEditor ? locateSelectionRangeFromEditor(currentEditor) : {match: "unknown"};
+    const located = locatedFromEditor.match === "unique"
+        ? locatedFromEditor
+        : locateSelectionRange(getMarkdown(), text);
+    const textRange = currentEditor ? locateInlineAiSelectionTextRange(currentEditor) : undefined;
+    emit("stuck-interview", {
+        ref: buildSelectionRefChip({
+            path,
+            range: located.range,
+        }),
+        path,
+        range: located.range,
+        textRange,
+        match: located.match,
+        text,
+    });
+}
+
+/**
  * 当前选区是否包含内容。
  */
 function hasSelection(): boolean {
@@ -1253,6 +1289,7 @@ function isSaveShortcut(event: KeyboardEvent): boolean {
             @add-ruby="void addRubyFromMenu()"
             @add-bilingual="void addBilingualFromMenu()"
             @add-ai-reference="addAiReferenceFromSelection"
+            @stuck-interview="startStuckInterviewFromSelection"
         />
 
         <ReferenceSelectorPopover

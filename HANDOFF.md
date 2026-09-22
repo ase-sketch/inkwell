@@ -1,7 +1,7 @@
 # HANDOFF — Inkwell 交接文档
 
 > 给在本工作区新开会话的 Agent：按本文档接手，不用问用户已经敲定的事。
-> 交接时间：**2026-09-22**。状态：**M0 ✅ / M1a ✅ / M1b ✅ / M1c ✅ / M2a ✅ / M2c ✅（Skill 双轨骨架，真实 LLM 验收通过：拷入即生效/\$key 真注入/红线物理拦截/删除即失效）**；下一步进 **M2b**（卡文追问，以 skill 形态交付，验收口径见 docs/milestones.md）。
+> 交接时间：**2026-09-22**。状态：**M0 ✅ / M1a ✅ / M1b ✅ / M1c ✅ / M2a ✅ / M2c ✅ / M2b ✅（卡文追问：划词入口+interview.stuck+ka-wen skill，真实 UI+LLM 验收通过）**；下一步进 **M2.5**（码字基本盘，含 inline.editor 边界重设计与红线缺口处置）。
 
 ## 第一步：按顺序读这些文档
 
@@ -45,7 +45,8 @@ Inkwell = fork neuro-book 改造的小说创作辅助 agent：苏格拉底式追
 - [x] **M1c — 代写引擎整体下线**（2026-09-21 收口）：6 代写/RP profile + writer.home 54 文件 + 代写 SDK 底层 + 2 代写工作流 + rp-tick 文档删除；leader 提示词与参考文档改写为不代写主链；14 测试文件同步；验收=编译 EXIT=0 / app 487 绿 / typecheck EXIT=0 / server 3 红全为既有（stash 对照实验验证）。原范围备注：爆炸半径已侦察复核（6 profiles + writer.home 54 文件 + SDK 底层 + 代写工作流 + 14 个测试文件）；write-review-loop 一并下线、world.engine 保留、chapter-writing.md 评测旅程归档（2026-09-21 拍板）；inline.editor 实测为整个内联 AI 编辑功能本体（NovelPromptBar+controller+会话注入+兼容层），已拍板移出 M1c、M2.5 再定；决策笔记 .agents/notes/proposed/simplification/2026-09-21-writer-engine-removal.md
 - [x] **M2a — 长篇上下文三件套**（2026-09-22 收口）：promise-ledger 恒定注入（open 伏笔每轮注入，10 条/1500 字符上限）+ mentioned-entities 按需注入（用户输入+当前章节正文触发，title/aliases/slug 匹配 lorebook，top-5/800 字符）+ 锚点规范（anchors schema 字段 + lorebook-anchors.md 三来源口径 + interview/leader 沉淀 prompt 同步）。机制面：turnContext 上限按 kind 放开、harness +23 行最小接线、当前章节口径服务。验收=agent 域 1491 绿/3 红全为既有基线、profile 编译 EXIT=0、新增测试 37 条全绿+变异测试实证。决策笔记 .agents/notes/implemented/feature/2026-09-22-m2a-context-injection.md（含已知限制：章节就绪门保守、followup 轮无用户输入触发、lorebook 全量扫描无缓存）。**手工验收待用户**（milestones M2a 节场景）
 - [x] **M2c — Skill 双轨骨架**（2026-09-22 收口）：作者级 <书>/.nbook/skills/ 目录（三级遮蔽）+ \$key 显式唤起真注入（skill-activation turn context）+ 红线物理落地（profile-write-scope 写域白名单，leader/interview 禁 manuscript 写入+摘 bash）。真实 LLM 验收四项全过。决策笔记 .agents/notes/implemented/feature/2026-09-22-m2c-skill-dual-track.md（含 M1c 遗留：install root 代写 skill 待清）
-- [ ] 里程碑线：~~M2a → M2c~~ → M2b 卡文追问 → M2.5 码字基本盘 → M2.7 知识库呈现层 → M3 审稿质疑 → M4 资料阅读 → M5 访谈归档
+- [x] **M2b — 卡文追问**（2026-09-22 收口）：划词「卡文追问」入口（MarkdownSelectionMenu+选区 chip 链路）+ interview.stuck 薄骨架 profile（继承追问闸门+红线登记）+ ka-wen skill（三连问，一轮一层）+ UX-1/3/4/5 修复。真实验收：Playwright 划词点击全链路 + 两轮逐层深入 + 注入三件套同轮在场。决策笔记 .agents/notes/implemented/feature/2026-09-22-m2b-stuck-interview.md
+- [ ] 里程碑线：~~M2a → M2c → M2b~~ → M2.5 码字基本盘 → M2.7 知识库呈现层 → M3 审稿质疑 → M4 资料阅读 → M5 访谈归档
 
 ## 路线拍板（2026-09-21 全部敲定，勿重开）
 

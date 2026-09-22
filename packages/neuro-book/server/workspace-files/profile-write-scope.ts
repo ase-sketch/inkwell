@@ -21,6 +21,7 @@ const INTERACTIVE_WRITE_PREFIXES = [
 const INTERACTIVE_PROFILE_KEYS: readonly string[] = Object.freeze([
     "leader.default",
     "interview.new-book",
+    "interview.stuck",
 ]);
 
 /** 写操作才会被写入域约束；读操作不受限。 */

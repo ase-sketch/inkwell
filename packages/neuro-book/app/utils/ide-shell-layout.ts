@@ -277,6 +277,45 @@ export function groupSessionsByRecency<T extends {updatedAt: number}>(
 }
 
 /**
+ * 格式化会话更新时间副行。
+ * 与「今天 / 昨天 / 近 7 天 / 更早」分组口径一致：
+ * - 今天：今天 HH:mm
+ * - 昨天：昨天 HH:mm
+ * - 近 7 天：N 天前
+ * - 更早（当年）：M月D日
+ * - 更早（往年）：YYYY年M月D日
+ */
+export function formatSessionRelativeTime(updatedAt: number, now: number = Date.now()): string {
+    if (!Number.isFinite(updatedAt) || updatedAt <= 0) {
+        return "";
+    }
+    const date = new Date(updatedAt);
+    const startOfToday = new Date(now).setHours(0, 0, 0, 0);
+    const startOfYesterday = startOfToday - DAY_MS;
+    const startOfLast7Days = startOfToday - 6 * DAY_MS;
+
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const timeStr = `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+
+    if (updatedAt >= startOfToday) {
+        return `今天 ${timeStr}`;
+    }
+    if (updatedAt >= startOfYesterday) {
+        return `昨天 ${timeStr}`;
+    }
+    if (updatedAt >= startOfLast7Days) {
+        const days = Math.max(2, Math.floor((startOfToday - updatedAt) / DAY_MS) + 1);
+        return `${days} 天前`;
+    }
+    const currentYear = new Date(now).getFullYear();
+    const targetYear = date.getFullYear();
+    if (targetYear === currentYear) {
+        return `${date.getMonth() + 1}月${date.getDate()}日`;
+    }
+    return `${targetYear}年${date.getMonth() + 1}月${date.getDate()}日`;
+}
+
+/**
  * 按当前情境解析图标栏入口的点击结果。
  * 返回 null 表示这次点击只影响抽屉或设置，不改主区情境。
  */

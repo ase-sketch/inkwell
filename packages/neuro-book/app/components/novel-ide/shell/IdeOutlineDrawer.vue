@@ -9,6 +9,7 @@ import {
     projectBeatTree,
     projectOutlineTree,
     resolveWritingAssetLabel,
+    resolveWritingNodeDisplayLabel,
     type OutlineVolumeGroup,
 } from "nbook/app/utils/writing-assets";
 import {resolveApiErrorMessage} from "nbook/app/utils/api-error";
@@ -86,13 +87,9 @@ const activeEntry = computed(() => {
 });
 const previewBody = computed(() => splitBody(previewContent.value));
 
-/** 行标签：有标题用标题，没有就把路径翻译成作者话，不裸露 001-volume 这种机器名。 */
+/** 行标签：有标题用标题，没有就把路径翻译成作者话，不裸露 001-volume / 001-vol / 001-ch 这种机器名。 */
 function nodeLabel(node: WorkspaceFileNode): string {
-    const title = node.title.trim();
-    if (title && !/^index\.md$/i.test(title)) {
-        return title;
-    }
-    return resolveWritingAssetLabel(node.path);
+    return resolveWritingNodeDisplayLabel(node);
 }
 
 /** 草稿徽章：已生效的内容不打扰作者。 */

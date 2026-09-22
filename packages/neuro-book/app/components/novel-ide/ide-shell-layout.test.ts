@@ -2,6 +2,7 @@ import {describe, expect, it} from "vitest";
 import type {WorkspaceFileNode} from "nbook/app/stores/novel-ide";
 import {
     applyIdeShellSwap,
+    formatSessionRelativeTime,
     groupLorebookEntries,
     groupSessionsByRecency,
     isLorebookBrowsableEntry,
@@ -229,6 +230,26 @@ describe("Ide shell layout", () => {
         // 只有「今天」有会话时，其余组不出现。
         const onlyToday = groupSessionsByRecency([session(7, now)], now);
         expect(onlyToday.map((group) => group.id)).toEqual(["today"]);
+    });
+
+    it("formatSessionRelativeTime 格式化相对时间与今天/昨天/近 7 天/更早口径一致", () => {
+        const now = new Date(2026, 8, 20, 15, 30, 0).getTime();
+        const startOfToday = new Date(2026, 8, 20, 0, 0, 0).getTime();
+        const day = 24 * 60 * 60 * 1000;
+
+        // 今天
+        expect(formatSessionRelativeTime(new Date(2026, 8, 20, 14, 5, 0).getTime(), now)).toBe("今天 14:05");
+        // 昨天
+        expect(formatSessionRelativeTime(new Date(2026, 8, 19, 9, 30, 0).getTime(), now)).toBe("昨天 09:30");
+        // 近 7 天
+        expect(formatSessionRelativeTime(startOfToday - 2 * day + 3600_000, now)).toBe("2 天前");
+        expect(formatSessionRelativeTime(startOfToday - 5 * day + 3600_000, now)).toBe("5 天前");
+        // 更早（同一年）
+        expect(formatSessionRelativeTime(new Date(2026, 5, 12, 10, 0, 0).getTime(), now)).toBe("6月12日");
+        // 更早（往年）
+        expect(formatSessionRelativeTime(new Date(2025, 11, 25, 8, 0, 0).getTime(), now)).toBe("2025年12月25日");
+        // 无效/空
+        expect(formatSessionRelativeTime(0, now)).toBe("");
     });
 
     it("类目识别同时支持 workspace/ 前缀", () => {

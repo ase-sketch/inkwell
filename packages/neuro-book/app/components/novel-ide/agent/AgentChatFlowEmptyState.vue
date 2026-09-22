@@ -3,6 +3,10 @@ import NovelIdeSettingsDialog from "nbook/app/components/novel-ide/NovelIdeSetti
 import {useConfigApi} from "nbook/app/composables/useConfigApi";
 import {useNovelIdeStore} from "nbook/app/stores/novel-ide";
 
+const props = defineProps<{
+    hideInterviewCard?: boolean;
+}>();
+
 const emit = defineEmits<{
     (event: "start-interview"): void;
 }>();
@@ -64,6 +68,7 @@ watch(() => novelIdeStore.configRevision, () => {
 
         <!-- 「开始新书访谈」卡片：未配置模型时依然可见可点（温和不阻断） -->
         <button
+            v-if="!props.hideInterviewCard"
             type="button"
             class="group flex w-full items-center justify-between gap-4 rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] p-4 text-left shadow-sm transition-all hover:border-[var(--border-accent)] hover:bg-[var(--bg-hover)] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-main)]"
             @click="emit('start-interview')"

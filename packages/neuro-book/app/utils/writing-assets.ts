@@ -463,17 +463,46 @@ export function resolveBeatTitle(filePath: string): string {
 export function resolveWritingAssetLabel(filePath: string): string {
     const normalized = normalize(filePath);
     const tail = lastSegment(normalized.replace(/\/index\.md$/i, ""));
-    const outlineMatch = tail.match(/^(\d+)-outline$/);
+    const outlineMatch = tail.match(/^(\d+)-(?:outline|out)$/i) || tail.match(/^(?:outline|out)-?(\d+)$/i);
     if (outlineMatch?.[1]) {
         return `大纲 ${Number.parseInt(outlineMatch[1], 10)}`;
     }
-    const chapterMatch = tail.match(/^(\d+)-chapter$/);
+    const chapterMatch = tail.match(/^(\d+)-(?:chapter|ch|chap)$/i) || tail.match(/^(?:chapter|ch|chap)-?(\d+)$/i);
     if (chapterMatch?.[1]) {
         return `第 ${Number.parseInt(chapterMatch[1], 10)} 章`;
     }
-    const volumeMatch = tail.match(/^(\d+)-volume$/);
+    const volumeMatch = tail.match(/^(\d+)-(?:volume|vol)$/i) || tail.match(/^(?:volume|vol)-?(\d+)$/i);
     if (volumeMatch?.[1]) {
         return `第 ${Number.parseInt(volumeMatch[1], 10)} 卷`;
     }
     return lastSegment(normalized) || normalized;
+}
+
+/**
+ * 判断名称是否是未命名的原始卷/章/大纲目录名（如 001-vol, 001-ch, 001-volume 等）。
+ */
+export function isRawWritingDirectoryName(name: string): boolean {
+    const trimmed = name.trim();
+    return /^(\d+)-(?:volume|vol|chapter|ch|chap|outline|out)$/i.test(trimmed)
+        || /^(?:volume|vol|chapter|ch|chap|outline|out)-?(\d+)$/i.test(trimmed);
+}
+
+/**
+ * 决定节点在作者界面上的展示标签：
+ * - 优先作者显式设置的有效自定义标题；
+ * - 若标题缺失、为 index.md、或只是 001-volume / 001-vol / 001-ch 等机器名，则用 resolveWritingAssetLabel 兜底；
+ * - 兜底不了退回文件名。
+ */
+export function resolveWritingNodeDisplayLabel(node: Pick<WorkspaceFileNode, "path" | "title">): string {
+    const title = node.title?.trim() ?? "";
+    const tail = lastSegment(node.path.replace(/\/index\.md$/i, ""));
+    const isRaw = !title || /^index\.md$/i.test(title) || title === tail || isRawWritingDirectoryName(title);
+    if (!isRaw) {
+        return title;
+    }
+    const assetLabel = resolveWritingAssetLabel(node.path);
+    if (assetLabel && assetLabel !== node.path) {
+        return assetLabel;
+    }
+    return title || tail || node.path;
 }

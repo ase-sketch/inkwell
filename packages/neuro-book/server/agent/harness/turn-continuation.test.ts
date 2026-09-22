@@ -164,6 +164,37 @@ describe("turn continuation reducer", () => {
         expect(decision.reasons).not.toContain("interview_reminder");
     });
 
+    it("interview.stuck 同属 interview. 前缀：无工具轮打回，调了 request_user_input 放行", () => {
+        const idleInput = {
+            turn: fakeTurn({
+                shouldContinue: false,
+                profileKey: "interview.stuck",
+            }),
+            steeredMessages: [],
+            hasReportResult: false,
+            reportResultReminderSent: false,
+            reportResultAllowed: false,
+        };
+
+        expect(shouldSendInterviewReminder(idleInput)).toBe(true);
+        const idleDecision = resolveTurnContinuation(idleInput);
+        expect(idleDecision.continue).toBe(true);
+        expect(idleDecision.reasons).toEqual(["interview_reminder"]);
+        expect(idleDecision.needsInterviewReminder).toBe(true);
+
+        const waitingInput = {
+            ...idleInput,
+            turn: fakeTurn({
+                shouldContinue: false,
+                profileKey: "interview.stuck",
+                waiting: {kind: "user_input"} as never,
+            }),
+        };
+
+        expect(shouldSendInterviewReminder(waitingInput)).toBe(false);
+        expect(resolveTurnContinuation(waitingInput).needsInterviewReminder).toBe(false);
+    });
+
     it("非访谈会话（如 leader.default）同样无工具轮保持原有行为不打回", () => {
         const input = {
             turn: fakeTurn({

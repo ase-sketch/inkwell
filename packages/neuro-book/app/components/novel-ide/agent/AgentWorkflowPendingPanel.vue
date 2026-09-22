@@ -114,8 +114,8 @@ async function pollRun(runId: string): Promise<void> {
         runErrors.value = {
             ...runErrors.value,
             [runId]: resolveApiErrorStatus(error) === 404
-                ? "该 workflow run 暂时不可查询"
-                : resolveApiErrorMessage(error, "读取 workflow 问题失败"),
+                ? "该流程暂时不可查询"
+                : resolveApiErrorMessage(error, "读取待确认问题失败"),
         };
         nextPollDelay = 3000;
     } finally {
@@ -225,7 +225,7 @@ async function submitRun(runId: string): Promise<void> {
         scheduleRunPoll(runId, 0);
     } catch (error) {
         if (disposed || observationAtStart !== observationRevision || revision !== (pollRevisions.get(runId) ?? 0)) return;
-        runErrors.value = {...runErrors.value, [runId]: resolveApiErrorMessage(error, "继续 workflow 失败")};
+        runErrors.value = {...runErrors.value, [runId]: resolveApiErrorMessage(error, "继续流程失败")};
     } finally {
         if (disposed || observationAtStart !== observationRevision || revision !== (pollRevisions.get(runId) ?? 0)) return;
         const next = new Set(submittingRuns.value);
@@ -245,7 +245,7 @@ onBeforeUnmount(() => {
         <div class="flex items-center justify-between gap-2">
             <div class="flex min-w-0 items-center gap-2 text-sm font-semibold text-[var(--text-main)]">
                 <span class="i-lucide-inbox h-4 w-4 shrink-0 text-[var(--status-warning)]"></span>
-                <span>Workflow 待处理</span>
+                <span>待处理流程</span>
                 <span v-if="waitingCount" class="rounded-full bg-[var(--status-warning-bg)] px-1.5 py-0.5 text-[10px] text-[var(--status-warning)]">{{ waitingCount }}</span>
             </div>
             <span class="text-[10px] text-[var(--text-muted)]">每个流程分别应答</span>
@@ -298,7 +298,7 @@ onBeforeUnmount(() => {
                     </button>
                 </div>
             </template>
-            <div v-else class="mt-2 text-xs text-[var(--text-muted)]">正在读取 workflow 问题…</div>
+            <div v-else class="mt-2 text-xs text-[var(--text-muted)]">正在读取待确认问题…</div>
         </div>
         <div v-if="feed.error" class="mt-2 text-xs text-[var(--status-danger)]">{{ feed.error }}</div>
     </section>

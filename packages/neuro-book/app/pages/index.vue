@@ -67,6 +67,7 @@ import {
 import {buildWorkspaceReferenceSections} from "nbook/app/utils/workspace-reference-menu";
 import {resolveWorkspaceFileExtension, type FrontmatterProfileKind} from "nbook/shared/editor-workbench";
 import {buildSelectionRefChip, type InlineEditPayload, type InlineEditReference, type InlineEditTask} from "nbook/app/utils/inline-editor-selection";
+import {buildStuckInterviewMessage, findReusableStuckInterviewSession} from "nbook/app/utils/stuck-interview";
 import type {DesktopMenuCommandId} from "@notnotype/neuro-book-contracts/desktop";
 import {dispatchDesktopMenuCommand} from "@notnotype/neuro-book-contracts/desktop";
 
@@ -525,7 +526,38 @@ const startInterviewFromSidebar = async (): Promise<void> => {
     writingRequested.value = false;
     swapPreference.value = shellHasOpenDocument.value ? "chat" : null;
     await nextTick();
-    await agentSurfaceRef.value?.createSession();
+    await agentSurfaceRef.value?.createSession("interview.new-book");
+};
+
+/** 划词「卡文追问」：切到对话态，复用或新建 interview.stuck 会话，并自动发出首条引导消息。 */
+const handleStuckInterview = async (reference: InlineEditReference): Promise<void> => {
+    writingRequested.value = false;
+    swapPreference.value = shellHasOpenDocument.value ? "chat" : null;
+    companionVisible.value = true;
+    await nextTick();
+
+    const surface = agentSurfaceRef.value;
+    if (!surface) {
+        return;
+    }
+
+    const sessions = await surface.ensureSessionReady();
+    const projectRoot = currentProjectRoot.value || null;
+    const existing = findReusableStuckInterviewSession(sessions, projectRoot);
+    if (existing) {
+        if (surface.activeSessionId !== existing.sessionId) {
+            await surface.selectSession(existing.sessionId);
+        }
+    } else {
+        await surface.createSession("interview.stuck");
+    }
+
+    await nextTick();
+    const message = buildStuckInterviewMessage({
+        ref: reference.ref,
+        guidance: t("markdownStudio.selection.stuckGuidance"),
+    });
+    await surface.sendMessage(message);
 };
 
 /** 伴随栏切换：对话在工作态下的独立开关。 */
@@ -2892,6 +2924,7 @@ onBeforeUnmount(() => {
                                 @open-agent-panel="void openWelcomeAgentPanel()"
                                 @open-profile-workbench="profileWorkbenchOpen = true"
                                 @inline-ai-reference="addInlineAiReference"
+                                @stuck-interview="void handleStuckInterview($event)"
                             >
                                 <template #tab-bar>
                                     <IdeDocumentTabs
@@ -3104,6 +3137,7 @@ onBeforeUnmount(() => {
                             @open-agent-panel="void openWelcomeAgentPanel()"
                             @open-profile-workbench="profileWorkbenchOpen = true"
                             @inline-ai-reference="addInlineAiReference"
+                            @stuck-interview="void handleStuckInterview($event)"
                         />
                     </div>
                 </div>
