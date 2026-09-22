@@ -36,3 +36,5 @@ Inkwell 定位「不代写正文」，但 fork 基座 neuro-book 自带 writer �
 - 删除 `assets/reference/agent/rp-tick/` 后，`assets/reference/content/subjects.md` 中两条指向 `../agent/rp-tick/subject-creation-guide.md` 的链接失效；`profile-routing.md`、`leader-default.md` 则因被存活 profile Import 而必须改写（否则注入的 prompt 会继续把用户路由到不存在的 profile）。
 
 权衡：M2 Skill 骨架落地前文风参考暂缺（本来新壳也不可达，无实际损失）。上游若再更新 writer 相关代码，跟进策略为「不再跟随」。
+
+后续遗留清理（2026-09-22，M2c 验收时发现）：install skill 目录残留的代写死 skill（novel-writer-execution / novel-writing / RP模式）与 novel-guide/SKILL.md、novel-writing-workflow.md 的陈旧 writer 引用已清除，并在 legacy-agent-asset-tombstones.ts 登记墓碑（存量状态根自动清理）。发现路径：M2c 红线验收时模型在拒绝代写后建议「走 writer profile」。提交 c3ceb4e。
