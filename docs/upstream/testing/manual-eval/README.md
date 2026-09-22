@@ -69,7 +69,7 @@ Agent 收到触发指令后按 [agent-guide.md](agent-guide.md) 执行（环境�
 | 工作台、Markdown Studio、文件树、顶栏入口 | 工作台漫游 | 覆盖 |
 | 项目创建与识别 | 项目创建 | 覆盖 |
 | Skill 初始化链路（novel-setup 四阶段） | Skill 初始化 | 覆盖 |
-| 章节写作主链（novel-writing） | 章节写作 | 覆盖 |
+| 章节写作主链 | 章节写作 | 覆盖 |
 | Agent 会话、Composer、Workflow、Jobs | Agent 会话 | 覆盖 |
 | World Engine Workbench | World Engine 工作台 | 扩展位（本轮不跑） |
 | Plot 剧情工坊 | 剧情工坊 | 扩展位（本轮不跑） |

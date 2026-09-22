@@ -1239,18 +1239,18 @@ describe("profile TSX DSL", () => {
                 rootPath: "assets/workspace/.nbook/agent/skills/profile-system-guide",
                 skillPath: "assets/workspace/.nbook/agent/skills/profile-system-guide/SKILL.md",
             }, {
-                key: "novel-writing",
-                name: "Novel Writing",
-                description: "剧情写作循环流程。",
+                key: "novel-setup",
+                name: "Novel Setup",
+                description: "项目搭建四阶段流程。",
                 source: "install",
-                rootPath: "assets/workspace/.nbook/agent/skills/novel-writing",
-                skillPath: "assets/workspace/.nbook/agent/skills/novel-writing/SKILL.md",
+                rootPath: "assets/workspace/.nbook/agent/skills/novel-setup",
+                skillPath: "assets/workspace/.nbook/agent/skills/novel-setup/SKILL.md",
             }],
         });
         const text = (plan.historyInitMessages ?? []).map(messageText).join("\n");
 
         expect(text).toContain("key: profile-system-guide");
-        expect(text).not.toContain("novel-writing");
+        expect(text).not.toContain("novel-setup");
 
         expect(() => defineAgentProfile({
             manifest: {key: "test.skill-include-dup", name: "Dup"},

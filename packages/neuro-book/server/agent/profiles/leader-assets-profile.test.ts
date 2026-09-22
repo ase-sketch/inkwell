@@ -604,12 +604,12 @@ describe("assets builtin v3 profiles", () => {
                 rootPath: resolve("assets", "workspace", ".nbook", "agent", "skills", "profile-system-guide"),
                 skillPath: resolve("assets", "workspace", ".nbook", "agent", "skills", "profile-system-guide", "SKILL.md"),
             }, {
-                key: "novel-writing",
-                name: "剧情写作循环",
-                description: "剧情写作循环流程。",
+                key: "novel-setup",
+                name: "项目搭建四阶段",
+                description: "项目搭建四阶段流程。",
                 source: "install",
-                rootPath: resolve("assets", "workspace", ".nbook", "agent", "skills", "novel-writing"),
-                skillPath: resolve("assets", "workspace", ".nbook", "agent", "skills", "novel-writing", "SKILL.md"),
+                rootPath: resolve("assets", "workspace", ".nbook", "agent", "skills", "novel-setup"),
+                skillPath: resolve("assets", "workspace", ".nbook", "agent", "skills", "novel-setup", "SKILL.md"),
             }],
             settings: {
                 customTopSystemPrompt: "资产助手置顶规则：先解释再动手。",
@@ -626,7 +626,7 @@ describe("assets builtin v3 profiles", () => {
         expect(systemPrompt.indexOf("资产助手置顶规则")).toBeLessThan(systemPrompt.indexOf("用户资产助手"));
         // skills.include 白名单：写作流程 skill 不进本 agent 的 catalog。
         expect(historyText).toContain("key: profile-system-guide");
-        expect(historyText).not.toContain("novel-writing");
+        expect(historyText).not.toContain("novel-setup");
     });
 
     it("retrieval 输入输出合同保持 prompt-only 和 Leader-facing entries", () => {

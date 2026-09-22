@@ -44,6 +44,9 @@ export const LEGACY_TOMBSTONED_ASSET_PREFIXES: readonly string[] = [
     "agent/skills/llmlint/rulesets/builtin/cn-standard/",
     "agent/skills/llmlint/rulesets/builtin/cn-strong/",
     "agent/skills/llmlint/rulesets/builtin/cn-extreme/",
+    "agent/skills/novel-writer-execution/",
+    "agent/skills/novel-writing/",
+    "agent/skills/RP模式/",
     "templates/project-directory-templates/simulation/",
 ];
 

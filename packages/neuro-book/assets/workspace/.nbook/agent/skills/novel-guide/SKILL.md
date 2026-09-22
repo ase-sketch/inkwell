@@ -29,15 +29,13 @@ NeuroBook 的写作 skill 分三层。本文件是唯一的全局路线图；各
 
 | skill | 用途 | 进入条件 | 出口 |
 | --- | --- | --- | --- |
-| `novel-setup` | 项目搭建四阶段：项目初始化 → 世界书框架 → 角色设计与细化 → World Engine 初始化 | 新开书、导入书、续写已有书 | 进入 `novel-writing` 开局模式 |
-| `novel-writing` | 剧情写作循环：剧情设计 → 用户拍板落库 → 正文/评审/修订 | `novel-setup` 完成（或老项目已有等价基础） | 每章循环一次，持续使用 |
-| `novel-writer-execution` | Writer 执行手册（writer profile 内部参考，leader 不直接调用） | — | — |
+| `novel-setup` | 项目搭建四阶段：项目初始化 → 世界书框架 → 角色设计与细化 → World Engine 初始化 | 新开书、导入书、续写已有书 | 准备就绪，进入剧情讨论与章节规划 |
 
 ## 典型旅程（新开一本书）
 
 1. 只有模糊灵感 → `novel-idea-exploration` 聊出故事概述。
 2. 方向确定 → `novel-setup` 走四阶段：定位与最小骨架、世界书框架（大量占位可接受）、角色与 lorebook 细化、World Engine 初始化。
-3. 开始写 → `novel-writing`，首轮走开局模式（黄金三章），之后每章循环：设计 → 拍板落库 → 正文 → 评审 → 修订。
+3. 开始创作 → 由 Leader 引导推进主链：剧情初步设计 → 推进 World Engine → 细化剧情与更新 Plot，生成 Chapter Writer Brief 供作者自行写作。
 4. 中途随时可插入：角色深挖（character-card-workshop）、导入外部素材（import 系列）、竞品调研（genre-research）。
 
 导入已有作品（酒馆卡 / 已有书稿 / 续写）也从 `novel-setup` 进入，它的入口判断会分流。
@@ -48,9 +46,8 @@ NeuroBook 的写作 skill 分三层。本文件是唯一的全局路线图；各
 
 | workflow | 用途 | 典型接入点 |
 | --- | --- | --- |
-| `parallel-brainstorm` | 多角度并发脑暴后收敛 | `novel-writing` 剧情设计阶段、`novel-idea-exploration` 方向发散 |
-| `write-review-loop` | 临时写手+评审的固定轮数写-评-修（不写文件） | 简介、文案、短文本打磨；正式章节用 `chapter-write-review-revise` |
-| `chapter-write-review-revise` | 真实 writer 写章节到目标文件 + 三维评审（一致性/节奏/文风）+ 按 major 问题修订循环 | `novel-writing` 正文循环；前提=剧情事实已拍板、World Engine 已推进 |
+| `parallel-brainstorm` | 多角度并发脑暴后收敛 | 剧情设计阶段、`novel-idea-exploration` 方向发散 |
+| `write-review-loop` | 临时写手+评审的固定轮数写-评-修（不写文件） | 简介、文案、短文本打磨 |
 | `consistency-audit` | 按章并发对照 lorebook 摘录与世界状态事实找矛盾（位置/伤势/物品/认知/时间线/设定），跨章汇总 | 写完若干章后的体检；调用前 leader 先列章节路径、预查 World Engine 事实传入 |
 | `book-deconstruct` | 整本外部书稿的商业拆书：章节采样后逐章分析钩子/承诺/爽点/节奏，汇总拆书报告 | `novel-genre-research` 竞品分析；输入=番茄导入目录或单 .md 书稿 |
 | `character-qa-fanout` | 角色理解题批量生成候选答案（分组扇出），供用户逐题挑选 | `novel-technique-character-card-workshop` 的可选批量模式；默认逐题交互不用它 |
@@ -60,7 +57,7 @@ NeuroBook 的写作 skill 分三层。本文件是唯一的全局路线图；各
 
 - 用户说不清要写什么 → `novel-idea-exploration`。
 - 项目没有定位 / lorebook / World Engine → `novel-setup`（从缺的阶段进入，不必从头走）。
-- 讨论剧情、推演局势、写章、改章 → `novel-writing`。
+- 讨论剧情、推演局势、梳理章节提纲 → 由 Leader 推进剧情主链并维护 World Engine。
 - 只整理角色感觉、标签、萌点 → `novel-technique-character-card-workshop`。
 - 要导入外部素材 → import 系列。
 - 分析别人的书、找对标 → `novel-genre-research`。
