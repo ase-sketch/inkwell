@@ -1,0 +1,4 @@
+interface:
+  display_name: "Novel Data"
+  short_description: "Query cached novel rankings and book details"
+  default_prompt: "Use $novel-data to query cached novel rankings and book details."

@@ -1,0 +1,93 @@
+{
+    "models": {
+        "default": "deepseek/deepseek-v4-flash",
+        "providers": [
+            {
+                "id": "deepseek",
+                "name": "DeepSeek",
+                "api": "openai-completions",
+                "options": {
+                    "apiKey": "",
+                    "baseURL": "",
+                    "proxy": "",
+                    "timeoutMs": 180000,
+                    "requestOptions": {}
+                },
+                "models": [
+                    {
+                        "name": "DeepSeek V4 Flash",
+                        "id": "deepseek-v4-flash",
+                        "group": "deepseek",
+                        "enabled": true,
+                        "api": null,
+                        "baseUrl": null,
+                        "reasoning": null,
+                        "input": null,
+                        "maxTokens": null,
+                        "cost": null,
+                        "compat": null,
+                        "contextWindowTokens": 1000000,
+                        "provider": null
+                    }
+                ]
+            }
+        ]
+    },
+    "embedding": {
+        "enabled": false,
+        "provider": "openai-compatible",
+        "model": null,
+        "dimensions": null,
+        "apiKey": "",
+        "baseURL": "",
+        "timeoutMs": 30000,
+        "requestOptions": {}
+    },
+    "agent": {
+        "defaultProfileKey": {
+            "novel": "leader.default",
+            "userAssets": "leader.assets"
+        },
+        "profiles": {}
+    },
+    "ui": {
+        "theme": "sepia"
+    },
+    "editor": {},
+    "web": {
+        "search": {
+            "order": [
+                "tavily",
+                "brave"
+            ],
+            "providers": {
+                "tavily": {
+                    "enabled": false,
+                    "apiKey": "",
+                    "timeoutMs": 15000
+                },
+                "brave": {
+                    "enabled": false,
+                    "apiKey": "",
+                    "country": "US",
+                    "searchLang": "en",
+                    "timeoutMs": 15000
+                }
+            }
+        },
+        "fetch": {
+            "local": {
+                "enabled": true,
+                "timeoutMs": 15000,
+                "maxRedirects": 5,
+                "maxBytes": 2000000,
+                "maxCharacters": 20000,
+                "minCharactersForLocal": 300
+            },
+            "tavilyFallback": {
+                "enabled": false,
+                "timeoutMs": 20000
+            }
+        }
+    }
+}

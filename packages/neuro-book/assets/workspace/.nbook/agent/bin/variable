@@ -1,0 +1,75 @@
+#!/usr/bin/env sh
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd) || exit 1
+SOURCE_RELATIVE_PATH="server/agent/variables/variable-command.ts"
+
+is_application_root() {
+    [ -f "$1/package.json" ] || return 1
+    [ -f "$1/$SOURCE_RELATIVE_PATH" ] \
+        || [ -f "$1/.output/server/commands/product-command.mjs" ] \
+        || [ -f "$1/.output/runtime-image.json" ] \
+        || [ -f "$1/.output/server/index.mjs" ]
+}
+
+resolve_application_root() {
+    if [ -n "${NEURO_BOOK_APPLICATION_ROOT:-}" ]; then
+        CDPATH= cd -- "$NEURO_BOOK_APPLICATION_ROOT" && pwd
+        return
+    fi
+    current=$SCRIPT_DIR
+    while :; do
+        if is_application_root "$current"; then
+            printf '%s\n' "$current"
+            return
+        fi
+        parent=$(dirname -- "$current")
+        [ "$parent" != "$current" ] || return 1
+        current=$parent
+    done
+}
+
+is_source_dev() {
+    [ -d "$APPLICATION_ROOT/node_modules" ] && [ -f "$SOURCE_SCRIPT" ]
+}
+
+is_product_present() {
+    [ -f "$APPLICATION_ROOT/.output/runtime-image.json" ] \
+        || [ -f "$APPLICATION_ROOT/.output/runtime-image.ready" ] \
+        || [ -f "$APPLICATION_ROOT/.output/server/runtime-contract.json" ] \
+        || [ -f "$APPLICATION_ROOT/.output/server/index.mjs" ]
+}
+
+run_source_dev() {
+    export NEURO_BOOK_APPLICATION_ROOT="$APPLICATION_ROOT"
+    exec "$BUN_RUNTIME" --no-install "$SOURCE_SCRIPT" "$@"
+}
+
+APPLICATION_ROOT=$(resolve_application_root) || {
+    echo "无法定位 NeuroBook Application Root。" >&2
+    exit 1
+}
+PRODUCT_COMMAND="$APPLICATION_ROOT/.output/server/commands/product-command.mjs"
+SOURCE_SCRIPT="$APPLICATION_ROOT/$SOURCE_RELATIVE_PATH"
+BUN_RUNTIME=${BUN:-bun}
+if [ -z "${BUN:-}" ] && [ -f "$APPLICATION_ROOT/../runtime/bun/bun.exe" ]; then
+    BUN_RUNTIME="$APPLICATION_ROOT/../runtime/bun/bun.exe"
+fi
+
+if [ "${NODE_ENV:-}" = "development" ] && is_source_dev; then
+    run_source_dev "$@"
+fi
+if [ -f "$PRODUCT_COMMAND" ]; then
+    export NEURO_BOOK_APPLICATION_ROOT="$APPLICATION_ROOT"
+    exec "$BUN_RUNTIME" --no-install --no-env-file "$PRODUCT_COMMAND" command variable "$@"
+fi
+if is_product_present; then
+    echo "Product Runtime 不完整：缺少 .output/server/commands/product-command.mjs。" >&2
+    exit 1
+fi
+if is_source_dev; then
+    run_source_dev "$@"
+fi
+
+echo "无法定位可运行的 NeuroBook variable CLI。" >&2
+exit 1

@@ -82,12 +82,12 @@ Inkwell = fork neuro-book 改造的小说创作辅助 agent：苏格拉底式追
 - 基座 commit 4590627（0.10.3-canary）
 - **阻塞机制现成**：`request_user_input` 一调用，harness 即 emit `tool_user_input_required`、会话置 `waiting`、前端锁输入框
 - profile 编译器自动递归扫描 `builtin/*.profile.tsx`，源码层无需登记清单
-- `interview.new-book.profile.tsx` 被 `.gitignore` 的 `workspace/` 规则忽略，提交需 `git add -f`
+- ~~interview.new-book.profile.tsx 等 assets/workspace/ 文件需 git add -f~~（2026-09-22 已修：包级 .gitignore 锚定为 /workspace/，整树恢复正常跟踪，见 bug-fix/2026-09-22-assets-workspace-git-tracking）
 - **新壳主区情境**由纯函数 `app/utils/ide-shell-layout.ts` 推导（`resolveIdeShellView`）；资产投影在 `app/utils/writing-assets.ts`（正文/大纲/细纲三投影）
 - **主题纪律**：只消费 `app/utils/theme/README.md` 登记变量；不足时优先用现有变量组合，不新增 Tailwind 调色板
 - `outline/` 节点会稳定产生 1 条 `external-content-node` WARN（content-node 根之外）。**对作者不可见**（新壳无 workspaceIssues UI），未处理；要清除需慎重（改 content-node 语义面大）
 - **测试框架纪律**：官方 runner 是 vitest（package.json test=vitest run，345 个测试文件 vitest 导入）；bun test 能兼容跑 vitest 导入，但 vitest 跑不了 bun:test 导入——**新测试一律 from "vitest"**（M2a 曾有两个文件误用 bun:test 已修）
-- `assets/workspace/` 下文件（profile 源、模板、.compiled 产物）被 .gitignore 的 workspace/ 规则通配忽略，提交一律 git add -f
+- `.compiled/` 编译产物按 packages/neuro-book/.gitignore:28 不入库（构建时生成）；assets/workspace/ 其余文件正常跟踪
 - **全量 `server/` 测试既有红（2026-09-21 M1c 后实测，Windows）：3 条**——`profile-compile-worker-preview` 1 条（dry-run preview，stash 对照实验证明与改动无关）、`world-engine-profile` 1 条（`NEURO_BOOK_REPOSITORY_ROOT` 未设）、`file-tools` 1–2 条（bash 用例 Windows 环境抖动）。M1c 前的 9 条记录（rp-profiles/simulation-director/profile-sdk-contract/workspace-files）已随代写下线消解。**`app/` 侧全绿，不要拿 server 的红当自己改坏的**
 
 ## 工作纪律

@@ -1,0 +1,14 @@
+{
+    "models": {
+        "default": null
+    },
+    "embedding": {
+        "model": null,
+        "dimensions": null
+    },
+    "agent": {
+        "defaultProfileKey": null,
+        "profiles": {}
+    },
+    "editor": {}
+}

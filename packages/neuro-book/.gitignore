@@ -17,7 +17,7 @@ logs/
 server/generated/prisma/
 server/agent/variables/generated-profile-variable-types.d.ts
 server/.agent/
-workspace/
+/workspace/
 
 # Package-local governance and runtime state
 .agent/

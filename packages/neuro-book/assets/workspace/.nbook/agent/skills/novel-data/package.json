@@ -1,0 +1,10 @@
+{
+    "name": "novel-data",
+    "version": "1.0.0",
+    "private": true,
+    "type": "module",
+    "description": "Read-only CLI for cached NovelScope rankings and book details.",
+    "dependencies": {
+        "commander": "^15.0.0"
+    }
+}
