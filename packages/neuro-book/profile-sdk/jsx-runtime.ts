@@ -14,6 +14,7 @@ const components = {
     FileChangeNotice: profileSdk.FileChangeNotice,
     PromiseLedger: profileSdk.PromiseLedger,
     MentionedEntities: profileSdk.MentionedEntities,
+    SkillActivation: profileSdk.SkillActivation,
     Message: profileSdk.Message,
     AIMessage: profileSdk.AIMessage,
     ToolCall: profileSdk.ToolCall,
@@ -72,6 +73,7 @@ export namespace JSX {
         FileChangeNotice: Parameters<typeof profileSdk.FileChangeNotice>[0];
         PromiseLedger: Record<string, never>;
         MentionedEntities: Record<string, never>;
+        SkillActivation: Record<string, never>;
         Message: Parameters<typeof profileSdk.Message>[0];
         AIMessage: Parameters<typeof profileSdk.AIMessage>[0];
         ToolCall: Parameters<typeof profileSdk.ToolCall>[0];

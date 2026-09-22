@@ -74,6 +74,9 @@ export function createNode(type: ProfileTemplateNodeType): ProfileTemplateNodeDt
     if (type === "FileChangeNotice") {
         base.props = {mode: "minimal"};
     }
+    if (type === "SkillActivation" || type === "PromiseLedger" || type === "MentionedEntities") {
+        base.props = {};
+    }
     if (type === "Import") {
         base.props = {path: "reference/agent/neurobook-project-guide.md"};
     }
@@ -130,6 +133,9 @@ export function canHaveChildren(type: ProfileTemplateNodeType): boolean {
         "TaskReminder",
         "MentionedSkillsReminder",
         "FileChangeNotice",
+        "SkillActivation",
+        "PromiseLedger",
+        "MentionedEntities",
     ].includes(type);
 }
 
@@ -198,7 +204,7 @@ export function canInsertNodeIntoParent(parent: ProfileTemplateNodeDto, node: Pr
         return ["Message", "AIMessage", "ToolResult", "Reminder", "Watch", "If"].includes(node.type);
     }
     if (parent.type === "AppendingSet") {
-        return ["Message", "AIMessage", "ToolResult", "Reminder", "Watch", "If", "FileChangeNotice"].includes(node.type);
+        return ["Message", "AIMessage", "ToolResult", "Reminder", "Watch", "If", "FileChangeNotice", "SkillActivation", "PromiseLedger", "MentionedEntities"].includes(node.type);
     }
     if (parent.type === "Reminder" || parent.type === "Watch") {
         return ["Message", "AIMessage", "If"].includes(node.type);

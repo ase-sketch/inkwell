@@ -14,11 +14,12 @@ describe("profile-turn-context 基础设施", () => {
                 {kind: "file-change-notice", mode: "minimal", appendingIndex: 0},
                 {kind: "promise-ledger", appendingIndex: 1},
                 {kind: "mentioned-entities", appendingIndex: 2},
+                {kind: "skill-activation", appendingIndex: 3},
             ];
 
             const previews = previewProfileTurnContexts(plans);
-            expect(previews).toHaveLength(3);
-            const [p0, p1, p2] = previews;
+            expect(previews).toHaveLength(4);
+            const [p0, p1, p2, p3] = previews;
 
             expect(p0?.appendingIndex).toBe(0);
             expect(p0?.message.content[0]).toMatchObject({
@@ -36,6 +37,12 @@ describe("profile-turn-context 基础设施", () => {
             expect(p2?.message.content[0]).toMatchObject({
                 type: "text",
                 text: expect.stringContaining("<mentioned-entities"),
+            });
+
+            expect(p3?.appendingIndex).toBe(3);
+            expect(p3?.message.content[0]).toMatchObject({
+                type: "text",
+                text: expect.stringContaining("<skill-activation"),
             });
         });
     });

@@ -52,7 +52,7 @@ Agent runtime 分三层：
 
 ## Profile Turn Context
 
-Profile 可通过 `ProfileTurnPlan.turnContexts` 声明依赖运行时外部数据的本轮上下文。第一版实现是 `<FileChangeNotice />`：
+Profile 可通过 `ProfileTurnPlan.turnContexts` 声明依赖运行时外部数据的本轮上下文。已实现的节点有 `<FileChangeNotice />`、`<PromiseLedger />`、`<MentionedEntities />` 与 `<SkillActivation />`；其中 `<SkillActivation />` 不依赖当前 Project。以 `<FileChangeNotice />` 为例：
 
 1. Profile DSL 在 `AppendingSet` 中记录节点模式、Agent 小 diff 字符预算和 `appendingIndex`。
 2. Harness prepare 阶段调用通用物化器，把运行时消息插回声明位置。物化器施加系统硬保护：最多 4 个 diff 详情、50 个逐项文件、`min(8192, diffMaxChars × 4)` inline 总额和 12,288 字符 notice 上限。

@@ -256,6 +256,7 @@ V1 只允许 `AGENTS.md`、`reference/**` 和 `docs/**`。不要用 `Import` 读
 - `Reminder` 根据 `when`、变量 watch、函数 watch 和 `repeatEveryTurns` 控制注入频率。
 - `Watch` 适合把重要外部状态变化写入历史。
 - `ActivatedSkills` / `MentionedSkillsReminder` 必须包在 `Message` 内。
+- `SkillActivation` / `PromiseLedger` / `MentionedEntities` 必须作为 `AppendingSet` 的直接子节点（不包 `Message`）。
 - 不接受非空裸文本。
 
 ## Minimal Skeleton

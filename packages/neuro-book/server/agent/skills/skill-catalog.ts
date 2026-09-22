@@ -5,6 +5,16 @@ import {consola} from "consola";
 
 export type SkillCatalogSource = "install" | "project";
 
+/** 解析到技能包后的稳定载荷：命中项元数据 + SKILL.md 正文。 */
+export type ResolvedSkill = {
+    key: string;
+    name: string;
+    source: SkillCatalogSource;
+    rootPath: string;
+    skillPath: string;
+    body: string;
+};
+
 export type SkillCatalogItem = {
     key: string;
     name: string;
@@ -43,15 +53,44 @@ export class SkillCatalog {
         for (const skill of installCatalog.skills) skills.set(skill.key, skill);
         const project = projectRoot ? resolve(projectRoot) : this.configuredProjectRoot;
         if (project) {
-            const projectCatalog = await this.loadRoot(join(project, ".nbook", "agent", "skills"), "project");
-            for (const skillKey of projectCatalog.declaredKeys) skills.delete(skillKey);
-            for (const skill of projectCatalog.skills) skills.set(skill.key, skill);
+            // 遮蔽优先级（高→低）：<项目>/.nbook/skills > <项目>/.nbook/agent/skills > Install Root
+            // 按从低到高依次加载并覆盖已声明 key
+            const candidateRoots = [
+                join(project, ".nbook", "agent", "skills"),
+                join(project, ".nbook", "skills"),
+            ];
+            for (const root of candidateRoots) {
+                const projectCatalog = await this.loadRoot(root, "project");
+                for (const skillKey of projectCatalog.declaredKeys) skills.delete(skillKey);
+                for (const skill of projectCatalog.skills) skills.set(skill.key, skill);
+            }
         }
         return [...skills.values()].sort((left, right) => left.key.localeCompare(right.key));
     }
 
     async get(skillKey: string, projectRoot?: string): Promise<SkillCatalogItem | null> {
         return (await this.list(projectRoot)).find((skill) => skill.key === skillKey) ?? null;
+    }
+
+    /**
+     * 解析显式 $skill-key：命中则连同 SKILL.md 正文一并返回，未命中返回 null。
+     *
+     * 命中口径与遮蔽顺序完全复用 list(projectRoot)，Project Root 只用于叠加项目级根；
+     * 省略时退化为 configuredProjectRoot；Install Root 始终参与，因此不依赖 project。
+     */
+    async resolve(skillKey: string, projectRoot?: string): Promise<ResolvedSkill | null> {
+        const key = skillKey.trim();
+        if (!key) return null;
+        const item = await this.get(key, projectRoot);
+        if (!item) return null;
+        return {
+            key: item.key,
+            name: item.name,
+            source: item.source,
+            rootPath: item.rootPath,
+            skillPath: item.skillPath,
+            body: await readFile(item.skillPath, "utf8"),
+        };
     }
 
     private async loadRoot(root: string, source: SkillCatalogSource): Promise<LoadedSkillRoot> {

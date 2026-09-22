@@ -346,7 +346,7 @@ export type ProfileToolBinding<TKey extends string = string> = ToolBinding<TKey>
 export type ProfileTools = {[key: string]: ProfileToolBinding};
 
 export type ProfileDslChild = ProfileDslNode | string | number | boolean | null | undefined | ProfileDslChild[];
-export type ProfileDslNode = ProfilePromptNode | ProfileSetNode | ProfileMessageNode | ProfileToolCallNode | ProfileReminderNode | ProfileWatchNode | ProfileIfNode | ProfileStringFragmentNode | ProfileBuiltinNode | ProfileModeSlotNode | ProfileFileChangeNoticeNode | ProfilePromiseLedgerNode | ProfileMentionedEntitiesNode | ProfileFragmentNode;
+export type ProfileDslNode = ProfilePromptNode | ProfileSetNode | ProfileMessageNode | ProfileToolCallNode | ProfileReminderNode | ProfileWatchNode | ProfileIfNode | ProfileStringFragmentNode | ProfileBuiltinNode | ProfileModeSlotNode | ProfileFileChangeNoticeNode | ProfilePromiseLedgerNode | ProfileMentionedEntitiesNode | ProfileSkillActivationNode | ProfileFragmentNode;
 export type ProfilePromptNode = {kind: "ProfilePrompt"; children: ProfileDslChild[]};
 export type ProfileSetNode = {kind: "System" | "HistorySet" | "ModelContext" | "AppendingSet"; children: ProfileDslChild[]};
 export type ProfileMessageNode = {kind: "Message" | "AIMessage" | "ToolResult"; role?: "user" | "assistant" | "toolResult" | "system"; toolCallId?: string; toolName?: string; isError?: boolean; children: ProfileDslChild[]};
@@ -378,6 +378,7 @@ export type ProfileFragmentNode = {kind: "Fragment"; children: ProfileDslChild[]
 export type ProfileFileChangeNoticeNode = {kind: "FileChangeNotice"; mode: "off" | "minimal" | "full"};
 export type ProfilePromiseLedgerNode = {kind: "PromiseLedger"};
 export type ProfileMentionedEntitiesNode = {kind: "MentionedEntities"};
+export type ProfileSkillActivationNode = {kind: "SkillActivation"};
 export type ReminderState = {hasValue?: boolean; value?: ProfileJsonValue | null; fingerprint?: string; injectedAtTurn?: number};
 export type WatchState = {hasValue: boolean; value: ProfileJsonValue | null; fingerprint: string};
 export type ProfileRuntimeState = {reminders?: {[key: string]: ReminderState}; watches?: {[key: string]: WatchState}};
@@ -392,6 +393,7 @@ export type ProfileTurnPlan = {
         | {kind: "file-change-notice"; mode: "minimal" | "full"; appendingIndex: number}
         | {kind: "promise-ledger"; appendingIndex: number}
         | {kind: "mentioned-entities"; appendingIndex: number}
+        | {kind: "skill-activation"; appendingIndex: number}
     >;
     promptSourceLabels?: {
         historyInit?: Array<readonly string[] | null>;

@@ -4072,6 +4072,8 @@ export class NeuroAgentHarness {
             // M2a：mentioned-entities 的触发源来自本轮输入与当前编辑器文件。
             pendingUserMessage: options.pendingUserMessage,
             selectedFilePath: readStudioSelectedFilePath(options.clientState),
+            // M2c：$skill-key 显式唤起的正文由 SkillCatalog 解析，不依赖当前 Project。
+            skillResolver: this.skills,
         });
         const preparedWithTurnContext: ProfileTurnPlan = {
             ...prepared,
@@ -4819,6 +4821,8 @@ export class NeuroAgentHarness {
             // M2a：mentioned-entities 的触发源来自本轮输入与当前编辑器文件。
             pendingUserMessage: this.invocationPendingUserMessages.get(frame.invocationId),
             selectedFilePath: readStudioSelectedFilePath(this.invocationClientStates.get(frame.invocationId)),
+            // M2c：$skill-key 显式唤起的正文由 SkillCatalog 解析，不依赖当前 Project。
+            skillResolver: this.skills,
         });
         const messages = materialized.insertions
             .sort((left, right) => left.appendingIndex - right.appendingIndex)
@@ -5196,7 +5200,7 @@ export class NeuroAgentHarness {
                 invocationId: frame.invocationId,
             }),
             catalog: await this.profiles.snapshot(),
-            skills: await this.skills.list(),
+            skills: await this.skills.list(configTarget.project?.workspace.root),
             workflows: await this.workflows.list(configTarget.project?.workspace),
             agentVisibleModels: resolveAgentVisibleModels(config),
             runtime: {

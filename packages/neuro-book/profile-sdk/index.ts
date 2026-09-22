@@ -155,6 +155,7 @@ export const AppendingSet = constructors.AppendingSet;
 export const FileChangeNotice = constructors.FileChangeNotice;
 export const PromiseLedger = constructors.PromiseLedger;
 export const MentionedEntities = constructors.MentionedEntities;
+export const SkillActivation = constructors.SkillActivation;
 export const Message = constructors.Message;
 export const AIMessage = constructors.AIMessage;
 export const ToolCall = constructors.ToolCall;

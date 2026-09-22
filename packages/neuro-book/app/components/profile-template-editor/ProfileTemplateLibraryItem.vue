@@ -163,6 +163,12 @@ const {isDragging} = useDraggable({
     --component-accent: #4f8c8f;
 }
 
+.library-node-SkillActivation,
+.library-node-PromiseLedger,
+.library-node-MentionedEntities {
+    --component-accent: #6f7f4f;
+}
+
 .library-node-ActivatedSkills {
     --component-accent: #8a639e;
 }

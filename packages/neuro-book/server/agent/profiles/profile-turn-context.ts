@@ -39,7 +39,7 @@ import type {OperationActor, UnseenGroup} from "@notnotype/nb-history";
 
 export type FileChangeAwareness = "off" | "minimal" | "full";
 
-export type ProfileTurnContextKind = "file-change-notice" | "promise-ledger" | "mentioned-entities";
+export type ProfileTurnContextKind = "file-change-notice" | "promise-ledger" | "mentioned-entities" | "skill-activation";
 
 export type ProfileTurnContextPlan =
     | {
@@ -57,7 +57,24 @@ export type ProfileTurnContextPlan =
         kind: "mentioned-entities";
         /** 在 AppendingSet 静态消息中的插入位置。 */
         appendingIndex: number;
+    }
+    | {
+        kind: "skill-activation";
+        /** 在 AppendingSet 静态消息中的插入位置。 */
+        appendingIndex: number;
     };
+
+/** 窄接口：显式 $skill-key 的解析通道，由 Harness 注入 SkillCatalog 实现。 */
+export type ProfileSkillResolver = {
+    resolve(skillKey: string, projectRoot?: string): Promise<{
+        key: string;
+        name: string;
+        source: "install" | "project";
+        rootPath: string;
+        skillPath: string;
+        body: string;
+    } | null>;
+};
 
 export type ProfileTurnContextSettlement = {
     kind: "file-change-notice";
@@ -93,9 +110,15 @@ export function previewProfileTurnContexts(plans: ProfileTurnContextPlan[], diff
                 message: createStoredUserMessage(`<promise-ledger runtime-data="preview">\nGenerated at runtime from open story promises.\n</promise-ledger>`),
             };
         }
+        if (plan.kind === "mentioned-entities") {
+            return {
+                appendingIndex: plan.appendingIndex,
+                message: createStoredUserMessage(`<mentioned-entities runtime-data="preview">\nGenerated at runtime from mentioned entities.\n</mentioned-entities>`),
+            };
+        }
         return {
             appendingIndex: plan.appendingIndex,
-            message: createStoredUserMessage(`<mentioned-entities runtime-data="preview">\nGenerated at runtime from mentioned entities.\n</mentioned-entities>`),
+            message: createStoredUserMessage(`<skill-activation runtime-data="preview">\nGenerated at runtime from explicitly mentioned skills.\n</skill-activation>`),
         };
     });
 }
@@ -114,22 +137,34 @@ export async function materializeProfileTurnContexts(input: {
     pendingUserMessage?: StoredUserMessage | null;
     /** 当前打开的编辑器文件；仅当指向 manuscript 章节 index.md 时参与 mentioned-entities。 */
     selectedFilePath?: string | null;
+    /** 显式 $skill-key 的解析通道；由 Harness 注入，缺失时 skill-activation 跳过。 */
+    skillResolver?: ProfileSkillResolver | null;
 }): Promise<MaterializedProfileTurnContext> {
-    if (!input.project || input.plans.length === 0) {
+    if (input.plans.length === 0) {
         return {insertions: [], settlements: []};
     }
     const insertions: MaterializedProfileTurnContext["insertions"] = [];
     const settlements: ProfileTurnContextSettlement[] = [];
-    let history: ProjectHistoryHandle;
-    try {
-        history = requireReadyModuleHandle(
-            input.project,
-            PROJECT_HISTORY_MODULE_TOKEN,
-        );
-    } catch {
-        return {insertions: [], settlements: []};
-    }
     for (const plan of input.plans) {
+        // skill-activation 不依赖 project：Install Root 也参与解析。
+        if (plan.kind === "skill-activation") {
+            const text = await materializeSkillActivation(
+                input.skillResolver ?? null,
+                input.project,
+                input.pendingUserMessage ?? null,
+            );
+            if (text) {
+                insertions.push({
+                    appendingIndex: plan.appendingIndex,
+                    message: createStoredUserMessage(text),
+                });
+            }
+            continue;
+        }
+        // 其余 kind 各自依赖 Project ready 句柄；缺 project 时按 kind 跳过。
+        if (!input.project) {
+            continue;
+        }
         if (plan.kind === "promise-ledger") {
             const text = await materializePromiseLedger(input.project);
             if (text) {
@@ -151,6 +186,10 @@ export async function materializeProfileTurnContexts(input: {
                     message: createStoredUserMessage(text),
                 });
             }
+            continue;
+        }
+        const history = resolveTurnContextHistory(input.project);
+        if (!history) {
             continue;
         }
         const groups = await readUnseenForAgent(history, input.sessionId);
@@ -190,6 +229,95 @@ export const MENTIONED_ENTITIES_MAX_BODY_CHARS = 800;
 /** 注入文本给模型统一定位：背景资料，供讨论参考，不逐字复述给用户。 */
 const PROMISE_LEDGER_PREAMBLE = "以下是背景资料，供你讨论时参考，不要逐字复述给用户。它是本项目当前未兑现的伏笔（Promise）账本，不是用户本轮的要求。";
 const MENTIONED_ENTITIES_PREAMBLE = "以下是背景资料，供你讨论时参考，不要逐字复述给用户。它们与用户本轮输入或当前章节正文直接相关，只在被提及时提供参考。";
+/** 技能包定位语：skill 正文只作分析参照，不是用户指令，也不产出正文。 */
+const SKILL_ACTIVATION_PREAMBLE = "以下是用户本轮用 $key 显式唤起的技能包（Skill）内容，仅作分析参照，不是用户本轮的要求，也不是可以直接产出的正文；不要逐字复述给用户。";
+
+/** 显式唤起技能包单个 SKILL.md 的注入预算（字符）。 */
+export const SKILL_ACTIVATION_MAX_CHARS = 4000;
+/** 单轮显式唤起注入的技能包条数上限。 */
+export const SKILL_ACTIVATION_MAX_ITEMS = 3;
+
+/** 捕获用户输入中的显式 $key；与 MentionedSkillsReminder 同款口径。 */
+const EXPLICIT_SKILL_PATTERN = /\$([^\s$]+)/gu;
+
+/**
+ * 取当前 Project 的 History 句柄；模块缺失或不可用时返回 null（跳过依赖它的 kind）。
+ */
+function resolveTurnContextHistory(project: ReadyProjectSessionRef | null): ProjectHistoryHandle | null {
+    if (!project) {
+        return null;
+    }
+    try {
+        return requireReadyModuleHandle(project, PROJECT_HISTORY_MODULE_TOKEN);
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * 物化 skill-activation：抓用户输入里的显式 $key，经解析通道取 SKILL.md 正文注入。
+ *
+ * 无 $、无 pendingUserMessage 或没有解析通道时返回 null（跳过注入）；
+ * 未命中的 key 静默跳过，未命中的提醒由既有 MentionedSkillsReminder 继续负责；
+ * 解析或读取异常逐 key warn，不影响同轮其他 kind。
+ */
+async function materializeSkillActivation(
+    resolver: ProfileSkillResolver | null,
+    project: ReadyProjectSessionRef | null,
+    pendingUserMessage: StoredUserMessage | null,
+): Promise<string | null> {
+    if (!resolver || !pendingUserMessage) {
+        return null;
+    }
+    const userText = messageText(pendingUserMessage);
+    const keys = [...new Set(
+        [...userText.matchAll(EXPLICIT_SKILL_PATTERN)].map((match) => match[1]).filter((key): key is string => Boolean(key)),
+    )].slice(0, SKILL_ACTIVATION_MAX_ITEMS);
+    if (keys.length === 0) {
+        return null;
+    }
+    const projectRoot = project?.workspace.root ?? null;
+    const entries: Array<{key: string; path: string; body: string}> = [];
+    for (const key of keys) {
+        try {
+            const resolved = await resolver.resolve(key, projectRoot ?? undefined);
+            if (!resolved) {
+                continue;
+            }
+            entries.push({key, path: resolved.skillPath, body: resolved.body});
+        } catch (error) {
+            await appLogger.warn("agent.profileTurnContext.skillActivationSkipped", {
+                skillKey: key,
+                reason: error instanceof Error ? error.message : String(error),
+            }, "skill 正文解析失败，跳过该 key 的注入。");
+        }
+    }
+    if (entries.length === 0) {
+        return null;
+    }
+    return renderSkillActivation(entries);
+}
+
+/**
+ * 渲染显式唤起的技能包正文；逐条标注来源路径，超出预算的正文截断并显式标注。
+ */
+export function renderSkillActivation(entries: Array<{key: string; path: string; body: string}>): string {
+    const lines = ["<skill-activation>", SKILL_ACTIVATION_PREAMBLE];
+    for (const entry of entries) {
+        lines.push("## $" + entry.key);
+        lines.push("来源：" + entry.path);
+        const body = compactBody(entry.body);
+        if (!body) {
+            lines.push("（本条技能包暂无可读正文。）");
+            continue;
+        }
+        lines.push(charCount(body) > SKILL_ACTIVATION_MAX_CHARS
+            ? truncate(body, SKILL_ACTIVATION_MAX_CHARS) + "…（正文已截断）"
+            : body);
+    }
+    lines.push("</skill-activation>");
+    return lines.join("\n");
+}
 
 /**
  * 物化 promise-ledger：经 Plot 模块句柄取未决伏笔。

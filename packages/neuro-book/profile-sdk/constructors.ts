@@ -5,6 +5,7 @@ import type {
     ProfileFileChangeNoticeNode,
     ProfilePromiseLedgerNode,
     ProfileMentionedEntitiesNode,
+    ProfileSkillActivationNode,
     ProfileFragmentNode,
     ProfileIfNode,
     ProfileImportProps,
@@ -68,6 +69,11 @@ export function PromiseLedger(): ProfilePromiseLedgerNode {
 /** 声明 Profile 的提及实体按需注入。 */
 export function MentionedEntities(): ProfileMentionedEntitiesNode {
     return {kind: "MentionedEntities"};
+}
+
+/** 声明用户显式 $skill-key 唤起的技能包正文注入。 */
+export function SkillActivation(): ProfileSkillActivationNode {
+    return {kind: "SkillActivation"};
 }
 
 /** 定义用户消息节点；role 合法性由宿主 materializer 校验。 */

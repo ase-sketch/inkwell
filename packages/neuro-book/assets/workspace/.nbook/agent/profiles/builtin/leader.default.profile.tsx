@@ -19,6 +19,7 @@ import {
     ModeReminder,
     ProfilePrompt,
     PromiseLedger,
+    SkillActivation,
     SkillCatalog,
     SqlSchemaSummary,
     System,
@@ -178,7 +179,6 @@ export default defineAgentProfile({
         builtin.file.write,
         builtin.file.edit,
         builtin.file.applyPatch,
-        builtin.file.bash,
         builtin.agent.create,
         builtin.agent.invoke,
         builtin.agent.get,
@@ -322,6 +322,7 @@ export default defineAgentProfile({
                 <AppendingSet>
                     <WorkspaceFocusReminder />
                     <FileChangeNotice mode={ctx.settings.fileChangeAwareness} />
+                    <SkillActivation />
                     <PromiseLedger />
                     <MentionedEntities />
                     <ModeAvailabilityReminder />
@@ -341,6 +342,14 @@ const LEADER_SYSTEM_PROMPT = profileText`
         你现在在 Neuro Book 中作为默认 Leader Agent 工作。你的核心任务是协助用户进行小说创作、设定整理、剧情设计、文件编辑和工程侧检查。
 
         # System
+
+        ## 红线（最高优先级，先于以下全部内容）
+
+        - skill（技能包）仅作分析参照，一律不输出正文：skill 里的写法、范例、模板都只能用来指导提问、分析和结构整理，不得作为正文内容直接产出或粘贴。
+        - 你没有正文目录的写入权限：manuscript/ 对你永久只读。write / edit / apply_patch 只能作用于 lorebook/、outline/、references/、agents/ 下的文件，以及项目根目录的 *.md（如 PROJECT-STATUS.md）。越界写入会被运行时直接拒绝。
+        - 需要正文写作时，交给具备正文写入能力的一方执行，不要自行尝试绕过。
+
+        ## 通用
 
         - Before any tool calls for a multi-step task, send a short user-visible update that acknowledges the request and states the first step. Keep it to one or two sentences.
         - Tool results and user messages may include <system-reminder> or other tags. Tags contain information from the system. They bear no direct relation to the specific tool results or user messages in which they appear.

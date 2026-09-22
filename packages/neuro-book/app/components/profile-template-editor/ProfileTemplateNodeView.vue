@@ -127,6 +127,9 @@ const nodeIconMap: Record<ProfileTemplateNodeType, string> = {
     SkillCatalog: "i-lucide-library",
     WorkflowCatalog: "i-lucide-workflow",
     ActivatedSkills: "i-lucide-sparkles",
+    SkillActivation: "i-lucide-sparkles",
+    PromiseLedger: "i-lucide-scroll-text",
+    MentionedEntities: "i-lucide-book-marked",
     SqlSchemaSummary: "i-lucide-database",
     Import: "i-lucide-file-input",
 };
@@ -228,6 +231,15 @@ function nodeSummary(node: ProfileTemplateNodeDto): string {
     }
     if (node.type === "CompactionSummaryPrefix") {
         return "摘要注入后续上下文的前缀。";
+    }
+    if (node.type === "SkillActivation") {
+        return "用户本轮 $skill-key 显式唤起的技能包正文。";
+    }
+    if (node.type === "PromiseLedger") {
+        return "本轮未兑现伏笔账本。";
+    }
+    if (node.type === "MentionedEntities") {
+        return "本轮命中的设定条目。";
     }
     if (node.type === "ActivatedSkills") {
         return String(node.props.text ?? "${activatedSkillsText}");
@@ -355,7 +367,7 @@ function prepareDrag(): void {
                     :depth="props.depth + 1"
                     :index="childIndex"
                     :parent-id="props.node.id"
-                    :can-have-children="!['Text', 'ToolCall', 'ToolResult', 'AgentCatalog', 'SkillCatalog', 'WorkflowCatalog', 'ActivatedSkills', 'SqlSchemaSummary', 'Import', 'LinkedAgentsSummary', 'LinkedAgentsReminder', 'WorkspaceFocusReminder', 'ModeAvailabilityReminder', 'TaskReminder', 'MentionedSkillsReminder', 'FileChangeNotice'].includes(child.type)"
+                    :can-have-children="!['Text', 'ToolCall', 'ToolResult', 'AgentCatalog', 'SkillCatalog', 'WorkflowCatalog', 'ActivatedSkills', 'SqlSchemaSummary', 'Import', 'LinkedAgentsSummary', 'LinkedAgentsReminder', 'WorkspaceFocusReminder', 'ModeAvailabilityReminder', 'TaskReminder', 'MentionedSkillsReminder', 'FileChangeNotice', 'SkillActivation', 'PromiseLedger', 'MentionedEntities'].includes(child.type)"
                     :disabled-drop-node-ids="props.disabledDropNodeIds"
                     @select="emit('select', $event)"
                     @prepare-drag="emit('prepareDrag', $event)"
@@ -546,6 +558,9 @@ function prepareDrag(): void {
 .node-ModeSlot::before,
 .node-MentionedSkillsReminder::before,
 .node-FileChangeNotice::before,
+.node-SkillActivation::before,
+.node-PromiseLedger::before,
+.node-MentionedEntities::before,
 .node-AgentCatalog::before,
 .node-ActivatedSkills::before,
 .node-SkillCatalog::before,
@@ -633,6 +648,12 @@ function prepareDrag(): void {
 
 .node-FileChangeNotice {
     --profile-node-accent: #4f8c8f;
+}
+
+.node-SkillActivation,
+.node-PromiseLedger,
+.node-MentionedEntities {
+    --profile-node-accent: #6f7f4f;
 }
 
 .node-ActivatedSkills {

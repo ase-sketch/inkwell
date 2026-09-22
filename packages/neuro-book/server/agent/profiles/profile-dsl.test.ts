@@ -15,6 +15,7 @@ import {
     FileChangeNotice,
     PromiseLedger,
     MentionedEntities,
+    SkillActivation,
     HistorySet,
     If,
     Import,
@@ -309,6 +310,71 @@ describe("profile TSX DSL", () => {
         });
 
         await expect(profileWithEntitiesInModel.prepare!(context())).rejects.toThrow("MentionedEntities 必须作为 AppendingSet 的直接子节点。");
+    });
+
+    it("SkillActivation 与 PromiseLedger/MentionedEntities 同处 AppendingSet 并登记 kind", async () => {
+        const profile = defineRuntimeAgentProfile({
+            manifest: {key: "test.skill-activation", name: "Skill Activation"},
+            initialSchema: Type.Object({}),
+            tools: profileToolsFromKeys([]),
+            context() {
+                return ProfilePrompt({
+                    children: AppendingSet({
+                        children: [
+                            Message({children: "M1"}),
+                            FileChangeNotice({mode: "minimal"}),
+                            SkillActivation(),
+                            PromiseLedger(),
+                            MentionedEntities(),
+                            Message({children: "M2"}),
+                        ],
+                    }),
+                });
+            },
+        });
+
+        const plan = await profile.prepare!(context());
+
+        expect((plan.appendingMessages ?? []).map(messageText)).toEqual(["M1", "M2"]);
+        expect(plan.turnContexts).toEqual([
+            {kind: "file-change-notice", mode: "minimal", appendingIndex: 1},
+            {kind: "skill-activation", appendingIndex: 1},
+            {kind: "promise-ledger", appendingIndex: 1},
+            {kind: "mentioned-entities", appendingIndex: 1},
+        ]);
+    });
+
+    it("SkillActivation 必须作为 AppendingSet 的直接子节点", async () => {
+        const profileWithActivationInModel = defineRuntimeAgentProfile({
+            manifest: {key: "test.bad-activation", name: "Bad Activation"},
+            initialSchema: Type.Object({}),
+            tools: profileToolsFromKeys([]),
+            context() {
+                return ProfilePrompt({
+                    children: ModelContext({
+                        children: [SkillActivation()],
+                    }),
+                });
+            },
+        });
+
+        await expect(profileWithActivationInModel.prepare!(context())).rejects.toThrow("SkillActivation 必须作为 AppendingSet 的直接子节点。");
+    });
+
+    it("validateProfileTurnPlan 允许 skill-activation，且同 kind 重复仍报错", () => {
+        expect(() => validateProfileTurnPlan("test.dsl", {
+            turnContexts: [
+                {kind: "skill-activation", appendingIndex: 0},
+                {kind: "mentioned-entities", appendingIndex: 1},
+            ],
+        })).not.toThrow();
+
+        expect(() => validateProfileTurnPlan("test.dsl", {
+            turnContexts: [
+                {kind: "skill-activation", appendingIndex: 0},
+                {kind: "skill-activation", appendingIndex: 1},
+            ],
+        })).toThrow("profile test.dsl 声明了重复的 turnContext kind: skill-activation。");
     });
 
     it("validateProfileTurnPlan 允许多个不同 kind turnContexts，同 kind 重复时报错指明具体 kind", () => {

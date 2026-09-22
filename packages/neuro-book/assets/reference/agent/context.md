@@ -118,11 +118,30 @@ System + HistorySet/history -> ModelContext -> AppendingSet -> CurrentUserInput
 
 - `Reminder`：根据 `when`、`watchPath` / `watchValue`、函数 `watch` 和 `repeatEveryTurns` 判断是否注入。注入后会更新 profile runtime state。
 - `Watch`：比较当前变量值与 profile runtime state baseline；变化时生成消息，并更新 watched baseline。
-- `ActivatedSkills`：用户本轮显式输入 `$skill-name` 时，系统预加载对应 `SKILL.md` 后返回的文本片段。
+- `ActivatedSkills`：Profile 自己提供的激活技能文本片段（默认走 `text` 模板占位），由宿主替换为作者给定的 `text`；真正的 `$skill-key` 正文注入见下面的 `SkillActivation`。
+- `SkillActivation`：用户本轮显式输入 `$skill-key` 时，宿主按 key 解析技能包并注入 `SKILL.md` 正文。只能直接放在 `AppendingSet`；未命中的 key 不注入，由 `MentionedSkillsReminder` 继续给出提醒。
 
 `AppendingSet` 不接受非空裸文本；文本必须放在 `<Message>` 内。
 
 当前用户输入不属于 `AppendingSet`。它由 Harness 作为独立 durable prompt 持久化，并在 provider 消息中保持为 `CurrentUserInput` 最后一段。Profile 不应把 `ctx.invocation.message` 再复制成 `<Message>`，否则同一用户要求会重复进入模型。
+
+### SkillActivation
+
+`SkillActivation` 是 turn context 节点，只能作为 `AppendingSet` 的直接子节点：
+
+```tsx
+<AppendingSet>
+    <SkillActivation />
+    <MentionedEntities />
+</AppendingSet>
+```
+
+- 触发源只有本轮用户输入里的 `$key`（与 `MentionedSkillsReminder` 同一套抓取口径）；输入里没有 `$` 就不产生注入。
+- 每个 key 经 Skill Catalog 解析，命中后注入该技能包的 `SKILL.md` 正文，并标注来源路径与「技能包内容，仅作分析参照」定位语；单个技能正文截断上限 4000 字符，单轮最多注入 3 个 key。
+- 解析不依赖当前 Project：Install Root 始终参与，Project Root 只用于叠加项目级技能根（遮蔽顺序 `<项目>/.nbook/skills` > `<项目>/.nbook/agent/skills` > Install Root）。
+- 未命中的 key 静默跳过，不报错；未命中的提醒仍由 `MentionedSkillsReminder` 负责，两者共存。
+- 解析或读取异常只记 warn 并跳过该 key，不影响同轮其他 kind。
+- Workbench dry-run 只显示占位消息，不读取真实技能包。
 
 ### FileChangeNotice
 

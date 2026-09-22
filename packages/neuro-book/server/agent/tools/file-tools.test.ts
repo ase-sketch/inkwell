@@ -386,6 +386,51 @@ describe("v3 file tools", () => {
             .rejects.toThrow("不要重复添加 silver-dragon-hime/ 前缀");
     });
 
+    it("交互型 profile 的写入域经 file-tools 传到授权层：manuscript 被拒、放行目录照常写", async () => {
+        const projectRoot = join(workspaceRoot, "alpha");
+        await mkdir(projectRoot, {recursive: true});
+        const currentProject = await openManagedProject("alpha");
+        const leaderContext: ToolExecutionContext = {...context, currentProject, profileKey: "leader.default"};
+
+        const write = mustTool("write", harness);
+        const edit = mustTool("edit", harness);
+        const applyPatch = mustTool("apply_patch", harness);
+
+        // manuscript/ 必须被拒——证明 profileKey 真的从工具上下文传到了授权层。
+        await expect(write.executeWithContext?.(leaderContext, "write-manuscript", {
+            path: "manuscript/chapter.md",
+            content: "正文",
+        })).rejects.toThrow(/manuscript\//u);
+        await expect(edit.executeWithContext?.(leaderContext, "edit-manuscript", {
+            path: "manuscript/chapter.md",
+            edits: [{oldText: "a", newText: "b"}],
+        })).rejects.toThrow(/manuscript\//u);
+        await expect(applyPatch.executeWithContext?.(leaderContext, "patch-manuscript", {
+            patch: ["*** Begin Patch", "*** Add File: manuscript/chapter.md", "+正文", "*** End Patch"].join("\n"),
+        })).rejects.toThrow(/manuscript\//u);
+        await expect(readFile(join(projectRoot, "manuscript", "chapter.md"), "utf-8")).rejects.toThrow();
+
+        // 白名单内路径照常落盘；根目录 *.md 也在允许范围。
+        await write.executeWithContext?.(leaderContext, "write-lorebook", {
+            path: "lorebook/index.md",
+            content: "设定",
+        });
+        await write.executeWithContext?.(leaderContext, "write-status", {
+            path: "PROJECT-STATUS.md",
+            content: "状态",
+        });
+        await expect(readFile(join(projectRoot, "lorebook", "index.md"), "utf-8")).resolves.toBe("设定");
+        await expect(readFile(join(projectRoot, "PROJECT-STATUS.md"), "utf-8")).resolves.toBe("状态");
+
+        // 同一个工具在非交互 profileKey 下不受限：写入域策略是按 profile 生效的。
+        const assetsContext: ToolExecutionContext = {...leaderContext, profileKey: "leader.assets"};
+        await write.executeWithContext?.(assetsContext, "write-assets-manuscript", {
+            path: "manuscript/from-assets.md",
+            content: "不受限",
+        });
+        await expect(readFile(join(projectRoot, "manuscript", "from-assets.md"), "utf-8")).resolves.toBe("不受限");
+    });
+
     it("write 创建父目录并写入内容", async () => {
         const tool = mustTool("write", harness);
 

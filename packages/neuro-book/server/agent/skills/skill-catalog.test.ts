@@ -168,6 +168,77 @@ name: novel-writing
             description: "harness guide",
         }));
     });
+
+    it("作者级 .nbook/skills 优先扫描并遮蔽 Install Skill", async () => {
+        const authorRoot = join(projectRoot, ".nbook", "skills");
+        await writeSkill(installRoot, "writer", `---\nname: System Writer\n---\n`);
+        await writeSkill(authorRoot, "writer", `---\nname: Author Writer\n---\n`);
+        const catalog = new SkillCatalog(installRoot);
+
+        await expect(catalog.list(projectRoot)).resolves.toEqual([
+            expect.objectContaining({
+                key: "writer",
+                name: "Author Writer",
+                source: "project",
+                skillPath: join(authorRoot, "writer", "SKILL.md"),
+            }),
+        ]);
+    });
+
+    it("三级遮蔽优先级：.nbook/skills > .nbook/agent/skills > install", async () => {
+        const authorRoot = join(projectRoot, ".nbook", "skills");
+        const agentRoot = join(projectRoot, ".nbook", "agent", "skills");
+
+        // skill1: 同时存在于三层，author 胜出
+        await writeSkill(installRoot, "skill1", "---\nname: Install 1\n---\n");
+        await writeSkill(agentRoot, "skill1", "---\nname: Agent 1\n---\n");
+        await writeSkill(authorRoot, "skill1", "---\nname: Author 1\n---\n");
+
+        // skill2: 存在于 agent 和 install，agent 胜出
+        await writeSkill(installRoot, "skill2", "---\nname: Install 2\n---\n");
+        await writeSkill(agentRoot, "skill2", "---\nname: Agent 2\n---\n");
+
+        // skill3: 仅存在于 author
+        await writeSkill(authorRoot, "skill3", "---\nname: Author 3\n---\n");
+
+        // skill4: 仅存在于 install
+        await writeSkill(installRoot, "skill4", "---\nname: Install 4\n---\n");
+
+        const catalog = new SkillCatalog(installRoot);
+        const result = await catalog.list(projectRoot);
+
+        expect(result).toEqual([
+            expect.objectContaining({key: "skill1", name: "Author 1", source: "project"}),
+            expect.objectContaining({key: "skill2", name: "Agent 2", source: "project"}),
+            expect.objectContaining({key: "skill3", name: "Author 3", source: "project"}),
+            expect.objectContaining({key: "skill4", name: "Install 4", source: "install"}),
+        ]);
+    });
+
+    it("作者级 .nbook/skills 损坏时隔离自身并继续遮蔽同名下层 skill", async () => {
+        const authorRoot = join(projectRoot, ".nbook", "skills");
+        const agentRoot = join(projectRoot, ".nbook", "agent", "skills");
+
+        await writeSkill(installRoot, "writer", "---\nname: System Writer\n---\n");
+        await writePackage(installRoot, "writer", "1.0.0");
+        await writeSkill(agentRoot, "writer", "---\nname: Agent Writer\n---\n");
+        await writePackage(agentRoot, "writer", "1.0.0");
+        await writeSkill(authorRoot, "writer", "---\nname: Broken Author Writer\n---\n");
+        await writePackage(authorRoot, "writer", "invalid-version");
+
+        const warn = vi.spyOn(consola, "warn").mockImplementation(() => undefined);
+        const catalog = new SkillCatalog(installRoot);
+
+        try {
+            await expect(catalog.list(projectRoot)).resolves.toEqual([]);
+            expect(warn).toHaveBeenCalledWith(
+                expect.objectContaining({skillKey: "writer", rootPath: join(authorRoot, "writer")}),
+                "Project Skill package 无效，已隔离该 Skill",
+            );
+        } finally {
+            warn.mockRestore();
+        }
+    });
 });
 
 async function writeSkill(root: string, key: string, source: string): Promise<void> {

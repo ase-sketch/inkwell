@@ -22,6 +22,7 @@ import type {
     ProfileFileChangeNoticeNode,
     ProfilePromiseLedgerNode,
     ProfileMentionedEntitiesNode,
+    ProfileSkillActivationNode,
     ProfileFragmentNode,
     ProfileIfNode,
     ProfileImportAs,
@@ -47,6 +48,7 @@ export type {
     ProfileFileChangeNoticeNode,
     ProfilePromiseLedgerNode,
     ProfileMentionedEntitiesNode,
+    ProfileSkillActivationNode,
     ProfileFragmentNode,
     ProfileIfNode,
     ProfileImportAs,
@@ -201,7 +203,7 @@ export function validateProfileTurnPlan(profileKey: string, plan: ProfileTurnPla
     const seenKinds = new Set<string>();
     for (const context of plan.turnContexts ?? []) {
         if (
-            !["file-change-notice", "promise-ledger", "mentioned-entities"].includes(context.kind)
+            !["file-change-notice", "promise-ledger", "mentioned-entities", "skill-activation"].includes(context.kind)
             || !Number.isInteger(context.appendingIndex)
             || context.appendingIndex < 0
         ) {
@@ -302,6 +304,17 @@ export function PromiseLedger(): ProfilePromiseLedgerNode {
 export function MentionedEntities(): ProfileMentionedEntitiesNode {
     return {
         kind: "MentionedEntities",
+    };
+}
+
+/**
+ * 用户输入中显式 $skill-key 时注入技能包正文。
+ *
+ * 必须作为 AppendingSet 的直接子节点。
+ */
+export function SkillActivation(): ProfileSkillActivationNode {
+    return {
+        kind: "SkillActivation",
     };
 }
 
@@ -837,6 +850,16 @@ async function renderChild(state: CompileState, zone: RenderZone, child: Profile
                     ];
                     continue;
                 }
+                if (appendingChild.kind === "SkillActivation") {
+                    state.plan.turnContexts = [
+                        ...state.plan.turnContexts ?? [],
+                        {
+                            kind: "skill-activation",
+                            appendingIndex: baseIndex + messages.length,
+                        },
+                    ];
+                    continue;
+                }
             }
             messages.push(...await renderChild(state, "appending", appendingChild));
         }
@@ -851,6 +874,9 @@ async function renderChild(state: CompileState, zone: RenderZone, child: Profile
     }
     if (child.kind === "MentionedEntities") {
         throw new Error("MentionedEntities 必须作为 AppendingSet 的直接子节点。");
+    }
+    if (child.kind === "SkillActivation") {
+        throw new Error("SkillActivation 必须作为 AppendingSet 的直接子节点。");
     }
     if (child.kind === "Reminder") {
         if (zone !== "appending" && zone !== "model") {

@@ -13,6 +13,7 @@ import {
     requireActiveReadyProject,
 } from "nbook/server/workspace-files/project-session";
 import type {ReadyProjectSessionRef} from "nbook/server/workspace-files/project-session-types";
+import {assertProfileWriteScope} from "nbook/server/workspace-files/profile-write-scope";
 
 /** Agent 文件操作的能力种类；所有数据面操作都使用同一授权边界。 */
 export type AuthorizedFileOperation = "read" | "write" | "edit" | "apply_patch";
@@ -21,6 +22,8 @@ export type AuthorizedFileOperation = "read" | "write" | "edit" | "apply_patch";
 export type FileOperationContext = Readonly<{
     workspaceRoot: AbsoluteFsPath;
     currentProject: ReadyProjectSessionRef | null;
+    /** Agent 调用方携带的 profile 身份；缺省表示该调用方没有 profile 写入域策略。 */
+    profileKey?: string;
 }>;
 
 /** 已解析并捕获 exact Project generation 的文件目标。 */
@@ -60,6 +63,11 @@ export async function authorizeFileOperation(
     }
 
     const resolved = await resolveFileTarget(context.workspaceRoot, currentProject, normalizedInput);
+    assertProfileWriteScope({
+        profileKey: context.profileKey,
+        operation,
+        target: resolved.target,
+    });
     if (resolved.containmentRoot) {
         await assertRealPathContained(resolved.containmentRoot, resolved.target.absolutePath);
     }

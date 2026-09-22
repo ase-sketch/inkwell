@@ -134,7 +134,6 @@ describe("assets builtin v3 profiles", () => {
             "write",
             "edit",
             "apply_patch",
-            "bash",
             "create_agent",
             "invoke_agent",
             "get_agent",
@@ -178,7 +177,9 @@ describe("assets builtin v3 profiles", () => {
         expect(prompt).toContain("用户是主创");
         expect(visiblePrompt).toContain("Profile Routing");
         expect(visiblePrompt).toContain("read");
-        expect(visiblePrompt).toContain("bash");
+        // 摘 bash 后系统提示词不再宣传 shell 能力；历史区注入的通用参考文档仍可能泛泛提到 bash。
+        expect(prompt).not.toContain("bash");
+        expect(profile.rootToolKeys).not.toContain("bash");
         expect(visiblePrompt).toContain("offset` / `limit");
         expect(visiblePrompt).toContain("edits[]");
         expect(visiblePrompt).toContain("Workspace Root");

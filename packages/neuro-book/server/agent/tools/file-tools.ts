@@ -108,7 +108,15 @@ async function resolveToolFile(
     inputPath: string,
     operation: "read" | "write" | "edit" | "apply_patch",
 ): Promise<ResolvedFileTarget> {
-    const authorized = await authorizeFileOperation(context, inputPath, operation);
+    const authorized = await authorizeFileOperation(
+        {
+            workspaceRoot: context.workspaceRoot,
+            currentProject: context.currentProject,
+            profileKey: context.profileKey,
+        },
+        inputPath,
+        operation,
+    );
     return authorized.target;
 }
 

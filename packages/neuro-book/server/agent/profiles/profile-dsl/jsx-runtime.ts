@@ -14,6 +14,7 @@ const components = {
     FileChangeNotice: dsl.FileChangeNotice,
     PromiseLedger: dsl.PromiseLedger,
     MentionedEntities: dsl.MentionedEntities,
+    SkillActivation: dsl.SkillActivation,
     Message: dsl.Message,
     AIMessage: dsl.AIMessage,
     ToolCall: dsl.ToolCall,
@@ -71,6 +72,7 @@ export namespace JSX {
         FileChangeNotice: Parameters<typeof dsl.FileChangeNotice>[0];
         PromiseLedger: Record<string, never>;
         MentionedEntities: Record<string, never>;
+        SkillActivation: Record<string, never>;
         Message: Parameters<typeof dsl.Message>[0];
         AIMessage: Parameters<typeof dsl.AIMessage>[0];
         ToolCall: Parameters<typeof dsl.ToolCall>[0];
