@@ -2746,7 +2746,7 @@ onBeforeUnmount(() => {
     <!-- IDE 页面根容器 -->
     <div
         ref="themeHostRef"
-        class="novel-ide-page ide-shell flex h-screen overflow-hidden bg-[var(--bg-main)] text-[var(--text-main)] transition-colors duration-300"
+        class="novel-ide-page novel-ide-theme ide-shell flex h-screen overflow-hidden bg-[var(--bg-main)] text-[var(--text-main)] transition-colors duration-300"
         :data-workbench-layout-mode="layoutMode"
     >
         <!-- Project 激活事务期间阻止旧数据面继续编辑。 -->
@@ -3218,6 +3218,7 @@ onBeforeUnmount(() => {
                 />
             </section>
         </div>
+        </div>
 
         <NovelIdeSettingsDialog v-model="settingsDialogOpen" />
         <NovelIdeProfileDialog v-model="accountProfileOpen" />
@@ -3254,7 +3255,6 @@ onBeforeUnmount(() => {
             :issues="workspaceIssues"
             @refresh="void loadWorkspaceTree()"
         />
-        </div>
     </div>
 </template>
 

@@ -110,4 +110,41 @@ describe("Ide shell legacy entry", () => {
         expect(drawer).not.toContain("saveCurrentFile");
         expect(drawer).not.toContain("/api/workspace-files/write");
     });
+
+    it("全局对话框（设置、个人中心等）置于根容器直接子级，不落在旧壳 v-else 分支内", async () => {
+        const indexPage = await readSource(indexPagePath);
+
+        const legacyStart = indexPage.indexOf('<div v-else class="relative flex min-w-0 flex-1 flex-col overflow-hidden">');
+        expect(legacyStart).toBeGreaterThan(-1);
+
+        const rootClose = indexPage.lastIndexOf("</div>\n</template>");
+        expect(rootClose).toBeGreaterThan(legacyStart);
+
+        const settingsDialogIndex = indexPage.indexOf("<NovelIdeSettingsDialog");
+        const profileDialogIndex = indexPage.indexOf("<NovelIdeProfileDialog");
+        expect(settingsDialogIndex).toBeGreaterThan(-1);
+        expect(profileDialogIndex).toBeGreaterThan(-1);
+
+        // v-else 分支闭合标签必须早于全局对话框（即全局对话框不在 v-else 内部，新壳下正常挂载）
+        const legacyClose = indexPage.indexOf("</div>\n        </div>\n\n        <NovelIdeSettingsDialog");
+        expect(legacyClose).toBeGreaterThan(-1);
+        expect(legacyClose).toBeGreaterThan(legacyStart);
+
+        // 全局对话框必须置于根容器闭合标签之前
+        expect(settingsDialogIndex).toBeLessThan(rootClose);
+        expect(profileDialogIndex).toBeLessThan(rootClose);
+
+        // 截取完整的旧壳分支，验证全局对话框全部被移出
+        const legacyBranch = indexPage.slice(legacyStart, settingsDialogIndex);
+        expect(legacyBranch).toContain("ProjectPickerScreen");
+        expect(legacyBranch).not.toContain("NovelIdeSettingsDialog");
+        expect(legacyBranch).not.toContain("NovelIdeProfileDialog");
+        expect(legacyBranch).not.toContain("AgentTraceViewerDialog");
+        expect(legacyBranch).not.toContain("WorkspaceHistoryInboxDialog");
+        expect(legacyBranch).not.toContain("UserProfileWorkbenchDialog");
+        expect(legacyBranch).not.toContain("WorkspaceFileConflictDialog");
+        expect(legacyBranch).not.toContain("WorkspaceCharacterDetailPanel");
+        expect(legacyBranch).not.toContain("WorkspaceLocationProfileDialog");
+        expect(legacyBranch).not.toContain("WorkspaceRuleProfileDialog");
+    });
 });

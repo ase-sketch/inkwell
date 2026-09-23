@@ -7,6 +7,7 @@ const drawerPath = fileURLToPath(new URL("./shell/IdeOutlineDrawer.vue", import.
 const panelPath = fileURLToPath(new URL("./shell/IdeManuscriptPanel.vue", import.meta.url));
 const sidebarPath = fileURLToPath(new URL("./shell/IdeShellSidebar.vue", import.meta.url));
 const topBarPath = fileURLToPath(new URL("./shell/IdeShellTopBar.vue", import.meta.url));
+const lorebookDrawerPath = fileURLToPath(new URL("./shell/IdeLorebookDrawer.vue", import.meta.url));
 
 async function readSource(path: string): Promise<string> {
     return (await readFile(path, "utf-8")).replace(/\r\n/g, "\n");
@@ -83,5 +84,17 @@ describe("Ide outline drawer", () => {
         // 正文新建逻辑保持不变。
         expect(indexPage).toContain("nextChapterPath(nodes)");
         expect(indexPage).toContain("buildChapterMarkdown(filePath)");
+    });
+
+    it("抽屉组件侦听 props.open 而非全局 open，防止挂载时触发 window.open() 弹出空白页", async () => {
+        const drawer = await readSource(drawerPath);
+        const lorebookDrawer = await readSource(lorebookDrawerPath);
+
+        // 绝不直接 watch(open, ...)：否则函数源被当成 getter 立即执行导致 window.open() 无参调用
+        expect(drawer).not.toMatch(/watch\(\s*open\s*,/);
+        expect(drawer).toContain("watch(() => props.open, (isOpen) =>");
+
+        expect(lorebookDrawer).not.toMatch(/watch\(\s*open\s*,/);
+        expect(lorebookDrawer).toContain("watch(() => props.open, (isOpen) =>");
     });
 });

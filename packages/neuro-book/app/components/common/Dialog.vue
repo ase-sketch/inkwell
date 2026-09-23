@@ -227,6 +227,28 @@ const resolvedWidth = computed(() => props.width ?? resolvedSizePreset.value.wid
 const resolvedHeight = computed(() => props.height ?? resolvedSizePreset.value.height);
 const resolvedMaxHeight = computed(() => props.maxHeight ?? resolvedSizePreset.value.maxHeight);
 
+/**
+ * 健壮解析 Teleport 目标：
+ * 当选择器目标在 DOM 中尚未存在时，降级到 body 并发出警告，防止子组件挂载时因时序问题静默丢失渲染。
+ */
+const resolvedTeleportTarget = computed(() => {
+    if (props.teleportTarget === false) {
+        return undefined;
+    }
+    void props.modelValue;
+    if (typeof props.teleportTarget === "string") {
+        if (import.meta.client) {
+            const targetEl = document.querySelector(props.teleportTarget);
+            if (!targetEl) {
+                console.warn(`[Dialog] teleportTarget "${props.teleportTarget}" 未在 DOM 中找到，降级回退到 "body"，请检查宿主挂载时序。`);
+                return "body";
+            }
+        }
+        return props.teleportTarget;
+    }
+    return "body";
+});
+
 onMounted(() => {
     isMounted.value = true;
 });
@@ -234,7 +256,7 @@ onMounted(() => {
 
 <template>
     <!-- 对话框遮罩 + 容器 -->
-    <Teleport v-if="isMounted" :to="typeof teleportTarget === 'string' ? teleportTarget : 'body'" :disabled="teleportTarget === false">
+    <Teleport v-if="isMounted" :to="resolvedTeleportTarget ?? 'body'" :disabled="teleportTarget === false">
         <Transition name="nb-dialog">
             <div v-if="modelValue" class="fixed inset-0 z-[9000] flex items-center justify-center transition-colors duration-200" :class="[
                 overlayType === 'opaque' ? 'bg-black/50' :

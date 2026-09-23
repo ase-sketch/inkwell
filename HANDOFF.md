@@ -1,7 +1,7 @@
 # HANDOFF — Inkwell 交接文档
 
 > 给在本工作区新开会话的 Agent：按本文档接手，不用问用户已经敲定的事。
-> 交接时间：**2026-09-22**。状态：**M0 ✅ / M1a ✅ / M1b ✅ / M1c ✅ / M2a ✅ / M2c ✅ / M2b ✅（卡文追问：划词入口+interview.stuck+ka-wen skill，真实 UI+LLM 验收通过）**；下一步进 **M2.5**（码字基本盘，含 inline.editor 边界重设计与红线缺口处置）。
+> 交接时间：**2026-09-22**。状态：**M0 ✅ / M1a ✅ / M1b ✅ / M1c ✅ / M2a ✅ / M2c ✅ / M2b ✅**；用户手工试用三 bug（抽屉误弹空白页 / 新壳设置与个人中心无响应 / 面向作者文案泄漏变量名）已修复验收 ✅；下一步进 **M2.5**（码字基本盘，含 inline.editor 边界重设计与红线缺口处置）。
 
 ## 第一步：按顺序读这些文档
 
@@ -46,6 +46,7 @@ Inkwell = fork neuro-book 改造的小说创作辅助 agent：苏格拉底式追
 - [x] **M2a — 长篇上下文三件套**（2026-09-22 收口）：promise-ledger 恒定注入（open 伏笔每轮注入，10 条/1500 字符上限）+ mentioned-entities 按需注入（用户输入+当前章节正文触发，title/aliases/slug 匹配 lorebook，top-5/800 字符）+ 锚点规范（anchors schema 字段 + lorebook-anchors.md 三来源口径 + interview/leader 沉淀 prompt 同步）。机制面：turnContext 上限按 kind 放开、harness +23 行最小接线、当前章节口径服务。验收=agent 域 1491 绿/3 红全为既有基线、profile 编译 EXIT=0、新增测试 37 条全绿+变异测试实证。决策笔记 .agents/notes/implemented/feature/2026-09-22-m2a-context-injection.md（含已知限制：章节就绪门保守、followup 轮无用户输入触发、lorebook 全量扫描无缓存）。**手工验收待用户**（milestones M2a 节场景）
 - [x] **M2c — Skill 双轨骨架**（2026-09-22 收口）：作者级 <书>/.nbook/skills/ 目录（三级遮蔽）+ \$key 显式唤起真注入（skill-activation turn context）+ 红线物理落地（profile-write-scope 写域白名单，leader/interview 禁 manuscript 写入+摘 bash）。真实 LLM 验收四项全过。决策笔记 .agents/notes/implemented/feature/2026-09-22-m2c-skill-dual-track.md（含 M1c 遗留：install root 代写 skill 待清）
 - [x] **M2b — 卡文追问**（2026-09-22 收口）：划词「卡文追问」入口（MarkdownSelectionMenu+选区 chip 链路）+ interview.stuck 薄骨架 profile（继承追问闸门+红线登记）+ ka-wen skill（三连问，一轮一层）+ UX-1/3/4/5 修复。真实验收：Playwright 划词点击全链路 + 两轮逐层深入 + 注入三件套同轮在场。决策笔记 .agents/notes/implemented/feature/2026-09-22-m2b-stuck-interview.md
+- [x] **试用三 bug 修复**（2026-09-22）：①抽屉 watch(open) 命中全局 window.open → 两个 about:blank（改 () => props.open）；②新壳 v-else 分支吞掉 9 个全局对话框 → 设置/个人中心在新壳永不渲染（整块移出分支，模板结构契约测试锁防）；③三个 profile System 段加文案人性化纪律（面向作者 prose 禁 schema 字段名）。验收=30 条聚焦测试绿 + typecheck EXIT=0 + Playwright 实测。决策笔记 .agents/notes/implemented/bug-fix/2026-09-22-novel-ide-global-dialogs-branch.md。**教训：给既有模板加顶层分支时必须审计全局挂载块是否被吞进旧分支**
 - [ ] 里程碑线：~~M2a → M2c → M2b~~ → M2.5 码字基本盘 → M2.7 知识库呈现层 → M3 审稿质疑 → M4 资料阅读 → M5 访谈归档
 
 ## 路线拍板（2026-09-21 全部敲定，勿重开）

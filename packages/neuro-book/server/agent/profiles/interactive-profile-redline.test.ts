@@ -23,6 +23,15 @@ const REQUIRED_DECLARATIONS = [
     "你没有正文目录的写入权限",
 ] as const;
 
+/** 面向作者的语言纪律关键词，严格区分对作者说的话与写入文件的字段。 */
+const LANGUAGE_DISCIPLINE_KEYWORDS = [
+    "面向作者说话与写进文件严格区分",
+    "「锚点」说成「出处」",
+    "「governance.source」说成「来源（访谈沉淀/正文沉淀/人工录入）」",
+    "「lorebook」说成「设定集/设定卡」",
+    "绝不出现在对作者说的话里",
+] as const;
+
 /** leader.default 的 settings schema 无可选字段，必须给全。 */
 const LEADER_DEFAULT_SETTINGS = {
     collaborationMode: "default",
@@ -154,6 +163,14 @@ describe("交互型 profile 红线：摘 bash + 置顶声明", () => {
 
             for (const declaration of REQUIRED_DECLARATIONS) {
                 expect(appendingText).not.toContain(declaration);
+            }
+        });
+
+        it(`${current.key} System 区带面向作者的语言纪律`, async () => {
+            const {systemPrompt} = await current.prepare();
+
+            for (const keyword of LANGUAGE_DISCIPLINE_KEYWORDS) {
+                expect(systemPrompt).toContain(keyword);
             }
         });
     }

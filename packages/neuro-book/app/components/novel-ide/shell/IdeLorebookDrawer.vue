@@ -165,7 +165,7 @@ function toggleCategory(id: string): void {
 
 watch(selectedPath, (filePath) => void loadPreview(filePath));
 
-watch(open, (isOpen) => {
+watch(() => props.open, (isOpen) => {
     if (!isOpen || selectedPath.value) {
         return;
     }

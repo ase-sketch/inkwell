@@ -164,7 +164,7 @@ function toggleSection(id: string): void {
 watch(selectedPath, (filePath) => void loadPreview(filePath));
 
 /** 打开抽屉时自动选中文档：先大纲后细纲，让作者一眼看到总纲。 */
-watch(open, (isOpen) => {
+watch(() => props.open, (isOpen) => {
     if (!isOpen || selectedPath.value) {
         return;
     }
