@@ -12,6 +12,7 @@ class: bug-fix
 ## Decision
 - 抽屉空白页：IdeOutlineDrawer/IdeLorebookDrawer 中 `watch(open, ...)` 未声明局部 `open`，解析到全局 `window.open`，Vue 把它当 getter 调用 → 每次打开抽屉同时弹两个 about:blank。改为 `watch(() => props.open, ...)`。
 - 设置/个人中心无效：pages/index.vue 模板中 NovelIdeSettingsDialog、NovelIdeProfileDialog 等 9 个全局对话框整块落在新旧壳 `v-else`（旧壳）分支内（新壳 2831-3029 / 旧壳 3031-3257）。默认 isCodexMode=true 时这些组件从不渲染，点击后响应式状态正常翻转但无组件可显示。修复 = 把整板块原样移到根容器直接子级。同时保留两项辅助修复：根容器补 `novel-ide-theme` class（Dialog 默认 teleport 目标 `.novel-ide-theme`），Dialog.vue 增加 resolvedTeleportTarget 找不到目标时降级 body 并 console.warn。
+- 配置中心导航文字溢出：NovelIdeSettingsDialog 左栏按钮带 min-w-max（为移动端横向滚动）且 md 断点未解除，max-content 最小宽度顶破 220px 栏宽导致长描述跑出卡片；补 md:min-w-0 让 truncate 生效（量化验证：6 个导航项溢出 0px）。
 - 文案人性化：leader.default / interview.new-book / interview.stuck 三个 profile 的 System 段增加语言纪律——面向作者的 prose 不得泄漏 schema 字段名，字段名只允许出现在 frontmatter。
 
 ## Alternatives considered

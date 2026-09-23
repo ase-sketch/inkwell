@@ -848,7 +848,7 @@ function updateDesktopCloseBehavior(value: string): void {
                     <button
                         v-for="item in visibleSectionItems"
                         :key="item.value"
-                        class="group relative flex min-w-max shrink-0 items-center gap-2 rounded-xl px-2 py-1.5 text-left transition-all duration-200 md:w-full md:gap-3 md:px-2.5 md:py-2.5"
+                        class="group relative flex min-w-max shrink-0 items-center gap-2 rounded-xl px-2 py-1.5 text-left transition-all duration-200 md:w-full md:min-w-0 md:gap-3 md:px-2.5 md:py-2.5"
                         :class="activeSection === item.value ? 'bg-[var(--bg-input)] text-[var(--text-main)] shadow-[0_2px_8px_color-mix(in_srgb,var(--shadow-color)_4%,transparent)] border border-[var(--border-color)]' : 'border border-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:bg-opacity-40 hover:text-[var(--text-main)]'"
                         @click="selectSection(item.value)"
                     >
