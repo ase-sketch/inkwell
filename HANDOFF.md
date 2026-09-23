@@ -1,7 +1,7 @@
 # HANDOFF — Inkwell 交接文档
 
 > 给在本工作区新开会话的 Agent：按本文档接手，不用问用户已经敲定的事。
-> 交接时间：**2026-09-22**。状态：**M0 ✅ / M1a ✅ / M1b ✅ / M1c ✅ / M2a ✅ / M2c ✅ / M2b ✅**；用户手工试用三 bug（抽屉误弹空白页 / 新壳设置与个人中心无响应 / 面向作者文案泄漏变量名）已修复验收 ✅；下一步进 **M2.5**（码字基本盘，含 inline.editor 边界重设计与红线缺口处置）。
+> 交接时间：**2026-09-22**。状态：**M0 ✅ / M1a ✅ / M1b ✅ / M1c ✅ / M2a ✅ / M2c ✅ / M2b ✅ / M2.5a ✅（码字基本盘四件套：字数状态栏+统一口径 / 分卷建归 / 阅读预览+txt导出 / 敏感词自查，Playwright 四场景实测通过）**；试用四 bug（抽屉空白页 / 新壳对话框不渲染 / 文案变量名 / 导航文字溢出）已修 ✅；下一步 **M2.5b**（inline.editor 提案卡确认制重设计 + profile-write-scope 红线登记）。
 
 ## 第一步：按顺序读这些文档
 
@@ -47,6 +47,7 @@ Inkwell = fork neuro-book 改造的小说创作辅助 agent：苏格拉底式追
 - [x] **M2c — Skill 双轨骨架**（2026-09-22 收口）：作者级 <书>/.nbook/skills/ 目录（三级遮蔽）+ \$key 显式唤起真注入（skill-activation turn context）+ 红线物理落地（profile-write-scope 写域白名单，leader/interview 禁 manuscript 写入+摘 bash）。真实 LLM 验收四项全过。决策笔记 .agents/notes/implemented/feature/2026-09-22-m2c-skill-dual-track.md（含 M1c 遗留：install root 代写 skill 待清）
 - [x] **M2b — 卡文追问**（2026-09-22 收口）：划词「卡文追问」入口（MarkdownSelectionMenu+选区 chip 链路）+ interview.stuck 薄骨架 profile（继承追问闸门+红线登记）+ ka-wen skill（三连问，一轮一层）+ UX-1/3/4/5 修复。真实验收：Playwright 划词点击全链路 + 两轮逐层深入 + 注入三件套同轮在场。决策笔记 .agents/notes/implemented/feature/2026-09-22-m2b-stuck-interview.md
 - [x] **试用三 bug 修复**（2026-09-22）：①抽屉 watch(open) 命中全局 window.open → 两个 about:blank（改 () => props.open）；②新壳 v-else 分支吞掉 9 个全局对话框 → 设置/个人中心在新壳永不渲染（整块移出分支，模板结构契约测试锁防）；③三个 profile System 段加文案人性化纪律（面向作者 prose 禁 schema 字段名）。验收=30 条聚焦测试绿 + typecheck EXIT=0 + Playwright 实测。决策笔记 .agents/notes/implemented/bug-fix/2026-09-22-novel-ide-global-dialogs-branch.md。**教训：给既有模板加顶层分支时必须审计全局挂载块是否被吞进旧分支**
+- [x] **M2.5a — 码字基本盘四件套**（2026-09-22 收口）：字数（shared/text-metrics 去标记口径 + 后端 words 换口径 + 编辑器底部状态栏当前章/选中 + 面板全书/分卷徽章）、分卷（nextVolumePath 建卷 + 拖拽/右键归卷 + 序号维护，isVolumeDirectoryPath 路径判定修复根层误判）、排版（ChapterReadingDialog newsprint+缩进+上下章 + chapter-export txt 单章/整卷/全书）、敏感词（Aho-Corasick scanner + 内置 43 条 + .nbook/sensitive-words.txt 自定义 + 结果面板行号跳转，状态栏入口）。验收=463 测试绿 + typecheck EXIT=0 + Playwright 四场景实测（含自定义词表端到端命中跳转）。决策笔记 .agents/notes/implemented/feature/2026-09-22-m2.5a-writing-fundamentals.md。**留尾：归卷保留原序号语义待试用反馈**
 - [ ] 里程碑线：~~M2a → M2c → M2b~~ → M2.5 码字基本盘 → M2.7 知识库呈现层 → M3 审稿质疑 → M4 资料阅读 → M5 访谈归档
 
 ## 路线拍板（2026-09-21 全部敲定，勿重开）

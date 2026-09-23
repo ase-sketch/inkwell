@@ -102,4 +102,39 @@ describe("IdeManuscriptPanel & WorkspaceFileNode humanize 文稿树文本断言"
         expect(outlineDisplayTitles.includes("001-vol")).toBe(false);
         expect(outlineDisplayTitles.includes("001-ch")).toBe(false);
     });
+it("文稿面板 M2.5a 契约：包含字数汇总、新建卷按钮、拖拽归卷与右键菜单接线", async () => {
+        const panelSource = await readFile(panelPath, "utf-8");
+
+        // 字数汇总区域
+        expect(panelSource).toContain('data-role="ide-manuscript-word-stats"');
+        expect(panelSource).toContain('calculateManuscriptWordStats');
+
+        // 新建卷按钮与逻辑
+        expect(panelSource).toContain('data-role="ide-manuscript-new-volume"');
+        expect(panelSource).toContain('nextVolumePath');
+        expect(panelSource).toContain('createWorkspaceDirectory');
+
+        // 拖拽归卷接线
+        expect(panelSource).toContain('@move="handleMove"');
+        expect(panelSource).toContain('resolveChapterMoveTarget');
+
+        // 右键菜单接线
+        expect(panelSource).toContain('@node-contextmenu="handleNodeContextMenu"');
+        expect(panelSource).toContain('resolveChapterRenameTarget');
+        expect(panelSource).toContain('<ContextMenu');
+    });
+it("契约测试：顶层章节点（移出卷后）与卷内章节点都能触发 node-contextmenu 并支持归卷", async () => {
+        const nodeSource = await readFile(nodePath, "utf-8");
+        const panelSource = await readFile(panelPath, "utf-8");
+
+        // WorkspaceFileNode.vue 外层容器与行均绑定右键上下文菜单，确保任意点击区域均能触发
+        expect(nodeSource).toContain('data-role="workspace-file-node" @dragover.stop @contextmenu.prevent.stop="treeContext.emitNodeContextMenu(node, $event)"');
+        expect(nodeSource).toContain('@contextmenu.prevent.stop="treeContext.emitNodeContextMenu(node, $event)"');
+
+        // IdeManuscriptPanel.vue 使用 isVolumeDirectoryPath 替代单纯依赖服务端 entryType === 'volume'，
+        // 防止移到根层后的章节（被服务端标记为 entryType: volume）丢失「移动到卷」菜单
+        expect(panelSource).toContain("isVolumeDirectoryPath");
+        expect(panelSource).toContain("const isVolume = isVolumeDirectoryPath(normPath);");
+        expect(panelSource).toContain("const isChapter = !isVolume && !isManuscriptRoot;");
+    });
 });

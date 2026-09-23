@@ -74,6 +74,36 @@ function isIndexFile(name: string | undefined): boolean {
     return (name ?? "").toLowerCase() === "index.md";
 }
 
+/** 解析父级目录路径。 */
+export function resolveParentDirectory(filePath: string): string {
+    const normalized = normalize(filePath);
+    const lastSlash = normalized.lastIndexOf("/");
+    return lastSlash > -1 ? normalized.slice(0, lastSlash) : "";
+}
+
+/**
+ * 判断路径是否是卷目录：必须为 manuscript/ 下的直属目录且名称符合 volume 或 vol 格式。
+ */
+export function isVolumeDirectoryPath(filePath: string): boolean {
+    const normalized = normalize(filePath);
+    const parts = normalized.split("/").filter(Boolean);
+    const rootIdx = parts[0] === "workspace" ? 1 : 0;
+    if (parts[rootIdx] !== "manuscript") return false;
+    if (parts.length !== rootIdx + 2) return false;
+    const seg = parts[rootIdx + 1];
+    if (!seg) return false;
+    return /^(\d+)-(?:volume|vol)$/i.test(seg) || /^(?:volume|vol)-?(\d+)$/i.test(seg);
+}
+
+/**
+ * 判断路径是否是章节（无论在卷内还是根层，排除了 manuscript 根目录与卷目录）。
+ */
+export function isChapterWritingPath(filePath: string): boolean {
+    const normalized = normalize(filePath);
+    if (normalized === "manuscript" || normalized === "workspace/manuscript") return false;
+    return isAuthorVisibleWritingPath(filePath) && !isVolumeDirectoryPath(filePath);
+}
+
 /** 路径最后一段。 */
 function lastSegment(filePath: string): string {
     const segments = normalize(filePath).split("/").filter(Boolean);
@@ -366,6 +396,242 @@ export function nextOutlinePath(nodes: readonly WorkspaceFileNode[]): string {
     }
     return `outline/${pad(start + 100)}-outline/index.md`;
 }
+/**
+ * 生成新卷目录路径：manuscript/001-vol。
+ * 兼容扫描 \d{3}-vol 与 \d{3}-volume，顺延到下一个可用序号。
+ * 卷是纯目录不含 index.md。
+ */
+export function nextVolumePath(nodes: readonly WorkspaceFileNode[], root = "manuscript"): string {
+    const existing = new Set(nodes.map((node) => normalize(node.path)));
+    const volumeDirs = new Set<string>();
+    for (const node of nodes) {
+        const norm = normalize(node.path);
+        volumeDirs.add(norm);
+        const parts = norm.split("/").filter(Boolean);
+        const rootIdx = parts[0] === "workspace" ? 1 : 0;
+        if (parts[rootIdx] === root && parts[rootIdx + 1]) {
+            volumeDirs.add(`${root}/${parts[rootIdx + 1]}`);
+        }
+    }
+    const volumePattern = new RegExp(`^${root}/(\\d{3})-(?:volume|vol)$`);
+    const volumes = [...volumeDirs]
+        .map((p) => p.match(volumePattern)?.[1])
+        .filter((val): val is string => Boolean(val))
+        .map((numStr) => Number.parseInt(numStr, 10))
+        .filter((value) => Number.isInteger(value));
+    const nextVolume = volumes.length > 0 ? Math.max(...volumes) + 1 : 1;
+    for (let index = nextVolume; index < nextVolume + 100; index += 1) {
+        const candidate = `${root}/${pad(index)}-vol`;
+        if (!existing.has(candidate)) {
+            return candidate;
+        }
+    }
+    return `${root}/${pad(nextVolume + 100)}-vol`;
+}
+
+/**
+ * 解析章节归卷/移出卷后的目标路径。
+ * - 拖入某卷时：置于该卷下；
+ * - 拖出卷时：置于 manuscript 根层；
+ * - 维护 001- 数字前缀保证路径字典序=阅读序；
+ * - 目标目录下若存在同名/同序号冲突，取目标位置下一可用序号顺延。
+ */
+export function resolveChapterMoveTarget(
+    sourcePath: string,
+    targetDir: string,
+    nodes: readonly WorkspaceFileNode[],
+): string {
+    const normalizedSource = normalize(sourcePath);
+    const normalizedTargetDir = normalize(targetDir);
+    const sourceBase = lastSegment(normalizedSource);
+
+    const match = sourceBase.match(/^(\d{3})-(.+)$/);
+    const matchNumStr = match?.[1];
+    const originalNum = matchNumStr ? Number.parseInt(matchNumStr, 10) : null;
+    const slug = match?.[2] ?? sourceBase;
+
+    const existing = new Set(nodes.map((node) => normalize(node.path)));
+    const targetPrefix = `${normalizedTargetDir}/`;
+
+    const siblingNames = new Set<string>();
+    for (const p of existing) {
+        if (p.startsWith(targetPrefix)) {
+            const rel = p.slice(targetPrefix.length);
+            const firstSeg = rel.split("/")[0];
+            if (firstSeg) {
+                siblingNames.add(firstSeg);
+            }
+        }
+    }
+
+    const usedIndices = new Set<number>();
+    for (const name of siblingNames) {
+        const m = name.match(/^(\d{3})(?:-.*)?$/);
+        const mNumStr = m?.[1];
+        if (mNumStr) {
+            usedIndices.add(Number.parseInt(mNumStr, 10));
+        }
+    }
+
+    let candidateIndex: number;
+    if (originalNum !== null && !usedIndices.has(originalNum)) {
+        candidateIndex = originalNum;
+    } else {
+        const maxUsed = usedIndices.size > 0 ? Math.max(...usedIndices) : 0;
+        candidateIndex = maxUsed + 1;
+    }
+
+    for (let i = candidateIndex; i < candidateIndex + 200; i += 1) {
+        const candidateName = `${pad(i)}-${slug}`;
+        const candidatePath = `${normalizedTargetDir}/${candidateName}`;
+        if (!siblingNames.has(candidateName) && !existing.has(candidatePath)) {
+            return candidatePath;
+        }
+    }
+
+    return `${normalizedTargetDir}/${pad(candidateIndex + 200)}-${slug}`;
+}
+
+/**
+ * 重命名章节路径，维护 001- 序号前缀并处理冲突。
+ */
+export function resolveChapterRenameTarget(
+    sourcePath: string,
+    userInput: string,
+    nodes: readonly WorkspaceFileNode[],
+): string {
+    const normalizedSource = normalize(sourcePath);
+    const parentDir = normalizedSource.includes("/")
+        ? normalizedSource.slice(0, normalizedSource.lastIndexOf("/"))
+        : "";
+    const sourceBase = lastSegment(normalizedSource);
+
+    const sourceMatch = sourceBase.match(/^(\d{3})-(.+)$/);
+    const sourceNumStr = sourceMatch?.[1];
+    const sourceNum = sourceNumStr ? Number.parseInt(sourceNumStr, 10) : 1;
+
+    const trimmed = userInput.trim();
+    const inputMatch = trimmed.match(/^(\d{3})(?:-(.*))?$/);
+
+    let targetNum: number;
+    let targetSlug: string;
+    if (inputMatch && inputMatch[1]) {
+        targetNum = Number.parseInt(inputMatch[1], 10);
+        targetSlug = inputMatch[2] ? inputMatch[2].trim() : (sourceMatch?.[2] ?? sourceBase);
+    } else {
+        targetNum = sourceNum;
+        targetSlug = trimmed;
+    }
+
+    const existing = new Set(nodes.map((node) => normalize(node.path)));
+    const targetPrefix = parentDir ? `${parentDir}/` : "";
+    const siblingNames = new Set<string>();
+    for (const p of existing) {
+        if (p === normalizedSource) continue;
+        if (targetPrefix && p.startsWith(targetPrefix)) {
+            const rel = p.slice(targetPrefix.length);
+            const firstSeg = rel.split("/")[0];
+            if (firstSeg) {
+                siblingNames.add(firstSeg);
+            }
+        }
+    }
+
+    const usedIndices = new Set<number>();
+    for (const name of siblingNames) {
+        const m = name.match(/^(\d{3})(?:-.*)?$/);
+        const mNumStr = m?.[1];
+        if (mNumStr) {
+            usedIndices.add(Number.parseInt(mNumStr, 10));
+        }
+    }
+
+    let candidateIndex = targetNum;
+    if (usedIndices.has(candidateIndex)) {
+        const maxUsed = usedIndices.size > 0 ? Math.max(...usedIndices) : 0;
+        candidateIndex = maxUsed + 1;
+    }
+
+    for (let i = candidateIndex; i < candidateIndex + 200; i += 1) {
+        const candidateName = `${pad(i)}-${targetSlug}`;
+        const candidatePath = parentDir ? `${parentDir}/${candidateName}` : candidateName;
+        if (!siblingNames.has(candidateName) && !existing.has(candidatePath)) {
+            return candidatePath;
+        }
+    }
+
+    const fallbackName = `${pad(candidateIndex + 200)}-${targetSlug}`;
+    return parentDir ? `${parentDir}/${fallbackName}` : fallbackName;
+}
+
+export interface ManuscriptWordStats {
+    totalWords: number;
+    volumeStats: Array<{
+        path: string;
+        label: string;
+        words: number;
+    }>;
+}
+
+/**
+ * 汇总文稿字数：全书总字数 + 各卷字数。
+ * 遵循 WorkspaceFileDetailPanel.vue:172-175 范式，用树节点 words 字段按路径前缀过滤 reduce。
+ */
+export function calculateManuscriptWordStats(
+    nodes: readonly WorkspaceFileNode[],
+    root = "manuscript",
+): ManuscriptWordStats {
+    const normRoot = normalize(root);
+    const manuscriptPrefix = `${normRoot}/`;
+
+    const manuscriptNodes = nodes.filter((n) => {
+        const p = normalize(n.path);
+        return p === normRoot || p.startsWith(manuscriptPrefix);
+    });
+    const totalWords = manuscriptNodes.reduce((total, n) => total + (n.words || 0), 0);
+
+    const volumeDirs = new Map<string, WorkspaceFileNode | null>();
+    for (const node of manuscriptNodes) {
+        const norm = normalize(node.path);
+        const parts = norm.split("/").filter(Boolean);
+        const rootIdx = parts[0] === "workspace" ? 1 : 0;
+        const volSegment = parts[rootIdx + 1];
+        // 严格过滤：只有第一级子目录名称符合 volume 或 vol 格式的才是卷；根层章节（如 003-ch）与 index.md 绝不混入徽章列表
+        if (parts[rootIdx] === normRoot && volSegment && (/^(\d+)-(?:volume|vol)$/i.test(volSegment) || /^(?:volume|vol)-?(\d+)$/i.test(volSegment))) {
+            const volPath = `${normRoot}/${volSegment}`;
+            if (!volumeDirs.has(volPath)) {
+                if (norm === volPath && node.isDirectory) {
+                    volumeDirs.set(volPath, node);
+                } else {
+                    volumeDirs.set(volPath, null);
+                }
+            } else if (norm === volPath && node.isDirectory) {
+                volumeDirs.set(volPath, node);
+            }
+        }
+    }
+
+    const sortedVolumePaths = [...volumeDirs.keys()].sort((a, b) => a.localeCompare(b, "zh-Hans-CN"));
+    const volumeStats = sortedVolumePaths.map((volPath) => {
+        const volNode = volumeDirs.get(volPath);
+        const label = volNode ? resolveWritingNodeDisplayLabel(volNode) : resolveWritingAssetLabel(volPath);
+        const volPrefix = `${volPath}/`;
+        const volDescendantWords = nodes
+            .filter((n) => normalize(n.path).startsWith(volPrefix))
+            .reduce((total, n) => total + (n.words || 0), 0);
+        const directWords = volNode?.words || 0;
+        return {
+            path: volPath,
+            label,
+            words: volDescendantWords + directWords,
+        };
+    });
+
+    return {
+        totalWords,
+        volumeStats,
+    };
+}
 
 /** 三位数补零。 */
 function pad(value: number): string {
@@ -496,7 +762,7 @@ export function isRawWritingDirectoryName(name: string): boolean {
 export function resolveWritingNodeDisplayLabel(node: Pick<WorkspaceFileNode, "path" | "title">): string {
     const title = node.title?.trim() ?? "";
     const tail = lastSegment(node.path.replace(/\/index\.md$/i, ""));
-    const isRaw = !title || /^index\.md$/i.test(title) || title === tail || isRawWritingDirectoryName(title);
+    const isRaw = !title || /^index\.md$/i.test(title) || title === tail || title === node.path || isRawWritingDirectoryName(title);
     if (!isRaw) {
         return title;
     }

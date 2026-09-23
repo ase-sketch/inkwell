@@ -235,7 +235,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <div data-role="workspace-file-node" @dragover.stop>
+    <div data-role="workspace-file-node" @dragover.stop @contextmenu.prevent.stop="treeContext.emitNodeContextMenu(node, $event)">
         <!-- 工作区文件树节点 -->
         <div
             class="group relative flex items-center gap-1 rounded-md py-1 pr-2 text-left transition-colors duration-150"

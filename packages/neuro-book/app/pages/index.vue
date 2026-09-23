@@ -27,6 +27,8 @@ import WorkspaceCharacterDetailPanel from "nbook/app/components/novel-ide/worksp
 import WorkspaceFileConflictDialog from "nbook/app/components/novel-ide/workspace/WorkspaceFileConflictDialog.vue";
 import WorkspaceLocationProfileDialog from "nbook/app/components/novel-ide/workspace/WorkspaceLocationProfileDialog.vue";
 import WorkspaceRuleProfileDialog from "nbook/app/components/novel-ide/workspace/WorkspaceRuleProfileDialog.vue";
+import SensitiveWordPanel from "nbook/app/components/novel-ide/sensitive/SensitiveWordPanel.vue";
+import {dispatchEditorJumpToLine} from "nbook/app/components/markdown-studio/editor-line-position";
 import type {WorkspaceReferencePreviewMeta} from "nbook/app/components/markdown-studio/tiptap/WorkspaceReference";
 import {useIdeTheme} from "nbook/app/composables/useIdeTheme";
 import {useAuthSessionState} from "nbook/app/composables/useAuthSessionState";
@@ -248,6 +250,12 @@ const studio = useMarkdownStudioController({
 });
 // store 在切文件 / 磁盘同步 / 保存前先结算编辑器防抖输入，防止防抖窗口内的输入被误判为「无修改」
 novelIdeStore.registerActiveEditorFlush(() => studio.flushActiveEditor());
+
+const currentEditorDraftContent = computed(() => studio.markdown.value || selectedFileContent.value || "");
+
+function handleSensitiveWordJump(line: number): void {
+    dispatchEditorJumpToLine(line);
+}
 
 const {alert, choose, chooseCards, prompt} = useDialog();
 /** 新壳左栏宽度：240-260px，由 IdeShellSidebar 自己限制并回传。 */
@@ -3255,6 +3263,23 @@ onBeforeUnmount(() => {
             :issues="workspaceIssues"
             @refresh="void loadWorkspaceTree()"
         />
+
+        <ClientOnly>
+            <Teleport to=".novel-ide-theme">
+                <div
+                    v-if="projectSurfaceActive && novelIdeStore.sensitiveWordPanelOpen"
+                    class="fixed bottom-0 right-0 top-0 z-40 flex w-96 flex-col border-l border-[var(--border-color)] bg-[var(--bg-panel)] shadow-xl"
+                    data-testid="sensitive-word-drawer"
+                >
+                    <SensitiveWordPanel
+                        :content="currentEditorDraftContent"
+                        :file-path="selectedFilePath"
+                        @close="novelIdeStore.toggleSensitiveWordPanel(false)"
+                        @jump="handleSensitiveWordJump"
+                    />
+                </div>
+            </Teleport>
+        </ClientOnly>
     </div>
 </template>
 

@@ -19,6 +19,9 @@ import {DEFAULT_MARKDOWN_EDITOR_PREFERENCES, type FrontmatterProfileKind, type M
 import {splitMarkdownFrontmatter} from "nbook/shared/editor-workbench";
 import {normalizeMarkdownDialectBlocks} from "nbook/shared/markdown-workbench";
 import {buildSelectionRefChip, locateSelectionRange, type InlineEditReference, type SelectionRangeLocation} from "nbook/app/utils/inline-editor-selection";
+import {countSelectionWords, countWords} from "nbook/shared/text-metrics";
+import {useNovelIdeStore} from "nbook/app/stores/novel-ide";
+import {JUMP_TO_LINE_EVENT, lineToDocPosition, type JumpToLinePayload} from "nbook/app/components/markdown-studio/editor-line-position";
 import YAML from "yaml";
 
 type PopoverDirection = "auto" | "up" | "down";
@@ -38,6 +41,7 @@ const props = withDefaults(defineProps<{
     openReference?: (target: string) => void;
     resolveReference?: WorkspaceReferenceResolver;
     showFrontmatterPanel?: boolean;
+    showStatusBar?: boolean;
     submitOnEnter?: boolean;
     enableQuickTriggers?: boolean;
     onSkillTriggerStart?: () => void;
@@ -61,6 +65,7 @@ const props = withDefaults(defineProps<{
     }),
     openReference: () => {},
     showFrontmatterPanel: true,
+    showStatusBar: true,
     submitOnEnter: false,
     enableQuickTriggers: false,
     onSkillTriggerStart: () => {},
@@ -84,6 +89,30 @@ const emit = defineEmits<{
 
 const {prompt} = useDialog();
 const notification = useNotification();
+const novelIdeStore = useNovelIdeStore();
+
+function handleToggleSensitiveWords(): void {
+    novelIdeStore.toggleSensitiveWordPanel();
+}
+
+function scrollToLine(line: number): void {
+    const currentEditor = editor.value;
+    if (!currentEditor) {
+        return;
+    }
+    const targetPos = lineToDocPosition(currentEditor.state.doc, line);
+    currentEditor.commands.focus();
+    currentEditor.commands.setTextSelection(targetPos);
+    currentEditor.commands.scrollIntoView();
+}
+
+function handleJumpToLineEvent(event: Event): void {
+    const custom = event as CustomEvent<JumpToLinePayload>;
+    const line = custom.detail?.line;
+    if (typeof line === "number") {
+        scrollToLine(line);
+    }
+}
 const {t} = useI18n();
 const wrapperRef = ref<HTMLDivElement | null>(null);
 const focused = ref(false);
@@ -95,6 +124,30 @@ const frontmatterText = ref(initialSplit.frontmatterText);
 const hasFrontmatter = ref(initialSplit.hasFrontmatter);
 const frontmatterOpen = ref(false);
 const editorSnapshot = ref(props.initialValue);
+const totalWords = ref(countWords(initialSplit.body));
+const selectedWords = ref(0);
+const formattedTotalWords = computed(() => totalWords.value.toLocaleString());
+const formattedSelectedWords = computed(() => selectedWords.value.toLocaleString());
+
+/**
+ * 实时同步全文字数与选区字数。
+ */
+function syncTextMetrics(targetEditor?: Editor | null): void {
+    const currentEditor = targetEditor ?? editor.value;
+    if (!currentEditor) {
+        return;
+    }
+
+    totalWords.value = countWords(currentEditor.state.doc.textContent);
+
+    const {from, to, empty} = currentEditor.state.selection;
+    if (empty || from >= to) {
+        selectedWords.value = 0;
+    } else {
+        const text = currentEditor.state.doc.textBetween(from, to, " ");
+        selectedWords.value = countSelectionWords(text);
+    }
+}
 const contextMenuVisible = ref(false);
 const contextMenuX = ref(0);
 const contextMenuY = ref(0);
@@ -299,12 +352,17 @@ const editor = useEditor({
     onCreate: ({editor: currentEditor}) => {
         emit("inline-comments-change", COMMENT_PLUGIN_KEY.getState(currentEditor.state)?.comments ?? []);
         refreshInlineAiReferenceHighlight(currentEditor);
+        syncTextMetrics(currentEditor);
     },
-    onUpdate: () => {
+    onUpdate: ({editor: currentEditor}) => {
+        syncTextMetrics(currentEditor);
         if (syncingFromOutside.value || props.readonly || !props.visible || !focused.value) {
             return;
         }
         changeDebounce.schedule();
+    },
+    onSelectionUpdate: ({editor: currentEditor}) => {
+        syncTextMetrics(currentEditor);
     },
 });
 
@@ -394,6 +452,9 @@ function update(markdown: string): void {
     });
     nextTick(() => {
         refreshInlineAiReferenceHighlight();
+        if (editor.value) {
+            syncTextMetrics(editor.value);
+        }
     });
     queueMicrotask(() => {
         syncingFromOutside.value = false;
@@ -1061,18 +1122,29 @@ onMounted(() => {
     if (props.autofocus) {
         focus();
     }
+    if (typeof window !== "undefined") {
+        window.addEventListener(JUMP_TO_LINE_EVENT, handleJumpToLineEvent);
+    }
 });
 
 onBeforeUnmount(() => {
     // 卸载时 store 的活动文件可能已切换，emit change 会把内容写进别的文件（串位）。
     // 切换文件的入口统一由 store 的 activeEditorFlush 钩子在切换前 flush，这里只丢弃残余。
     changeDebounce.cancel();
+    if (typeof window !== "undefined") {
+        window.removeEventListener(JUMP_TO_LINE_EVENT, handleJumpToLineEvent);
+    }
 });
 
-defineExpose<MarkdownStudioEditorHandle>({
+defineExpose<MarkdownStudioEditorHandle & {
+    getTotalWords?: () => number;
+    getSelectedWords?: () => number;
+    scrollToLine?: (line: number) => void;
+}>({
     update,
     focus,
     scrollToTop,
+    scrollToLine,
     undo,
     redo,
     insertMarkdown,
@@ -1088,6 +1160,8 @@ defineExpose<MarkdownStudioEditorHandle>({
     applyMarkdownFormat,
     flushPendingChange,
     getValue: getMarkdown,
+    getTotalWords: () => totalWords.value,
+    getSelectedWords: () => selectedWords.value,
 });
 
 /**
@@ -1257,72 +1331,116 @@ function isSaveShortcut(event: KeyboardEvent): boolean {
 </script>
 
 <template>
-    <div ref="wrapperRef" class="tiptap-markdown-wrapper" :style="editorPreferenceStyle">
-        <!-- Markdown frontmatter 编辑区 -->
-        <TipTapFrontmatterPanel
-            v-if="props.showFrontmatterPanel"
-            :model-value="frontmatterText"
-            :has-frontmatter="hasFrontmatter"
-            :open="frontmatterOpen"
-            :readonly="props.readonly"
-            :error="frontmatterError"
-            :profile-kind="frontmatterProfileKind"
-            @update:model-value="updateFrontmatterText"
-            @update:open="frontmatterOpen = $event"
-            @add="addFrontmatter"
-            @remove="removeFrontmatter"
-            @focus="handleFrontmatterFocus"
-            @blur="handleFrontmatterBlur"
-            @save-request="emit('save-request')"
-            @open-profile="emit('open-frontmatter-profile', $event)"
-        />
+    <div ref="wrapperRef" class="tiptap-markdown-container flex h-full min-h-0 flex-col overflow-hidden" :style="editorPreferenceStyle">
+        <!-- Markdown 正文滚动容器 -->
+        <div class="tiptap-markdown-wrapper flex-1 min-h-0 overflow-y-auto">
+            <!-- Markdown frontmatter 编辑区 -->
+            <TipTapFrontmatterPanel
+                v-if="props.showFrontmatterPanel"
+                :model-value="frontmatterText"
+                :has-frontmatter="hasFrontmatter"
+                :open="frontmatterOpen"
+                :readonly="props.readonly"
+                :error="frontmatterError"
+                :profile-kind="frontmatterProfileKind"
+                @update:model-value="updateFrontmatterText"
+                @update:open="frontmatterOpen = $event"
+                @add="addFrontmatter"
+                @remove="removeFrontmatter"
+                @focus="handleFrontmatterFocus"
+                @blur="handleFrontmatterBlur"
+                @save-request="emit('save-request')"
+                @open-profile="emit('open-frontmatter-profile', $event)"
+            />
 
-        <!-- Markdown 富文本正文区 -->
-        <EditorContent v-if="editor" :editor="editor" class="tiptap-markdown-content" @contextmenu.prevent="openEditorContextMenu" />
-        <MarkdownSelectionMenu
-            v-if="editor"
-            :editor="editor"
-            :readonly="props.readonly"
-            @insert-reference="openReferenceMenuFromContext"
-            @insert-image="void insertImageFromMenu()"
-            @add-comment="void addCommentFromMenu()"
-            @add-ruby="void addRubyFromMenu()"
-            @add-bilingual="void addBilingualFromMenu()"
-            @add-ai-reference="addAiReferenceFromSelection"
-            @stuck-interview="startStuckInterviewFromSelection"
-        />
+            <!-- Markdown 富文本正文区 -->
+            <EditorContent v-if="editor" :editor="editor" class="tiptap-markdown-content" @contextmenu.prevent="openEditorContextMenu" />
+            <MarkdownSelectionMenu
+                v-if="editor"
+                :editor="editor"
+                :readonly="props.readonly"
+                @insert-reference="openReferenceMenuFromContext"
+                @insert-image="void insertImageFromMenu()"
+                @add-comment="void addCommentFromMenu()"
+                @add-ruby="void addRubyFromMenu()"
+                @add-bilingual="void addBilingualFromMenu()"
+                @add-ai-reference="addAiReferenceFromSelection"
+                @stuck-interview="startStuckInterviewFromSelection"
+            />
 
-        <ReferenceSelectorPopover
-            v-if="menuVisible && suggestionMenuState"
-            :title="suggestionMenuState.title"
-            :prefix="suggestionMenuState.prefix"
-            :sections="suggestionMenuState.sections"
-            :active-index="activeIndex"
-            :anchor-element="wrapperRef"
-            :anchor-rect="suggestionMenuState.anchorRect"
-            :teleport-target="popoverTeleportTarget"
-            density="compact"
-            :direction="props.popoverDirection"
-            :match-anchor-width="props.matchPopoverWidth"
-            @hover="activeIndex = $event"
-            @select="selectMenuItem"
-        />
+            <ReferenceSelectorPopover
+                v-if="menuVisible && suggestionMenuState"
+                :title="suggestionMenuState.title"
+                :prefix="suggestionMenuState.prefix"
+                :sections="suggestionMenuState.sections"
+                :active-index="activeIndex"
+                :anchor-element="wrapperRef"
+                :anchor-rect="suggestionMenuState.anchorRect"
+                :teleport-target="popoverTeleportTarget"
+                density="compact"
+                :direction="props.popoverDirection"
+                :match-anchor-width="props.matchPopoverWidth"
+                @hover="activeIndex = $event"
+                @select="selectMenuItem"
+            />
 
-        <ContextMenu
-            :visible="contextMenuVisible"
-            :x="contextMenuX"
-            :y="contextMenuY"
-            :items="contextMenuItems"
-            @close="contextMenuVisible = false"
-        />
+            <ContextMenu
+                :visible="contextMenuVisible"
+                :x="contextMenuX"
+                :y="contextMenuY"
+                :items="contextMenuItems"
+                @close="contextMenuVisible = false"
+            />
+        </div>
+
+        <!-- 编辑器底部轻量状态栏 -->
+        <footer
+            v-if="props.showStatusBar"
+            class="tiptap-editor-status-bar flex h-7 shrink-0 select-none items-center justify-between border-t border-[var(--border-color)] bg-[var(--bg-subtle)] px-3 text-[11px] font-serif text-[var(--text-muted)]"
+            data-testid="tiptap-status-bar"
+        >
+            <div class="flex items-center gap-2">
+                <span class="inline-flex items-center gap-1">
+                    <span>当前章</span>
+                    <span class="font-sans font-medium text-[var(--text-secondary)]" data-testid="total-words">{{ formattedTotalWords }}</span>
+                    <span>字</span>
+                </span>
+                <template v-if="selectedWords > 0">
+                    <span class="text-[var(--border-color)]">·</span>
+                    <span class="inline-flex items-center gap-1">
+                        <span>选中</span>
+                        <span class="font-sans font-medium text-[var(--accent-text)]" data-testid="selected-words">{{ formattedSelectedWords }}</span>
+                        <span>字</span>
+                    </span>
+                </template>
+            </div>
+            <div class="flex items-center gap-2">
+                <button
+                    type="button"
+                    class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-main)]"
+                    data-testid="sensitive-word-btn"
+                    title="敏感词检测"
+                    @click="handleToggleSensitiveWords"
+                >
+                    <span class="i-lucide-shield-check h-3.5 w-3.5" aria-hidden="true" />
+                    <span>敏感词</span>
+                </button>
+            </div>
+        </footer>
     </div>
 </template>
 
 <style scoped>
-.tiptap-markdown-wrapper {
+.tiptap-markdown-container {
     position: relative;
     height: 100%;
     min-height: 100%;
+    background: var(--editor-bg);
+}
+
+.tiptap-markdown-wrapper {
+    position: relative;
+    min-height: 0;
     overflow-y: auto;
     background: var(--editor-bg);
 }

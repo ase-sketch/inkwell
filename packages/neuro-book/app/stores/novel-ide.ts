@@ -38,6 +38,14 @@ import type {
 } from "nbook/shared/dto/user-assets-sync.dto";
 
 export type {WorkspaceEditorKind, WorkspaceEditorViewMode} from "nbook/shared/editor-workbench";
+import {
+    getBuiltinSensitiveWords,
+    mergeSensitiveWordLists,
+    parseSensitiveWords,
+    scanSensitiveWords,
+    type SensitiveMatch,
+} from "nbook/app/utils/sensitive-word-scan";
+
 
 type ProjectCatalogSnapshot = Readonly<{
     revision: number;
@@ -234,6 +242,11 @@ export const useNovelIdeStore = defineStore("novelIde", () => {
     const agentCompanionWidth = ref(360);
     const lorebookDrawerOpen = ref(false);
     const outlineDrawerOpen = ref(false);
+    const sensitiveWordPanelOpen = ref(false);
+    const sensitiveWordMatches = ref<SensitiveMatch[]>([]);
+    const isScanningSensitiveWords = ref(false);
+    const customSensitiveWords = ref<string[]>([]);
+    const lastSensitiveWordScanAt = ref<number | null>(null);
     const plotWorkbenchOpen = ref(false);
     // 剧本工作台当前 tab:线程规划 / 承诺账本 / 决策记录;侧栏计数入口与账本跳转联动直接写它。
     const plotWorkbenchTab = ref<"thread" | "promises" | "decisions">("thread");
@@ -886,6 +899,42 @@ export const useNovelIdeStore = defineStore("novelIde", () => {
             query: {...workspaceQuery(), path: filePath},
         });
         return file.content;
+    };
+
+    /**
+     * 读取作品自定义敏感词表（.nbook/sensitive-words.txt）。
+     */
+    const loadCustomSensitiveWords = async (): Promise<string[]> => {
+        try {
+            const content = await readWorkspaceFileContent(".nbook/sensitive-words.txt");
+            const words = parseSensitiveWords(content);
+            customSensitiveWords.value = words;
+            return words;
+        } catch {
+            customSensitiveWords.value = [];
+            return [];
+        }
+    };
+
+    /**
+     * 扫描当前活动文件正文的敏感词。
+     */
+    const scanCurrentFileSensitiveWords = async (): Promise<SensitiveMatch[]> => {
+        isScanningSensitiveWords.value = true;
+        try {
+            const customWords = await loadCustomSensitiveWords();
+            const allWords = mergeSensitiveWordLists(getBuiltinSensitiveWords(), customWords);
+            const matches = scanSensitiveWords(selectedFileContent.value, allWords);
+            sensitiveWordMatches.value = matches;
+            lastSensitiveWordScanAt.value = Date.now();
+            return matches;
+        } finally {
+            isScanningSensitiveWords.value = false;
+        }
+    };
+
+    const toggleSensitiveWordPanel = (open?: boolean): void => {
+        sensitiveWordPanelOpen.value = open ?? !sensitiveWordPanelOpen.value;
     };
 
     /**
@@ -1898,6 +1947,7 @@ export const useNovelIdeStore = defineStore("novelIde", () => {
     });
 
     return {
+        activeWorkspaceFile,
         activeLeftTab,
         activeThemeAppearance,
         activeThemeId,
@@ -1942,6 +1992,14 @@ export const useNovelIdeStore = defineStore("novelIde", () => {
         loadWorkspaceFile,
         loadWorkspaceTree,
         readWorkspaceFileContent,
+        sensitiveWordMatches,
+        isScanningSensitiveWords,
+        sensitiveWordPanelOpen,
+        customSensitiveWords,
+        lastSensitiveWordScanAt,
+        loadCustomSensitiveWords,
+        scanCurrentFileSensitiveWords,
+        toggleSensitiveWordPanel,
         registerActiveEditorFlush,
         syncWorkspaceFromDisk,
         persistWorkspaceSession,

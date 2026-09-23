@@ -17,6 +17,7 @@ import {
 } from "nbook/server/workspace-files/content-node-schema";
 import {isRuntimeGeneratedWorkspacePath} from "nbook/server/workspace-files/runtime-generated-path";
 import type {WorkspaceIssueSummaryDto} from "nbook/shared/dto/workspace-tree.dto";
+import {countWords} from "nbook/shared/text-metrics";
 
 export {WORKSPACE_CONTENT_STATUSES, WORKSPACE_STATUS_DESCRIPTIONS} from "nbook/server/workspace-files/content-node-schema";
 
@@ -1226,7 +1227,7 @@ async function buildWorkspaceNode(
             config: options.iconConfig,
         }),
         status: typeof frontmatter.status === "string" ? frontmatter.status : null,
-        words: body.trim().length,
+        words: countWords(body),
         refs,
         path: relativePath,
         absolutePath,
