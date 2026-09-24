@@ -20,6 +20,9 @@ import {useNovelIdeStore} from "nbook/app/stores/novel-ide";
 import {agentSessionScopeKey} from "nbook/app/utils/agent-session-scope-key";
 import {resolveApiErrorMessage} from "nbook/app/utils/api-error";
 import type {InlineEditPayload} from "nbook/app/utils/inline-editor-selection";
+import {INLINE_PROPOSE_EDIT_TOOL, type InlineEditProposalInput} from "nbook/shared/inline-proposal";
+import type {InlineProposalItemState, InlineProposalState} from "nbook/app/components/novel-ide/prompt/inline-proposal.types";
+import {applyAcceptedEdits} from "nbook/app/utils/inline-proposal-apply";
 import {assertPublicToolCallId} from "nbook/shared/agent/public-tool-identity";
 import type {ThinkingLevelDto} from "nbook/shared/dto/app-settings.dto";
 import type {ConfigModelSettingsDto} from "nbook/shared/dto/config.dto";
@@ -58,6 +61,7 @@ type InlineEditorStreamFactory = (
 type InlineEditorPatchRequest = Parameters<typeof applyClientVariablePatch>[0];
 
 export type InlineEditorAgentControllerServices = {
+    session?: ReturnType<typeof useAgentSession>;
     api: InlineEditorAgentApi;
     createStream: InlineEditorStreamFactory;
     loadSelectableModels: () => Promise<ConfigModelSettingsDto["enabledModels"]>;
@@ -93,7 +97,7 @@ export function useInlineEditorAgentController(
     const previousSelectedFilePath = ref<string | null>(toValue(options.selectedFilePath) || null);
     const fileChangedSinceLastSend = ref(false);
     const selectionVersion = ref(0);
-    const session = useAgentSession();
+    const session = providedServices?.session ?? useAgentSession();
     const sessions = ref<AgentSessionSummaryDto[]>([]);
     const sessionId = ref<number | null>(null);
     const sessionLoading = ref(false);
@@ -161,18 +165,55 @@ export function useInlineEditorAgentController(
         const latestUserIndex = messages.value.findLastIndex((message) => message.type === "user");
         return latestUserIndex >= 0 ? messages.value.slice(latestUserIndex + 1) : messages.value;
     });
-    const editPreview = computed(() => {
-        const toolCall = currentTurnMessages.value
+    const editPreview = computed(() => "");
+    const proposal = ref<InlineProposalState | null>(null);
+
+    watch(currentTurnMessages, (turnMessages) => {
+        const proposeToolCall = turnMessages
             .flatMap((message) => message.toolCalls ?? [])
-            .filter((item) => (item.name === "edit" || item.name === "write")
-                && (item.status === "streaming" || item.status === "running"))
+            .filter((item) => item.name === INLINE_PROPOSE_EDIT_TOOL)
             .at(-1);
-        if (!toolCall) return "";
-        const path = readToolPath(toolCall);
-        const status = services.translate("agent.chatSurface.inlineRunning");
-        const output = toolCall.error || toolCall.result || "";
-        return [`${status}${path ? `：${path}` : ""}`, output].filter(Boolean).join("\n");
-    });
+
+        if (!proposeToolCall) {
+            return;
+        }
+
+        // 状态闸门：只有当 proposeToolCall.status === "success" 时才允许创建/回填 proposal
+        // "streaming" / "running" / "error" / "invalid" 一律不生成提案卡，防止流式半截快照被提前闩锁
+        if (proposeToolCall.status !== "success") {
+            return;
+        }
+
+        const parsed = parseProposalInput(proposeToolCall.argsJson || proposeToolCall.argsText);
+        if (!parsed) {
+            return;
+        }
+
+        if (!proposal.value || proposal.value.toolCallId !== proposeToolCall.id) {
+            proposal.value = {
+                toolCallId: proposeToolCall.id,
+                toolCallStatus: proposeToolCall.status,
+                summary: parsed.summary,
+                targetPath: parsed.targetPath,
+                items: parsed.edits.map((edit, index) => ({
+                    ...edit,
+                    index,
+                    status: "pending",
+                    applied: false,
+                })),
+            };
+        } else {
+            proposal.value.toolCallStatus = proposeToolCall.status;
+            if (proposal.value.items.length === 0 && parsed.edits.length > 0) {
+                proposal.value.items = parsed.edits.map((edit, index) => ({
+                    ...edit,
+                    index,
+                    status: "pending",
+                    applied: false,
+                }));
+            }
+        }
+    }, {immediate: true, deep: true});
     const liveView = computed(() => {
         const latestAssistant = currentTurnMessages.value
             .filter((message) => message.type === "ai")
@@ -239,6 +280,7 @@ export function useInlineEditorAgentController(
         sessions.value = [];
         session.reset();
         resultText.value = "";
+        proposal.value = null;
         sessionModelPopoverOpen.value = false;
         sessionModelSaving.value = false;
         syncSessionModelState();
@@ -386,6 +428,7 @@ export function useInlineEditorAgentController(
         sessionId.value = targetSessionId;
         session.reset();
         resultText.value = "";
+        proposal.value = null;
         const recovery = await services.api.getSessionRecovery(targetSessionId);
         if (requestId !== recoveryRequestId
             || !acceptsOperation(owner, targetSessionId)
@@ -424,6 +467,7 @@ export function useInlineEditorAgentController(
         if (!acceptsOperation(owner, targetSession.sessionId)) return {status: "superseded"};
 
         resultText.value = "";
+        proposal.value = null;
         const clientMessageId = services.createClientMessageId();
         const optimisticId = session.appendOptimisticUserMessage(clientMessageId, visibleMessage);
         let receivedReceipt = false;
@@ -488,6 +532,127 @@ export function useInlineEditorAgentController(
         return refreshed.status === "superseded"
             ? refreshed
             : {status: "current", value: undefined};
+    }
+
+    async function acceptEdit(index: number): Promise<boolean> {
+        if (!proposal.value) return false;
+        const item = proposal.value.items[index];
+        if (!item) return false;
+
+        if (item.status === "accepted" && item.applied) {
+            return true;
+        }
+
+        const currentContent = ideStore.selectedFileContent || ideStore.activeWorkspaceFile?.content || "";
+        const applyResult = applyAcceptedEdits(currentContent, [
+            {original: item.original, replacement: item.replacement, accepted: true},
+        ]);
+
+        if (applyResult.failedEdits.length > 0) {
+            const failure = applyResult.failedEdits[0]!;
+            services.notifyError(new Error(failure.message), failure.message);
+            return false;
+        }
+
+        item.status = "accepted";
+        item.applied = true;
+        ideStore.selectedFileContent = applyResult.content;
+
+        try {
+            await ideStore.saveCurrentFile({content: applyResult.content});
+            return true;
+        } catch (error) {
+            item.applied = false;
+            services.notifyError(error, resolveApiErrorMessage(error, "采纳修改并保存文件失败"));
+            return false;
+        }
+    }
+
+    async function acceptAll(): Promise<boolean> {
+        if (!proposal.value) return false;
+        const unapplied = proposal.value.items.filter((item) => !item.applied);
+        if (unapplied.length === 0) return true;
+
+        const currentContent = ideStore.selectedFileContent || ideStore.activeWorkspaceFile?.content || "";
+        const candidates = unapplied.map((item) => ({
+            original: item.original,
+            replacement: item.replacement,
+            accepted: true,
+        }));
+
+        const applyResult = applyAcceptedEdits(currentContent, candidates);
+
+        if (applyResult.failedEdits.length > 0) {
+            const errorMsgs = applyResult.failedEdits.map((f) => `条目 ${f.index + 1}: ${f.message}`).join("; ");
+            services.notifyError(new Error(errorMsgs), `部分条目应用失败: ${errorMsgs}`);
+        }
+
+        const failedIndices = new Set(applyResult.failedEdits.map((f) => f.index));
+        const newlyApplied: InlineProposalItemState[] = [];
+        for (let i = 0; i < unapplied.length; i++) {
+            const item = unapplied[i]!;
+            if (!failedIndices.has(i)) {
+                item.status = "accepted";
+                item.applied = true;
+                newlyApplied.push(item);
+            }
+        }
+
+        if (applyResult.appliedCount > 0) {
+            ideStore.selectedFileContent = applyResult.content;
+            try {
+                await ideStore.saveCurrentFile({content: applyResult.content});
+            } catch (error) {
+                for (const item of newlyApplied) {
+                    item.applied = false;
+                }
+                services.notifyError(error, resolveApiErrorMessage(error, "保存采纳修改失败"));
+                return false;
+            }
+        }
+
+        return applyResult.failedEdits.length === 0;
+    }
+
+    function rejectEdit(index: number, note?: string): void {
+        if (!proposal.value) return;
+        const item = proposal.value.items[index];
+        if (!item) return;
+        item.status = "rejected";
+        if (note !== undefined) {
+            item.note = note;
+        }
+    }
+
+    function rejectAll(note?: string): void {
+        if (!proposal.value) return;
+        for (const item of proposal.value.items) {
+            if (!item.applied) {
+                item.status = "rejected";
+                if (note !== undefined) {
+                    item.note = note;
+                }
+            }
+        }
+    }
+
+    async function requestRevision(note?: string): Promise<AgentSurfaceOperationResult<void>> {
+        if (!proposal.value) {
+            throw new Error("当前没有可修改的提案");
+        }
+        const userNote = (note ?? "").trim();
+        rejectAll(userNote || undefined);
+
+        const targetPath = proposal.value.targetPath || toValue(options.selectedFilePath) || "";
+        const payload: InlineEditPayload = {
+            version: 1,
+            task: "rewrite",
+            targetPath,
+            instruction: userNote ? `作者对上一版提案提出了修改反馈：${userNote}` : "作者请求再改一版",
+            references: [],
+        };
+        const visibleMessage = userNote ? `再改一版：${userNote}` : "再改一版";
+        return await sendPrompt(payload, visibleMessage);
     }
 
     function syncSessionModelState(): void {
@@ -697,6 +862,12 @@ export function useInlineEditorAgentController(
         resultText,
         liveView,
         editPreview,
+        proposal,
+        acceptEdit,
+        rejectEdit,
+        acceptAll,
+        rejectAll,
+        requestRevision,
         sessionLabel,
         selectableModels,
         sessionModelDraft,
@@ -814,15 +985,29 @@ function inlineEditPayloadToJson(payload: InlineEditPayload): JsonValue {
     };
 }
 
-function readToolPath(toolCall: AgentToolCall): string {
-    const argsText = toolCall.argsJson || toolCall.argsText;
-    if (!argsText.trim()) return "";
+export function parseProposalInput(argsText?: string): InlineEditProposalInput | null {
+    if (!argsText?.trim()) return null;
     try {
-        const parsed = JSON.parse(argsText) as {path?: string};
-        return typeof parsed.path === "string" ? parsed.path : "";
+        const parsed = JSON.parse(argsText) as InlineEditProposalInput;
+        if (
+            parsed
+            && typeof parsed.summary === "string"
+            && typeof parsed.targetPath === "string"
+            && Array.isArray(parsed.edits)
+            && parsed.edits.length > 0
+            && parsed.edits.every(
+                (e) => e
+                    && typeof e.original === "string"
+                    && typeof e.replacement === "string"
+                    && (e.rationale === undefined || typeof e.rationale === "string"),
+            )
+        ) {
+            return parsed;
+        }
     } catch {
-        return "";
+        return null;
     }
+    return null;
 }
 
 function modelDraftFromRecovery(

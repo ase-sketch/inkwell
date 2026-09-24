@@ -33,6 +33,7 @@ import type {VariableDefinition} from "nbook/variable-sdk/contracts";
 export {Type};
 export type {Static, TSchema};
 export type * from "nbook/profile-sdk/contracts";
+export {INLINE_PROPOSAL_PENDING_MARKER, INLINE_PROPOSE_EDIT_TOOL} from "nbook/shared/inline-proposal";
 
 export const {
     DirectorInitialSchema,

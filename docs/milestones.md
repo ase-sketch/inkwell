@@ -79,13 +79,14 @@ Fork neuro-book（Apache 路线 D 已定），改造而非重写。基座commit�
 - 字数统计（编辑器内实时 + 全书/分卷汇总）、分卷（卷章树支持建卷与章节归卷）、章节排版（首行缩进等中文排版习惯）、敏感词自查（可配置词表，扫描并定位标出）
 - **内联 AI 编辑（inline.editor / NovelPromptBar）去留与边界重设计**：统一划「哪些辅助不算代写」的线（候选方向：提案卡确认制）；2026-09-21 拍板从 M1c 移入——M1c 实测其为整个内联 AI 编辑功能本体（提示条 UI + 851 行 controller + 主对话面 ~135 处会话注入 + 兼容层），非孤立 profile M2b 侦察补充（2026-09-22）：inline.editor 当前不在写域白名单内、仍可写 manuscript/，届时一并登记处置。
 - 验收标准：① 码字时可见实时字数与全书统计；② 能建卷并把章节归入卷；③ 章节预览/导出符合中文排版习惯；④ 对一章文稿跑敏感词扫描能标出命中位置
-- **2026-09-22 细化设计拍板（两轮访谈，全选推荐；决策笔记 .agents/notes/proposed/feature/2026-09-22-m2.5-writing-fundamentals.md）**：
+- **2026-09-22 细化设计拍板（两轮访谈，全选推荐；决策笔记 .agents/notes/implemented/feature/2026-09-22-m2.5a-writing-fundamentals.md）**：
   - 切分 M2.5a 四件套 → M2.5b inline.editor 提案卡重设计（含写域红线登记），串行独立验收
   - 字数：编辑器底部状态栏（当前章+选中），口径=去空白与 Markdown 标记的字符数；全书/各卷汇总在文稿树面板顶部
   - 分卷：新建卷按钮 + 拖拽归卷 + 右键菜单兜底；移动复用既有 rename 端点零新 API
   - 排版：阅读预览（复用缩进设置 + newsprint 样式）+ 导出 txt（单章/整卷/全书），不做 docx
   - 敏感词：内置小词表 + 作品自定义 .nbook/sensitive-words.txt，手动扫描、结果面板标出命中可跳转
   - inline.editor（M2.5b）：提案卡确认制（DiffWorkbench/审批卡先例），登记 profile-write-scope 收掉直写 manuscript 穿透
+  - **M2.5b 机制拍板（2026-09-22）**：摘 edit/write 工具 + profile 级 propose_edit 自定义工具（不用 approvalRequired——整卡粒度且批准后 server 真实执行，与逐条采纳冲突）；就地提案卡逐条采纳/全部采纳/再改一版；采纳经作者保存通道落盘（USER_LOCAL_ACTOR）；契约唯一事实源 shared/inline-proposal.ts。决策笔记 .agents/notes/implemented/feature/2026-09-22-m2.5b-inline-proposal-cards.md（2026-09-22 收口：真实 LLM 全链路验收通过，含流式快照两个 live bug 修复记录）
 - 粗估：1–2 个周末
 
 ## M2.7 — 知识库呈现层（2026-09-21 拍板新增，M2.5 后、M3 前）

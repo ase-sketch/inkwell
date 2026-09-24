@@ -5,6 +5,8 @@ import ReferencePlainTextEditor from "nbook/app/components/common/form/Reference
 import AgentMarkdownContent from "nbook/app/components/novel-ide/agent/AgentMarkdownContent.vue";
 import AgentSessionModelControls from "nbook/app/components/novel-ide/agent/AgentSessionModelControls.vue";
 import type {AgentSessionModelDraft} from "nbook/app/components/novel-ide/agent/agent-session-model-controls";
+import InlineProposalCard from "nbook/app/components/novel-ide/prompt/InlineProposalCard.vue";
+import type {InlineProposalState} from "nbook/app/components/novel-ide/prompt/inline-proposal.types";
 import {parseSelectionRefChip, type InlineEditReference, type InlineEditTask} from "nbook/app/utils/inline-editor-selection";
 import type {EnabledModelOptionDto} from "nbook/shared/dto/app-settings.dto";
 import type {AgentSessionSummaryDto} from "nbook/shared/dto/agent-session.dto";
@@ -36,7 +38,8 @@ const props = defineProps<{
     sessions: AgentSessionSummaryDto[];
     activeSessionId: number | null;
     sessionLoading: boolean;
-    editPreview: string;
+    editPreview?: string;
+    proposal?: InlineProposalState | null;
     resultText: string;
     liveView: InlineEditorLiveView;
     selectableModels: EnabledModelOptionDto[];
@@ -59,6 +62,11 @@ const emit = defineEmits<{
     (e: "select-session", sessionId: number): void;
     (e: "create-session"): void;
     (e: "open-session-chat"): void;
+    (e: "accept-edit", index: number): void;
+    (e: "reject-edit", index: number, note?: string): void;
+    (e: "accept-all"): void;
+    (e: "reject-all", note?: string): void;
+    (e: "request-revision", note: string): void;
     (e: "update-session-model-selection", value: string | null): void;
     (e: "update:sessionModelDraft", value: AgentSessionModelDraft): void;
     (e: "update:sessionModelPopoverOpen", value: boolean): void;
@@ -71,7 +79,12 @@ const rootRef = ref<HTMLDivElement | null>(null);
 const editorRef = ref<InstanceType<typeof ReferencePlainTextEditor> | null>(null);
 const {t} = useI18n();
 const inputExpanded = ref(false);
+const proposalDismissed = ref(false);
 let resizeObserver: ResizeObserver | null = null;
+
+watch(() => props.proposal?.toolCallId, () => {
+    proposalDismissed.value = false;
+});
 
 const taskOptions = computed<InlineTaskOption[]>(() => [
     {id: "chat", label: t("ide.inlineAi.taskChat"), iconClass: "i-lucide-message-square-text", description: t("ide.inlineAi.chatDescription")},
@@ -204,6 +217,8 @@ watch(() => [
     props.modelValue,
     props.references.length,
     props.editPreview,
+    props.proposal,
+    proposalDismissed.value,
     props.resultText,
     props.liveView.thinking,
     props.liveView.content,
@@ -237,6 +252,19 @@ onBeforeUnmount(() => {
     <!-- 底部 Inline AI Prompt Bar -->
     <div ref="rootRef" class="ide-prompt-bar z-20 shrink-0 px-4">
         <div v-if="props.expanded" class="relative mx-auto w-full max-w-4xl pb-5 pt-7">
+            <!-- 就地浮在 NovelPromptBar 上方的提案卡 -->
+            <InlineProposalCard
+                v-if="props.proposal && !proposalDismissed"
+                :proposal="props.proposal"
+                :disabled="props.running"
+                @accept-edit="emit('accept-edit', $event)"
+                @reject-edit="(idx, note) => emit('reject-edit', idx, note)"
+                @accept-all="emit('accept-all')"
+                @reject-all="emit('reject-all', $event)"
+                @request-revision="emit('request-revision', $event)"
+                @close="proposalDismissed = true"
+            />
+
             <button
                 class="absolute left-1/2 top-7 flex h-6 w-12 -translate-x-1/2 -translate-y-full items-center justify-center rounded-t-full border border-b-0 border-[var(--border-color)] bg-[var(--bg-panel)] text-[var(--text-secondary)] shadow-sm transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-main)]"
                 :title="t('ide.inlineAi.collapse')"

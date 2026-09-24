@@ -9,7 +9,7 @@ import {closeAllProjects, openProject} from "nbook/server/workspace-files/projec
 import type {ReadyProjectSessionRef} from "nbook/server/workspace-files/project-session-types";
 
 /** 持有写入域白名单的交互型 profile。 */
-const INTERACTIVE_PROFILES = ["leader.default", "interview.new-book", "interview.stuck"] as const;
+const INTERACTIVE_PROFILES = ["leader.default", "interview.new-book", "interview.stuck", "inline.editor"] as const;
 /** 非交互型 profile：必须完全不受写入域影响。 */
 const NON_INTERACTIVE_PROFILE = "leader.assets";
 const WRITE_OPERATIONS = ["write", "edit", "apply_patch"] as const;
@@ -146,6 +146,20 @@ describe("交互型 profile 写入域白名单", () => {
             await expect(authorizeFileOperation(context(workspaceRoot, ready, profileKey), "manuscript/chapter.md", "read"))
                 .resolves.toMatchObject({operation: "read", target: {relativePath: "manuscript/chapter.md"}});
         }
+    });
+
+    it("inline.editor 写 manuscript/ 被拒、写 lorebook/ 放行（与其他交互 profile 同口径）", async () => {
+        const {workspaceRoot, ready} = await openNovelProject();
+        const operationContext = context(workspaceRoot, ready, "inline.editor");
+
+        await expect(authorizeFileOperation(operationContext, "lorebook/character/protagonist/index.md", "write"))
+            .resolves.toMatchObject({
+                operation: "write",
+                target: {relativePath: "lorebook/character/protagonist/index.md"},
+            });
+
+        await expect(authorizeFileOperation(operationContext, "manuscript/chapter.md", "write"))
+            .rejects.toThrow(/manuscript\//u);
     });
 
     it("无 profile 上下文的调用方与非交互 profile 行为不变", async () => {
