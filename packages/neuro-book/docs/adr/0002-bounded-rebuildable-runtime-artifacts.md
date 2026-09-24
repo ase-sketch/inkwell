@@ -2,7 +2,7 @@
 
 - 状态：Accepted（2026-07-27 随 Task 125 Round 02 实施）
 - 日期：2026-07-26
-- 关联任务：[Task 125](../../../../.agents/tasks/125-runtime-artifact-storage-lifecycle/README.md)
+- 关联任务：Task 125 （根级 .agents 任务/Work 记录已于 fork 后清理，此处保留纯文本作历史引用）
 
 ## 背景
 

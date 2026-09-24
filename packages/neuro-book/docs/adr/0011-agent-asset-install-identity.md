@@ -2,7 +2,7 @@
 
 - 状态：Accepted
 - 日期：2026-07-29
-- 关联任务：[Task 88](../../../../.agents/tasks/88-workshop-platform/README.md)、[Task 120](../../../../.agents/tasks/120-agent-skill-package-contract/README.md)
+- 关联任务：Task 88、Task 120 （根级 .agents 任务/Work 记录已于 fork 后清理，此处保留纯文本作历史引用）
 - 协议真相源：[Agent Asset Package Protocol](../../assets/reference/agent/agent-asset-package.md)
 
 ## 背景
@@ -32,7 +32,7 @@ Profile 的真实 key 已使用 `leader.default`、`world.engine` 等点分形�
 
 ## 修订（2026-08-01，Task 135）
 
-[Task 135](../../../../.agents/tasks/135-agent-asset-install-protocol/README.md) 决定兼容 [Agent Skills 开放标准](https://agentskills.io/specification)，因此 Skill 的身份读取位置发生变化。本 ADR 的核心原则不变——**仍然只有一个安装身份，不新增 `assetKey`，不用 slug 代替**——变的只是 Skill 从哪里读它：
+Task 135 决定兼容 [Agent Skills 开放标准](https://agentskills.io/specification)，因此 Skill 的身份读取位置发生变化。本 ADR 的核心原则不变——**仍然只有一个安装身份，不新增 `assetKey`，不用 slug 代替**——变的只是 Skill 从哪里读它：
 
 - 决策 1 对 Skill 修订为：`SKILL.md` frontmatter 的 `name` 是安装身份真相源。根 `package.json` 对 Skill 降级为可选，仅在携带 `bin`、`scripts` 或 Bun 安装输入时必需。Workflow 与 Profile 没有 frontmatter，继续以根 `package.json.name` 为身份。
 - 决策 5 对 Skill 修订为：`package.json` 存在时，其 `name` 必须等于 frontmatter `name`；不存在时不做该项校验。Workflow 的 `key` 必须等于 `package.json.name` 不变。

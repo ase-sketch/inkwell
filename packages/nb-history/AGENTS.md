@@ -1,10 +1,12 @@
 # nb-history 包规则
 
-仓库共享协作规则见 [`../../AGENTS.md`](../../AGENTS.md)，本包遵循该入口，不复制共享规则正文。
+`@notnotype/nb-history` 是基于 SQLite/libsql 的文件历史与操作日志库，提供 append-only 事件溯源与内容寻址快照。
 
-## 项目专属边界
+## 边界与依赖方向
+- 纯底层通用库：供主应用及其他服务作为依赖消费，严禁依赖主应用页面、Nuxt 运行时或产品编排逻辑。
+- 路径解耦：调用侧通过 `resolvePath` 适配具体宿主路径，本包不硬编码具体业务目录结构。
 
-- `@notnotype/nb-history` 负责 workspace 操作日志、文件历史、快照与审查收件箱能力；本包不拥有 NeuroBook 应用页面、宿主运行时或产品编排逻辑。
-- 本目录是从独立 `nb-history` checkout 导入的自治包；包内文档、Task 索引和状态只记录 nb-history 自身，不替代仓库根治理入口。
-- 保持 package manifest 的 name、scripts、exports 与依赖语义；需要改变公开合同时，先更新对应项目决策与消费者。
-- 测试和演示只使用本包声明的入口，不通过 NeuroBook 应用源码或其他包的 `src/` 深导入。
+## 底线与验收
+- 导出边界：外部消费与测试必须通过 package.json 声明的公开导出，严禁跨包私有源码深导入。
+- 保持 package manifest 的导出声明（exports）与依赖语义稳定。
+- 验收标准：改动通过 `bun run --cwd packages/nb-history test`。

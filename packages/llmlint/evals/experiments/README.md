@@ -75,7 +75,7 @@ bun evals/experiments/guide-compare.ts --arm evals/experiments/guide-arm-v3 \
 
 **这轮面板顺带推翻了一条推断**：上一版结论写过「docPAi 基线 0.9+ 的模型有实测或强预期收益」。gemini 基线 0.969 是面板最高，实测收益为零、代价显著——**基线高只保证主指标可测（有下降空间），不保证注入有效**。收益必须逐模型实测，推不出来。
 
-**同期的反向观察**：把 skill 装进 `~/.claude/skills/` 用 `claude -p` 实测时，Opus 5 读了 `guide` 之后照样写出「不是A，是B」——而那条就在 guide 第 42 行。它与本实验不矛盾，但**两个变量同时不同**（本实验注入 system prompt + deepseek；实测是 tool result 上下文 + Opus 5），需要一轮三臂最小实验拆开。详见 `.agents/tasks/23-skill-loop-and-service/README.md`。
+**同期的反向观察**：把 skill 装进 `~/.claude/skills/` 用 `claude -p` 实测时，Opus 5 读了 `guide` 之后照样写出「不是A，是B」——而那条就在 guide 第 42 行。它与本实验不矛盾，但**两个变量同时不同**（本实验注入 system prompt + deepseek；实测是 tool result 上下文 + Opus 5），需要一轮三臂最小实验拆开。（上游治理历史已于 fork 后清理）。
 
 **已知局限**（写进结论，不要略过）：
 

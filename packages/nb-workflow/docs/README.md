@@ -8,4 +8,4 @@ S0 manifest 的 24 个 included 文件按原相对路径复制到本包，并逐
 
 后续项目设计、验证报告或其他文档放在本目录；没有历史文档时不为迁移虚构内容。
 
-共享治理和跨项目合同见 monorepo 根 [`AGENTS.md`](../../../AGENTS.md)。项目 Task 入口见 [`.agents/tasks/README.md`](../.agents/tasks/README.md)。
+共享治理和跨项目合同见 monorepo 根 [`AGENTS.md`](../../../AGENTS.md)。上游治理历史已于 fork 后清理。

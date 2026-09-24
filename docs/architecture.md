@@ -33,12 +33,18 @@ Inkwell = neuro-book 基座 + 一层尽量薄的「改造层」。凡是能靠�
 └──────────────────────────────────────────────────────┘
 ```
 
-依赖方向：contracts ← 各自治包 ← neuro-book 主应用（上游既定，见基座 docs/upstream/modules/monorepo-boundaries.md）；改造层只往下依赖基座，基座不得依赖改造层。
+依赖方向：contracts ← 各自治包 ← neuro-book 主应用；改造层只往下依赖基座，基座不得依赖改造层。
 
 ## 关键数据流
 
 **开新书访谈（M1 核心闭环）**：
 作者在聊天面板发起开新书 → leader profile（I1 改造后）主导苏格拉底追问 → request_user_input 阻塞轮次（I2 闸门）→ 作者逐条回答 → 访谈结论由 agent 调 write/edit 工具沉淀为 workspace 设定文档（Markdown）→ 设定文档进而被 world-engine / promise 账本消费（基座既有能力）。
+
+**长篇上下文与卡文追问（M2 核心数据流）**：
+作者输入或划词触发 → harness 组装 turnContext（未决伏笔恒定注入 + 实体按需匹配注入 + $key 显式唤起技能注入）→ `interview.stuck` / `leader.default` 执行追问 → 仅返回追问/分析（物理白名单隔离 manuscript 直写）。
+
+**内联编辑提案卡（M2.5b 数据流）**：
+作者在编辑器划选或调用内联编辑 → profile 调用 propose_edit 工具提出修改建议（零写盘）→ 前端渲染就地提案卡（Diff 审阅）→ 作者确认采纳后经本地作者通道落盘（USER_LOCAL_ACTOR）。
 
 **阅读（M4）**：作者给资料主题 → agent 调 web_search/fetch（基座既有工具）→ 消化为笔记 Markdown 落 workspace → 访谈/写作时可被引用。
 
@@ -46,22 +52,16 @@ Inkwell = neuro-book 基座 + 一层尽量薄的「改造层」。凡是能靠�
 
 State Root 默认目录改名为 inkwell 专属（M0 完成），App SQLite 与 Project SQLite（.nbook/）均落在其下，与上游已装版本隔离。
 
-## 公开接口草案（改造层）
+## 公开接口与契约（改造层）
 
-- I1：访谈模式 profile —— `interview.new-book` / `interview.stuck` / `review.chapter` 三个 profile（或一个 profile 三模式，实现时定）
-- I2：会话闸门对外不新增接口，只改追问轮次的阻塞行为
+- I1：访谈模式 profile —— `interview.new-book` / `interview.stuck` / `review.chapter`；技能包约定 `.nbook/skills/{name}/SKILL.md`
+- I2：会话闸门对外不新增接口，控制追问轮次的阻塞行为与 turnContext 注入
+- I3：内联提案契约 `shared/inline-proposal.ts`；界面布局状态推导 `app/utils/ide-shell-layout.ts` 与资产投影 `app/utils/writing-assets.ts`
 - I4：阅读笔记落盘约定 `workspace/references/` 目录 + frontmatter（来源 URL、抓取日期）
 
-## I3 蓝本：用户给定参考（2026-09-20，ChatGPT 桌面版截图）
+## 界面与交互约定
 
-用户反馈：上游原样 UI「不够开箱即用」，I3 要做到足够人性化。参考图布局要点：
-- 左侧栏：新聊天入口置顶，下面是功能导航（图像/定时任务/插件类），再下面是「项目」分组与「最近」会话列表；底栏是用户头像区
-- 顶部中央：**聊天 / 工作** 双模式切换（对照 Inkwell：访谈模式 ↔ 写作/审稿模式的入口可以借鉴这个形态）
-- 空态首页：居中大标题问句 + 居中大输入框，零配置直接开始对话——「开箱即用」的核心是这个空态，不要一进来先面对工程结构
-- 输入框：附件 + 主输入 + 语音/模式切换集中在一行，右侧主按钮突出
-- 整体：留白充足、无拥挤的工具栏，高级能力（工程/伏笔/世界状态）收进侧栏与二级页，不抢主路径
-
-I3 验收直觉（用户原话）：上游界面「打开看了意义不明不知道干什么用」——Inkwell 首次打开必须让用户一眼知道「这里是聊出你小说设定的地方」，空态文案与引导按此设计。
+界面与交互参考详见 `docs/spec.md` 及 `docs/research/` 调研档案，行为与功能定义不在本架构文档中重复记录（一事一处原则）。I3 代码结构详见 `app/components/novel-ide/` 与 `app/utils/`。
 
 ## 明确不改的
 

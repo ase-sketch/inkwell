@@ -51,4 +51,4 @@
     - ����:NeuroBook δ��ע�� `resolvePath: p => join(root, p)` ���ָ�������;���в���ͨ��ע�� resolvePath �������·�����
     - ���� `registerObservedWrite(actor, path, after)`:�۲��ͼ������,�����ò���дǰ���ݵ�����(watcher / �¼���)��before ������ĩ̬ȡ hash(prune ����ĩ�����ձ���),����ȷ�ǹ����Ե�,������ʽ����;������һ�·��� null(������������)������Ψһ������ʽ���˵�д��ڡ��������ṩдǰ���ݵľ��������޹�,README ��ע����
     - NeuroBook monorepo 已在 S3 切换到 `@notnotype/nb-history` 正式入口；调用侧通过 `resolvePath` 保持 Project 相对路径语义。
-    - 集成证据见根 Task [`006-leader-2026-08-16-s3-single-source-integrations`](../../.agents/tasks/00149-monorepo-workspace-consolidation/walkthroughs/006-leader-2026-08-16-s3-single-source-integrations.md)。
+    - 上游治理历史已于 fork 后清理。

@@ -3,7 +3,7 @@
 - 状态：Accepted（Spike 基础；生产首发边界由 [ADR 0014](0014-electron-desktop-productization.md) 冻结）
 - 日期：2026-08-05
 - 更新：2026-08-06（Workbench Chrome、Activity Bar 与 Desktop Bridge v2）
-- 关联任务：[Task 143](../../../../.agents/tasks/143-desktop-envelope-installation-spike/README.md)、[Task 130](../../../../.agents/tasks/130-desktop-application-foundation/README.md)、[Task 145](../../../../.agents/tasks/145-electron-desktop-productization/README.md)、[Issue #66](https://github.com/notnotype/neuro-book/issues/66)
+- 关联任务：Task 143、Task 130、Task 145、[Issue #66](https://github.com/notnotype/neuro-book/issues/66) （根级 .agents 任务/Work 记录已于 fork 后清理，此处保留纯文本作历史引用）
 - 依赖决策：[ADR 0009](0009-product-runtime-image-generation.md)、[ADR 0010](0010-desktop-storage-loopback-shutdown.md)、[ADR 0012](0012-release-candidate-activation.md)
 
 ## 背景

@@ -1,7 +1,12 @@
 # scripts 目录规则
 
-- 脚本是仓库根应用、发布链和治理命令的宿主适配层；保持现有 CLI 名称和调用路径。
-- 使用 `nbook/*` 绝对导入、4 空格缩进和完整类型；领域逻辑留在对应 Module，不为单次调用创建 wrapper。
-- Agent、测试、验收、缓存和 scratch 运行数据走 `@notnotype/neuro-book-test-support/paths`，不得新写仓库 `.agent/tmp/`。
-- 新增或修改命令必须保留可执行入口、明确错误码和可验证的聚焦测试；脚本默认不加载 `.env.local`。
-- 发布脚本的目录、安装图和输出合同继续由 `scripts/release/AGENTS.md` 约束。
+`scripts/` 承载 Inkwell 仓库的构建、发布、CI 检查与维护脚本。
+
+## 边界与依赖方向
+- 工具层定位：脚本是命令行与宿主环境的适配层，领域业务逻辑应留在各 packages 对应模块中，严禁在脚本中重复实现领域业务。
+- 统一调用：保持 CLI 入口与调用参数简洁直接，不增加无意义的单次封装 wrapper。
+
+## 底线与验收
+- 状态隔离：测试、验收与临时运行产物走系统临时目录或 `@notnotype/neuro-book-test-support/paths`，不得写在仓库根目录。
+- 确定性与健壮性：脚本必须具备清晰的参数处理、非零退出码和错误提示。
+- 发布规范：发布打包相关脚本遵循 `scripts/release/AGENTS.md`。

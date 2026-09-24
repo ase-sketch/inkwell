@@ -7,7 +7,7 @@ Workspace 操作日志与文件历史模块:**append-only 事件溯源 + 内容�
 3. **用户审查收件箱**——看到 AI 改了什么(diff 基准精确),接受或一键还原;
 4. **会话级"未见变更"**——AI 会话重新打开时能知道别人(用户 / 其他会话 / 外部)改了什么,含"用户还原了我的修改"的通知。
 
-> 状态:**spike 已完成验收**。场景测试 T1–T12 全绿(29 tests),性能 smoke P1–P3 达标,Windows 句柄释放实测通过;集成期通用化改造后 49 tests 全绿。契约与验收标准见派发任务书(NeuroBook 仓 `.agents/tasks/91-operation-log-file-history/GOAL.md`);实现中的契约发现与集成期决策见 [NOTES.md](NOTES.md)。
+> 状态:**spike 已完成验收**。场景测试 T1–T12 全绿(29 tests),性能 smoke P1–P3 达标,Windows 句柄释放实测通过;集成期通用化改造后 49 tests 全绿。上游治理历史已于 fork 后清理；实现中的契约发现与集成期决策见 [NOTES.md](NOTES.md)。
 
 ## 快速上手
 

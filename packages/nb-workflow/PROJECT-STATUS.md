@@ -14,8 +14,7 @@
 ## 文档与任务
 
 - 概念、特性和 API 参考位于本包 `docs/`。
-- `01-kernel-stabilization` 与 `02-audit-hardening` 历史 Task 位于 [`.agents/tasks/`](.agents/tasks/)。
-- 根 T149 Task 记录跨包同步、源仓只读边界和联合验收；本包后续行为变化继续写本包 Task。
+- 上游治理历史已于 fork 后清理。
 
 ## 验证状态
 

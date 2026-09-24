@@ -9,7 +9,7 @@
 - 术语与领域不变量仍以 [`CONTEXT.md`](../../CONTEXT.md) 为真相源。
 - `evals` 的统计方法与实验纪律仍以 [`evals/METHODOLOGY.md`](../../evals/METHODOLOGY.md) 为真相源。
 - 已实施代码现状记录在 [`current-state/web-workbench.md`](current-state/web-workbench.md)，不能反向覆盖目标规格。
-- 实施过程、计划出入和验证结果仍进入 `.agents/tasks/`。
+- 上游治理历史已于 fork 后清理。
 
 ## 2. 规范状态
 

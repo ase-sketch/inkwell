@@ -2,7 +2,7 @@
 
 本文件是 [Issue #193](https://github.com/notnotype/neuro-book/issues/193) 的非绑定路线图，只保存可能需要研究或设计的后续阶段。它不是 Task 合同：没有 Task ID、状态、owner、允许文件或执行授权，Tasker 不得据此执行。
 
-当前唯一活动合同是 [`t01-product-host-success-research`](../../../.agents/works/w00002-neuro-agent-harness-redesign/tasks/t01-product-host-success-research/README.md)。该 Task 完成前不创建下一 Task；其结果改变候选顺序或范围时，Leader 先原地更新本路线图，再创建唯一完整的 current Task。
+当前唯一活动合同是 `t01-product-host-success-research`。该 Task 完成前不创建下一 Task；其结果改变候选顺序或范围时，Leader 先原地更新本路线图，再创建唯一完整的 current Task。 （根级 .agents 任务/Work 记录已于 fork 后清理，此处保留纯文本作历史引用）
 
 ## 候选阶段
 

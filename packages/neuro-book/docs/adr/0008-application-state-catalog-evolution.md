@@ -2,7 +2,7 @@
 
 - 状态：Accepted
 - 日期：2026-07-28
-- 关联任务：[Task 105](../../../../.agents/tasks/105-unified-installation-manager/README.md)、[Task 118](../../.agents/tasks/118-project-catalog-snapshot-path-integration/README.md)
+- 关联任务：Task 105、[Task 118](../../.agents/tasks/118-project-catalog-snapshot-path-integration/README.md) （根级 .agents 任务/Work 记录已于 fork 后清理，此处保留纯文本作历史引用）
 - 补充：[ADR 0005](0005-application-state-migration-ownership.md)
 
 ## 背景

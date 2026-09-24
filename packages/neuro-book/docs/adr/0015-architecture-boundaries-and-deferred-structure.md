@@ -2,7 +2,7 @@
 
 - 状态：Accepted
 - 日期：2026-08-07
-- 关联任务：[Task 123](../../../../.agents/tasks/123-repo-structure-optimization/README.md)、[Task 142](../../../../.agents/tasks/142-post-merge-reliability-hardening/README.md)、[Task 143](../../../../.agents/tasks/143-desktop-envelope-installation-spike/README.md)
+- 关联任务：Task 123、Task 142、Task 143 （根级 .agents 任务/Work 记录已于 fork 后清理，此处保留纯文本作历史引用）
 - 相关决策：[ADR 0010](0010-desktop-storage-loopback-shutdown.md)、[ADR 0017](0017-agent-job-durable-history.md)
 
 ## 背景

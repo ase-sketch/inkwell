@@ -4,7 +4,7 @@
 >
 > - 方法论 / 流程规范（**代码按它实现**）：[METHODOLOGY.md](METHODOLOGY.md)
 > - 术语与硬不变量：[../CONTEXT.md](../CONTEXT.md)
-> - 现状 / 每轮变更：[../PROJECT-STATUS.md](../PROJECT-STATUS.md) · [编年 walkthrough](../.agents/tasks/03-llmlint-eval-harness/README.md)
+> - 现状 / 每轮变更：[../PROJECT-STATUS.md](../PROJECT-STATUS.md)（上游治理历史已于 fork 后清理）
 >
 > 本文只讲**怎么跑**。
 

@@ -324,26 +324,7 @@ describe("documentation governance gate", () => {
         );
     });
 
-    it("只校验新 schema Task 的具体 Spec 绑定和活跃链接", async () => {
-        const fixture = await createDocumentationFixture({
-            ".agents/tasks/00150-valid/README.md": "---\nschema: nbook.task/v1\n---\n\n# Task\n\n[Spec](../../../docs/specs/editor/html.md)\n",
-            ".agents/tasks/00151-no-behavior-change/README.md": "---\nschema: nbook.task/v1\n---\n\n# Task\n\n本任务行为合同未变。\n",
-            ".agents/tasks/00152-broken/README.md": "---\nschema: nbook.task/v1\n---\n\n# Task\n\n[Spec](../../../docs/specs/editor/missing.md)\n",
-            "packages/neuro-book/.agents/tasks/00153-package-valid/README.md": "---\nschema: nbook.task/v1\n---\n\n# Task\n\n[Spec](../../../../../docs/specs/editor/html.md)\n",
-            "docs/specs/editor/html.md": specDocument({capability: "editor.html"}),
-        }, {
-            planned: ["docs/specs/editor/html.md"],
-        });
 
-        const report = checkDocumentation(fixture.root, fixture.paths);
-
-        expect(report.failures).toContain("相对链接目标不存在：.agents/tasks/00152-broken/README.md -> ../../../docs/specs/editor/missing.md（docs/specs/editor/missing.md）");
-        expect(report.failures).toContain("新 Task 必须链接具体 Spec，或明确说明“行为合同未变”：.agents/tasks/00152-broken/README.md");
-        expect(report.failures.some((failure) => failure.includes("42-history"))).toBe(false);
-        expect(report.failures.some((failure) => failure.includes("00150-valid"))).toBe(false);
-        expect(report.failures.some((failure) => failure.includes("00151-no-behavior-change"))).toBe(false);
-        expect(report.failures.some((failure) => failure.includes("00153-package-valid"))).toBe(false);
-    });
 
     it("图片链接和路径大小写使用受管文件集合校验", async () => {
         const fixture = await createDocumentationFixture({

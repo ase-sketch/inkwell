@@ -93,7 +93,6 @@ export function checkDocumentation(repoRoot: string, paths?: readonly string[]):
     checkSpecRegistry(normalizedRoot, fileSet, failures);
     checkSpecs(normalizedRoot, files, failures);
     checkFrozenReference(normalizedRoot, files, failures);
-    checkCurrentTaskContracts(normalizedRoot, files, fileSet, failures);
 
     return {failures, checkedFiles: files.length};
 }
@@ -208,7 +207,7 @@ function checkAdrs(repoRoot: string, files: readonly string[], failures: string[
 }
 
 function checkActiveLinks(repoRoot: string, files: readonly string[], fileSet: ReadonlySet<string>, failures: string[]): void {
-    for (const source of files.filter((path) => isActiveMarkdown(path) || isCurrentTaskContract(repoRoot, path))) {
+    for (const source of files.filter((path) => isActiveMarkdown(path))) {
         const text = readFileSync(resolve(repoRoot, source), "utf8");
         let tree: Root;
         try {
@@ -242,42 +241,7 @@ function isActiveMarkdown(path: string): boolean {
     if (path.startsWith("vitepress/locales/")) return !path.startsWith("vitepress/locales/zh-Hans/changelog/")
         && !path.startsWith("vitepress/locales/en-US/changelog/");
     if (path.startsWith("vitepress/")) return !path.startsWith("vitepress/public/");
-    if (path === ".agents/README.md" || path === ".agents/AGENTS.md") return true;
-    return path.startsWith(".agents/roles/") || path.startsWith(".agents/skills/");
-}
-
-function isCurrentTaskContract(repoRoot: string, path: string): boolean {
-    if (!/^(?:\.agents\/tasks|packages\/neuro-book\/.agents\/tasks)\/[^/]+\/README\.md$/u.test(path)) return false;
-    const text = readFileSync(resolve(repoRoot, path), "utf8");
-    const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/u.exec(text)?.[1];
-    if (!frontmatter) return false;
-    try {
-        const metadata = parseYaml(frontmatter) as {schema?: unknown} | null;
-        return metadata?.schema === "nbook.task/v1";
-    } catch {
-        return false;
-    }
-}
-
-function checkCurrentTaskContracts(
-    repoRoot: string,
-    files: readonly string[],
-    fileSet: ReadonlySet<string>,
-    failures: string[],
-): void {
-    for (const path of files.filter((candidate) => isCurrentTaskContract(repoRoot, candidate))) {
-        const text = readFileSync(resolve(repoRoot, path), "utf8");
-        const links = collectLinkUrls(fromMarkdown(text));
-        const hasConcreteSpec = links.some((url) => {
-            const target = resolveRelativeLink(path, url);
-            if (target === null) return false;
-            const candidate = target.endsWith(".md") ? target : `${target}.md`;
-            return isSpecDocument(candidate) && fileSet.has(candidate);
-        });
-        if (!hasConcreteSpec && !text.includes("行为合同未变")) {
-            failures.push(`新 Task 必须链接具体 Spec，或明确说明“行为合同未变”：${path}`);
-        }
-    }
+    return path === ".agents/README.md" || path === ".agents/AGENTS.md";
 }
 
 function collectLinkUrls(tree: Root, includeImages = false): string[] {
@@ -334,7 +298,7 @@ function checkSpecRegistry(repoRoot: string, fileSet: ReadonlySet<string>, failu
     for (const url of collectLinkUrls(fromMarkdown(frozenSection ?? ""))) {
         const target = resolveRelativeLink(registryPath, url);
         if (target === null) continue;
-        if (["docs/proposals/", "docs/research/", "docs/archived/", "packages/neuro-book/docs/proposals/", "packages/neuro-book/docs/research/", "packages/neuro-book/docs/archived/", ".agents/tasks/"].some((prefix) => target.startsWith(prefix))) {
+        if (["docs/proposals/", "docs/research/", "docs/archived/", "packages/neuro-book/docs/proposals/", "packages/neuro-book/docs/research/", "packages/neuro-book/docs/archived/"].some((prefix) => target.startsWith(prefix))) {
             failures.push(`冻结过渡规范指向非规范资料：${registryPath} -> ${url}（${target}）`);
         }
     }

@@ -43,7 +43,6 @@
         "release/manager-release-vitest.config.ts",
         "release/desktop-contract-vitest.config.ts",
         "deploy/windows-owned-process-smoke.ts",
-        "maintenance/migrate-agent-tasks.ts",
-        "maintenance/migrate-task-ownership.ts"
+
     ]
 }

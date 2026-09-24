@@ -3,7 +3,7 @@
 - 状态：Accepted
 - 日期：2026-07-29
 - 更新：2026-08-05（Product Runtime Contract v5、Desktop Envelope 复用与 stdio/nonce 发行门禁）
-- 关联任务：[Task 130](../../../../.agents/tasks/130-desktop-application-foundation/README.md)、[Task 105](../../../../.agents/tasks/105-unified-installation-manager/README.md)、[Task 117](../../../../.agents/tasks/117-windows-process-tree-lifecycle/README.md)
+- 关联任务：Task 130、Task 105、Task 117 （根级 .agents 任务/Work 记录已于 fork 后清理，此处保留纯文本作历史引用）
 
 ## 背景
 

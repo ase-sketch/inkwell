@@ -2,7 +2,7 @@
 
 - 状态：Accepted
 - 日期：2026-08-25
-- 关联任务：[Current Task：Agent abort mutation 合同闭合](../../../../.agents/works/w00004-agent-abort-mutation-contract/tasks/t01-agent-abort-mutation-contract/README.md)
+- 关联任务：Current Task：Agent abort mutation 合同闭合 （根级 .agents 任务/Work 记录已于 fork 后清理，此处保留纯文本作历史引用）
 - 关联规范：[Agent Session Abort](../../../../docs/specs/agent/session-abort.md)
 
 ## 背景

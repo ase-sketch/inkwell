@@ -10,7 +10,7 @@
 
 ## 文档与任务
 
-项目设计决策、架构图和回归报告见 [`docs/README.md`](docs/README.md)。本快照没有可迁入的历史 Task；项目 Task 入口见 [`.agents/tasks/README.md`](.agents/tasks/README.md)。
+项目设计决策、架构图和回归报告见 [`docs/README.md`](docs/README.md)。上游治理历史已于 fork 后清理。
 
 ## 风险与限制
 

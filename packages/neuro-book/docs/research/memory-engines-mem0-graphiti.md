@@ -1,6 +1,6 @@
 # 记忆引擎调研：mem0 vs graphiti（Task 113 第二轮）
 
-> 日期：2026-07-22。归属：根 Task [113-memory-system](../../../../.agents/tasks/113-memory-system/README.md)（讨论中）。
+> 日期：2026-07-22。归属：根 Task 113-memory-system（讨论中）。 （根级 .agents 任务/Work 记录已于 fork 后清理，此处保留纯文本作历史引用）
 > 取证方式注记：当日子代理与 WebFetch/WebSearch 通道因推理网关故障不可用，全部调研在主会话完成；外部事实取自两仓 README / 官方迁移文档 / 仓库目录结构（`gh api` 实查）与 Zep 官方博客原文，本仓事实取自代码直读。星数、版本等元数据均为 2026-07-22 实查值。
 
 ## 0. 结论速览
@@ -52,7 +52,7 @@ B1 对比已实跑完毕（`nb-memory-bench` 仓，20 章 / 338 事实 / 31 题�
 
 ### 1.2 用户记忆（应用级习惯 / 技巧 / 经验）
 
-第一轮盘点结论仍然成立（[Task 113](../../../../.agents/tasks/113-memory-system/README.md)）：规模小（几十~几百条）、单条价值高、必须**用户可审查可编辑**、跨项目、显式写入纪律优于自动摘要积累。目前这格是空的（现存 `agents/{profile}/memory.md` 是项目级 × profile 私有，且住在可被 reset `clear()` 清掉的 Profile Home 里）。
+第一轮盘点结论仍然成立（Task 113）：规模小（几十~几百条）、单条价值高、必须**用户可审查可编辑**、跨项目、显式写入纪律优于自动摘要积累。目前这格是空的（现存 `agents/{profile}/memory.md` 是项目级 × profile 私有，且住在可被 reset `clear()` 清掉的 Profile Home 里）。
 
 ### 1.3 llmlint 共享
 

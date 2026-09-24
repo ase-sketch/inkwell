@@ -424,7 +424,7 @@ Task 150 仍可能移动 monorepo 路径。任何后续实现前必须重读最�
 
 - [`../../../assets/reference/agent/agent-asset-install.md`](../../../assets/reference/agent/agent-asset-install.md)：Task 135 的安装协议目标；不是当前安装实现。
 - [`../../../.agents/tasks/135-agent-asset-install-protocol/README.md`](../../../.agents/tasks/135-agent-asset-install-protocol/README.md)：安装协议尚未实施的任务证据。
-- [`../../../../../.agents/tasks/00150-monorepo-boundary-convergence/README.md`](../../../../../.agents/tasks/00150-monorepo-boundary-convergence/README.md)：迁移中的路径和治理风险；执行前需重新核对。
+- `../../../../../.agents/tasks/00150-monorepo-boundary-convergence/README.md`：迁移中的路径和治理风险；执行前需重新核对。
 - [`../../../docs/adr/0006-image-variant-and-original-ownership.md`](../../../docs/adr/0006-image-variant-and-original-ownership.md)：原图 ownership 与可重建变体边界。
 - [`../../../docs/adr/0015-architecture-boundaries-and-deferred-structure.md`](../../../docs/adr/0015-architecture-boundaries-and-deferred-structure.md)：延期的结构解环和全局事务边界。
 - [`../../../../../docs/specs/README.md`](../../../../../docs/specs/README.md)：当前待实现规范为空；研究建议进入实现前须建立 capability Spec。

@@ -8,6 +8,6 @@
 - [Design language](design-language.md)：视觉规则与设计取舍。
 - [Authoring themes](authoring-themes.md)：主题包格式与作者指南。
 
-项目 Agent 规则见 [`../AGENTS.md`](../AGENTS.md)，仓库共享合同见 [`../../../AGENTS.md`](../../../AGENTS.md)。项目 Task 索引见 [`../.agents/tasks/README.md`](../.agents/tasks/README.md)。
+项目 Agent 规则见 [`../AGENTS.md`](../AGENTS.md)，仓库共享合同见 [`../../../AGENTS.md`](../../../AGENTS.md)。上游治理历史已于 fork 后清理。
 
 本目录没有从根 `docs/` 复制的共享正文；NeuroBook 主应用和跨项目事项仍归仓库根文档治理。

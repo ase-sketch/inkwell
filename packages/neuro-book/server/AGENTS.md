@@ -1,3 +1,8 @@
 # server 目录规则
 
-修改 `server/**` 前读取 [`../../../docs/upstream/standards/code/common.md`](../../../docs/upstream/standards/code/common.md)、[`../../../docs/upstream/standards/code/languages/typescript.md`](../../../docs/upstream/standards/code/languages/typescript.md) 和 [`../../../docs/upstream/standards/code/server.md`](../../../docs/upstream/standards/code/server.md)；涉及 Prisma、SQL 或 migration 时追加 [`../../../docs/upstream/standards/code/database.md`](../../../docs/upstream/standards/code/database.md)。
+## 底线与约束
+- **分层与所有权**：HTTP 路由仅负责输入校验、授权与响应映射；业务逻辑与状态转移收敛在对应的 service、repository 或 runtime owner，跨边界 DTO 统一定义在 `shared/`，严禁从前端反向导入。
+- **边界输入与错误处理**：外部输入在系统边界强制校验；失败尽早暴露，使用领域既有错误合同保留状态码与可诊断信息，禁止静默吞错。
+- **生命周期与清理**：长任务、Agent Job、子进程与流式响应必须包含取消、超时与资源清理路径，请求结束不得遗留无主异步工作。
+- **数据与持久化**：涉及 Prisma / SQLite 时遵守数据隔离与增量 migration 纪律；生成 client 严禁直接手改。
+- **日志与安全**：日志使用结构化字段并脱敏；正文、提示词、Session 敏感信息与外部 Provider 凭据严禁打印到日志。

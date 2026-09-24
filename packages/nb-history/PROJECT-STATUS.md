@@ -8,6 +8,6 @@ S0 import manifest 记录了来源 checkout 的逐文件状态、字节数与 SH
 
 ## 范围与后续
 
-本包维护 workspace 操作日志、文件历史、内容寻址快照及相关审查能力。当前页面不虚构 roadmap、版本承诺或未创建的 Task；项目专属 Task 如有建立，将从 [Task 索引](.agents/tasks/README.md) 导航。
+本包维护 workspace 操作日志、文件历史、内容寻址快照及相关审查能力。上游治理历史已于 fork 后清理。
 
 跨项目治理、根 workspace 安装图和 NeuroBook 产品事项由仓库根治理入口维护，不在此复制。

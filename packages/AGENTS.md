@@ -1,11 +1,12 @@
 # packages 目录规则
 
-- Monorepo 包按逻辑 Module 管理；包说明负责人、稳定合同、依赖方向、模块验证和产品集成验证。
-- 当前 workspace 包包括 `neuro-book`、`neuro-book-manager`、`owned-process`、`file-snapshot-cache`、`neuro-book-contracts`、`neuro-book-test-support` 以及六个自治收编包 `nb-history`、`nb-workflow`、`nb-memory`、`nb-ui`、`neuro-agent-harness`、`llmlint`；主应用已位于 `packages/neuro-book`。
-- 所有 `packages/*` 默认继承 monorepo 根 Rule/Skill/Role、临时根、安全和 Git 规则。包可用自己的 `AGENTS.md`、`docs/`、legacy `.agents/tasks/` 和 `PROJECT-STATUS.md` 覆盖项目专属行为，但 current Work/Task 只在根 `.agents/works/` 创建；只要建立任一包级治理资产，就必须由 `AGENTS.md` 引用 `../../AGENTS.md`。
-- 六个自治包保留 `.agents/tasks` 历史记录、`docs`、`PROJECT-STATUS.md` 和项目专属 `AGENTS.md`；跨包与包内的新工作均由根 Work/Task 表达，Task role 和路径只在 `.agents/works/` 定义。
-- `packages/neuro-book/.agents/tasks/` 只承载根 ownership manifest 登记的 legacy 应用 Task；稳定 Task 名未登记时仍解析到根 legacy `.agents/tasks/`，不允许候选 root fallback，也不接收 `nbook.task/v2`。
-- `packages/*/.agent/` 与 `packages/*/.local/` 是被忽略且不得跟踪的包级运行态；`.agent/tasks`（单数）不是治理入口。`packages/*/.worktree/` 只允许迁移期间短暂存在，checkpoint 前必须清理。
-- 包不得反向依赖 Nuxt 页面、主应用特例或 root-only runtime；跨包依赖使用 workspace package 名与声明版本，主应用只能消费领域包，领域包不得依赖 `@notnotype/neuro-book`。
-- 许可证、公开包名、版本、exports 和发布合同变化必须先记录为跨 Module 决策，再修改消费者。
-- 包测试使用统一的 Vitest 临时根，不创建仓库 `.agent/tmp/`。
+`packages/` 承载 Inkwell 的所有 workspace 模块，包括领域包、基础库与主应用（`packages/neuro-book`）。
+
+## 边界与依赖方向
+- 单向依赖：主应用可依赖各领域包，领域包之间按需单向依赖；任何领域包严禁反向依赖主应用（`packages/neuro-book`）页面、组件或 Nuxt 运行态。
+- 跨包依赖必须使用 workspace 包名（如 `@notnotype/*`），严禁使用相对路径跨包源码深导入。
+
+## 底线与验收
+- 保持各包边界清晰：业务改动只落在归属包内，不侵入无关模块。
+- 临时文件、缓存、测试数据库及运行态（如 `.agent/`、`.local/`）严禁提交到代码库。
+- 测试使用各包声明的 Vitest 临时根或临时目录，保证可独立运行。

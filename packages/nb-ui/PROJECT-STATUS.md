@@ -14,7 +14,7 @@
 
 - 项目规则：[`AGENTS.md`](AGENTS.md)
 - 项目文档：[`docs/README.md`](docs/README.md)
-- 项目 Task：[`.agents/tasks/README.md`](.agents/tasks/README.md)
+- 上游治理历史已于 fork 后清理。
 - 仓库共享规则：[`../../AGENTS.md`](../../AGENTS.md)
 
 ## 验证边界

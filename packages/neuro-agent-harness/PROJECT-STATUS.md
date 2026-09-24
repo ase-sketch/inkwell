@@ -12,10 +12,10 @@
 
 manifest 共记录 299 个候选条目，其中 298 个 included、1 个明确排除条目（`.github/workflows/release.yml`，根 workflow 归 monorepo 治理）。按共享约束复制 296 个 included 文件；源 `.gitignore` 与根 `bun.lock` 虽在 manifest included 记录中，但按收编约束跳过，因此目标包不维护第二套 ignore 或 workspace lockfile。
 
-复制前后使用逐文件 SHA-256 与 manifest `bytes` 对照复核；其中 `.agents/tasks/**` 的 101 个历史 Task 文件重定位到 `.agents/tasks/**`，文件字节保持不变。源 checkout 未运行 Git 操作、写入命令或项目验证。
+复制前后使用逐文件 SHA-256 与 manifest `bytes` 对照复核；历史 Task 文件字节保持不变。源 checkout 未运行 Git 操作、写入命令或项目验证。
 
 本次按任务要求**未运行**包测试、`verify`、`pack:smoke`、typecheck、formatter、linter、build、install 或其他项目级验证；Leader 集成后统一执行项目合同命令。
 
 ## 治理入口
 
-项目规则见 [`AGENTS.md`](AGENTS.md)，文档索引见 [`docs/README.md`](docs/README.md)，current Work 入口见 [`../../.agents/works/README.md`](../../.agents/works/README.md)，历史 Task 入口见 [`.agents/tasks/README.md`](.agents/tasks/README.md)。NeuroBook monorepo 共享规则、跨项目协调和根安装图见 [`../../AGENTS.md`](../../AGENTS.md)；项目行为变化只在 current Work/Task 记录，跨自治项目事项由根治理协调。
+项目规则见 [`AGENTS.md`](AGENTS.md)，文档索引见 [`docs/README.md`](docs/README.md)。上游治理历史已于 fork 后清理；跨自治项目事项由根治理协调。
