@@ -1,20 +1,27 @@
 <script setup lang="ts">
 import type {IdeShellSurface} from "nbook/app/utils/ide-shell-layout";
 
+/**
+ * 胶囊只提供「聊天 / 工作」两个选项：知识库由左栏「知识库」入口进入，
+ * 不挤进这枚两态胶囊（三态胶囊在窄屏会撑破顶部栏）。
+ * surface 收完整三态只为高亮比较——知识库态下两个选项都不高亮，点任一选项即离开知识库。
+ */
+export type IdeShellPillOptionId = Exclude<IdeShellSurface, "knowledge">;
+
 const props = defineProps<{
-    /** 主区现在居中显示谁。 */
+    /** 主区现在居中显示谁（三态）。 */
     surface: IdeShellSurface;
     /** 对方情境此刻是否真的可达（写作面始终可达；对话在无文稿 + 未进码字态时不可达）。 */
     canSwitch: boolean;
 }>();
 
 const emit = defineEmits<{
-    (event: "select", value: IdeShellSurface): void;
+    (event: "select", value: IdeShellPillOptionId): void;
 }>();
 
 const {t} = useI18n();
 
-const options = computed<Array<{id: IdeShellSurface; icon: string; label: string}>>(() => [
+const options = computed<Array<{id: IdeShellPillOptionId; icon: string; label: string}>>(() => [
     {id: "chat", icon: "i-lucide-message-square", label: t("ide.shell.pillChat")},
     {id: "editor", icon: "i-lucide-square-pen", label: t("ide.shell.pillWrite")},
 ]);

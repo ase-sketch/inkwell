@@ -263,3 +263,185 @@ ext: 不是对象
         expect(rendered).toContain("ext: {}");
     });
 });
+// ── M2.7b：未知/自定义 frontmatter 键与未识别 type 的保真往返 ──────────────────
+
+const CUSTOM_KEYS_ENTRY = `---
+title: 青霜剑
+type: item
+subtype: equipment
+status: active
+icon: sword
+aliases:
+  - 家传古剑
+tags:
+  - 兵器
+summary: 家传古剑，三尺寒刃。
+refs: []
+retrieval:
+  enabled: true
+  trigger: null
+governance:
+  source: generated
+  review: proposed
+visibility: private
+authorNote: 第三章后才揭示
+customList:
+  - 甲
+  - 乙
+ext:
+  reviewRound: 3
+---
+
+# 青霜剑
+`;
+
+// schema 15 值里的 faction 不在基座五值口径内，保存时最容易被静默改写成 note
+const UNKNOWN_TYPE_ENTRY = `---
+title: 青云宗
+type: faction
+subtype: null
+status: pending
+icon: null
+aliases: []
+tags: []
+summary: 正道第一宗门。
+refs: []
+retrieval:
+  enabled: true
+  trigger: null
+governance:
+  source: manual
+  review: proposed
+---
+
+# 青云宗
+`;
+
+describe("lorebook 条目草稿：未知键与未识别 type 保真（M2.7b）", () => {
+    it("已知字段之外的键全部收进 extra 并原样写回", () => {
+        const source = parseMarkdownDocument(CUSTOM_KEYS_ENTRY).frontmatter;
+        const {draft, frontmatter} = roundTrip(CUSTOM_KEYS_ENTRY);
+
+        expect(draft.extra).toEqual({
+            visibility: "private",
+            authorNote: "第三章后才揭示",
+            customList: ["甲", "乙"],
+        });
+        expect(frontmatter.visibility).toBe(source.visibility);
+        expect(frontmatter.authorNote).toBe(source.authorNote);
+        expect(frontmatter.customList).toEqual(source.customList);
+        // 已知字段没有被 extra 抢走，也没有变成双份
+        expect(frontmatter.title).toBe("青霜剑");
+        expect(frontmatter.ext).toEqual({reviewRound: 3});
+        expect(draft.extra).not.toHaveProperty("ext");
+        expect(draft.extra).not.toHaveProperty("title");
+    });
+
+    it("extra 键写在已知字段之后、ext 之前", () => {
+        const {rendered} = roundTrip(CUSTOM_KEYS_ENTRY);
+        const governanceAt = rendered.indexOf("governance:");
+        const extraAt = rendered.indexOf("visibility:");
+        const extAt = rendered.indexOf("ext:");
+
+        expect(governanceAt).toBeGreaterThan(-1);
+        expect(extraAt).toBeGreaterThan(governanceAt);
+        expect(extAt).toBeGreaterThan(extraAt);
+        // 未识别的 type 写回后不再出现五值口径的 note
+        expect(rendered).toContain("type: item");
+    });
+
+    it("没有已知字段之外的键时 extra 是空对象，不凭空多出字段", () => {
+        const {draft} = roundTrip(LEGACY_ENTRY);
+
+        expect(draft.extra).toEqual({});
+    });
+
+    it("未识别的 type 原样往返，不静默改写成 note", () => {
+        const {draft, rendered, frontmatter} = roundTrip(UNKNOWN_TYPE_ENTRY);
+
+        expect(draft.type).toBe("note");
+        expect(draft.rawType).toBe("faction");
+        expect(frontmatter.type).toBe("faction");
+        expect(rendered).toContain("type: faction");
+        // type 是已知字段，不能被同时收进 extra 写第二遍
+        expect(draft.extra).not.toHaveProperty("type");
+        expect(rendered.match(/\ntype:/g)).toHaveLength(1);
+    });
+
+    it("认得出的 type 不产生 rawType，作者改类目后写回新值", () => {
+        const draft = createLorebookDraft(NODE, parseMarkdownDocument(ANCHORED_ENTRY).frontmatter, "");
+
+        expect(draft.rawType).toBeNull();
+        draft.type = "location";
+        expect(parseMarkdownDocument(renderLorebookDraft(draft)).frontmatter.type).toBe("location");
+    });
+
+    it("缺省 type 的旧条目不凭空长出 type: null", () => {
+        const source = `---
+title: 无类型条目
+status: draft
+---
+
+正文
+`;
+        const {draft, rendered} = roundTrip(source);
+
+        expect(draft.rawType).toBeNull();
+        expect(draft.type).toBe("note");
+        // 缺省 type 会被补成 note，这是既有口径；关键是没写成 null
+        expect(rendered).not.toContain("\ntype: null");
+        expect(parseMarkdownDocument(rendered).frontmatter.type).toBe("note");
+    });
+
+    it("作者改字段后保存，未知键与未识别 type 一并保住", () => {
+        const parsed = parseMarkdownDocument(UNKNOWN_TYPE_ENTRY);
+        const withExtras = parseMarkdownDocument(CUSTOM_KEYS_ENTRY);
+        const draft = createLorebookDraft(NODE, {...withExtras.frontmatter, type: "species"}, parsed.body);
+
+        draft.title = "青云宗（改名）";
+        draft.summary = "改过的摘要。";
+        draft.aliases = ["青云门"];
+
+        const frontmatter = parseMarkdownDocument(renderLorebookDraft(draft)).frontmatter;
+
+        expect(frontmatter.type).toBe("species");
+        expect(frontmatter.title).toBe("青云宗（改名）");
+        expect(frontmatter.visibility).toBe("private");
+        expect(frontmatter.authorNote).toBe("第三章后才揭示");
+        expect(frontmatter.ext).toEqual({reviewRound: 3});
+    });
+
+    it("未知键与未识别 type 连续保存多次不漂移", () => {
+        for (const source of [CUSTOM_KEYS_ENTRY, UNKNOWN_TYPE_ENTRY]) {
+            const once = roundTrip(source).frontmatter;
+            const twice = roundTrip(roundTrip(source).rendered).frontmatter;
+
+            expect(twice).toEqual(once);
+        }
+    });
+
+    it("废弃 writingTip 不会被重复收进 extra", () => {
+        const source = ANCHORED_ENTRY.replace("retrieval:", "writingTip: 旧提示\nretrieval:");
+        const {draft, rendered} = roundTrip(source);
+
+        expect(draft.extra).not.toHaveProperty("writingTip");
+        expect(rendered.match(/writingTip:/g)).toHaveLength(1);
+    });
+
+    it("值本身是 null 的未知键照样保留", () => {
+        const source = `---
+title: 空值条目
+type: note
+status: draft
+toneColor: null
+---
+
+正文
+`;
+        const {draft, frontmatter} = roundTrip(source);
+
+        expect(draft.extra).toEqual({toneColor: null});
+        expect("toneColor" in frontmatter).toBe(true);
+        expect(frontmatter.toneColor).toBeNull();
+    });
+});

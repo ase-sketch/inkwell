@@ -11,7 +11,7 @@
 
 ## 2. 当前状态
 
-- **里程碑进度**：M0 / M1a / M1b / M1c / M2a / M2c / M2b / M2.5a / M2.5b / M2.7a 全部收口 ✅，下一步：**M2.7b 知识库主视图**（M2.7 拆分的第二半，设计拍板见 .agents/notes/implemented/feature/2026-09-24-m2.7-knowledge-presentation.md）。
+- **里程碑进度**：M0 / M1a / M1b / M1c / M2a / M2c / M2b / M2.5a / M2.5b / M2.7a / M2.7b 全部收口 ✅，下一步：**M3 审稿式质疑**。
 - **索引指向**：
   - 需求、各阶段可验证能力与完整验收记录见 [docs/milestones.md](docs/milestones.md)。
   - 架构变更、实现权衡与被否方案详见 [.agents/notes/](.agents/notes/)（目录树即索引，不设中心索引文件）。

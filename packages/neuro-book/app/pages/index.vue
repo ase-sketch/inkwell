@@ -10,6 +10,7 @@ import NovelIdeActivityBar from "nbook/app/components/novel-ide/NovelIdeActivity
 import NovelIdeProfileDialog from "nbook/app/components/novel-ide/NovelIdeProfileDialog.vue";
 import IdeChatHost from "nbook/app/components/novel-ide/shell/IdeChatHost.vue";
 import IdeDocumentTabs from "nbook/app/components/novel-ide/shell/IdeDocumentTabs.vue";
+import IdeKnowledgeView from "nbook/app/components/novel-ide/knowledge/IdeKnowledgeView.vue";
 import IdeLorebookDrawer from "nbook/app/components/novel-ide/shell/IdeLorebookDrawer.vue";
 import IdeManuscriptPanel from "nbook/app/components/novel-ide/shell/IdeManuscriptPanel.vue";
 import IdeOutlineDrawer from "nbook/app/components/novel-ide/shell/IdeOutlineDrawer.vue";
@@ -432,6 +433,8 @@ const {isResizing: resizingCompanion, panelStyle: companionPanelStyle} = useResi
  * 这些是每次会话重新判定的瞬态偏好，持久化会让旧的「切到对话」在下次启动莫名复活。
  */
 const writingRequested = ref(false);
+/** 知识库态：与写作面同层的主区第二情境，同一时刻只有一个面居中。 */
+const knowledgeRequested = ref(false);
 const swapPreference = ref<"chat" | "editor" | null>(null);
 const isCodexMode = computed(() => layoutMode.value === "codex");
 const shellActive = computed(() => (isCodexMode.value || isAgentMode.value) && projectSurfaceActive.value);
@@ -444,6 +447,7 @@ const shellHasOpenDocument = computed(() => shellHydrated.value && shellActive.v
 const shellContext = computed(() => ({
     documentOpen: shellHasOpenDocument.value,
     writingRequested: writingRequested.value,
+    knowledgeRequested: knowledgeRequested.value,
     lorebookDrawerOpen: lorebookDrawerOpen.value,
     outlineDrawerOpen: outlineDrawerOpen.value,
 }));
@@ -503,9 +507,17 @@ const shellActiveRailEntry = computed<IdeRailEntryId>(() => shellView.value.rail
 const companionVisible = ref(true);
 /** 主区中央是否给写作面（等价于 shellView 推导出的码字态）。 */
 const shellWritingSurface = computed(() => shellView.value.surface === "editor");
-/** 对话此刻是否真的渲染，以及是否走伴随栏。 */
-const shellCompanionVisible = computed(() => shellWritingSurface.value && companionVisible.value);
+/** 主区中央是否给知识库。两者是与写作面同层的工作面，都保留伴随栏里的对话。 */
+const shellKnowledgeSurface = computed(() => shellView.value.knowledgeVisible);
+/**
+ * 对话此刻是否真的渲染，以及是否走伴随栏。
+ * 知识库与写作面同层：两者都保留伴随栏里的对话（M1b 已定「非对话面下 AI 不消失」），
+ * 否则进了知识库就再也没有对话出口。
+ */
+const shellCompanionVisible = computed(() => (shellWritingSurface.value || shellKnowledgeSurface.value) && companionVisible.value);
 const shellCompanionStyle = computed(() => shellCompanionVisible.value ? companionPanelStyle.value : {width: "0px"});
+/** 对话此刻是否零宽收起：非对话面下用户收起了伴随栏。 */
+const shellChatCollapsed = computed(() => !agentChatCentered.value && !shellCompanionVisible.value);
 /** 对话是否占据主区中央：决定它走 order-2（居中）还是 order-4（伴随栏）。 */
 const agentChatCentered = computed(() => shellView.value.agentChatCentered);
 /** 胶囊里「对方情境」是否可达：无文稿且未进码字态时对话是唯一去处，不允许切走。 */
@@ -520,6 +532,7 @@ const shellDocumentTitle = computed(() => {
 
 /** 胶囊切换：只改主区中央，不动伴随栏可见性。 */
 const selectShellSurface = (target: "chat" | "editor"): void => {
+    leaveKnowledgeSurface();
     if (target === "editor") {
         writingRequested.value = true;
         swapPreference.value = "editor";
@@ -531,6 +544,7 @@ const selectShellSurface = (target: "chat" | "editor"): void => {
 
 /** 侧栏「新访谈」：先回到对话态，再新开一个对话。 */
 const startInterviewFromSidebar = async (): Promise<void> => {
+    leaveKnowledgeSurface();
     writingRequested.value = false;
     swapPreference.value = shellHasOpenDocument.value ? "chat" : null;
     await nextTick();
@@ -539,6 +553,7 @@ const startInterviewFromSidebar = async (): Promise<void> => {
 
 /** 划词「卡文追问」：切到对话态，复用或新建 interview.stuck 会话，并自动发出首条引导消息。 */
 const handleStuckInterview = async (reference: InlineEditReference): Promise<void> => {
+    leaveKnowledgeSurface();
     writingRequested.value = false;
     swapPreference.value = shellHasOpenDocument.value ? "chat" : null;
     companionVisible.value = true;
@@ -581,10 +596,12 @@ watch(projectSurfaceActive, (active) => {
     outlineDrawerOpen.value = false;
     swapPreference.value = null;
     writingRequested.value = false;
+    knowledgeRequested.value = false;
 });
 watch(currentProjectRoot, () => {
     swapPreference.value = null;
     writingRequested.value = false;
+    knowledgeRequested.value = false;
     lorebookDrawerOpen.value = false;
     outlineDrawerOpen.value = false;
     companionVisible.value = true;
@@ -599,24 +616,44 @@ onMounted(() => {
     shellHydrated.value = true;
 });
 
-/** 设定抽屉开关：两个右侧抽屉互斥，开设定就关大纲。 */
+/**
+ * 知识库是设定与大纲的替代视图：进入知识库先收起两个右侧抽屉，
+ * 否则「知识库 + 抽屉 + 伴随栏」三栏叠一堆，主区会被挤没。
+ */
+const enterKnowledgeSurface = (): void => {
+    knowledgeRequested.value = true;
+    lorebookDrawerOpen.value = false;
+    outlineDrawerOpen.value = false;
+    // 知识库自己的占位面还没有伴随栏开关，进入时先把对话展开，
+    // 否则用户在写作面收起过对话再进知识库，这一屏就没有任何对话出口了。
+    companionVisible.value = true;
+};
+/** 离开知识库：知识库态下两个抽屉已被收起，无需在这里恢复。 */
+const leaveKnowledgeSurface = (): void => {
+    knowledgeRequested.value = false;
+};
+
+/** 设定抽屉开关：两个右侧抽屉互斥，开设定就关大纲；在知识库态下开抽屉等于离开知识库。 */
 const toggleLorebookDrawer = (): void => {
     lorebookDrawerOpen.value = !lorebookDrawerOpen.value;
     if (lorebookDrawerOpen.value) {
         outlineDrawerOpen.value = false;
+        leaveKnowledgeSurface();
     }
 };
 
-/** 大纲抽屉开关：开大纲就关设定。 */
+/** 大纲抽屉开关：开大纲就关设定；在知识库态下开抽屉等于离开知识库。 */
 const toggleOutlineDrawer = (): void => {
     outlineDrawerOpen.value = !outlineDrawerOpen.value;
     if (outlineDrawerOpen.value) {
         lorebookDrawerOpen.value = false;
+        leaveKnowledgeSurface();
     }
 };
 
 /**
- * 图标栏一级入口。对话/码字只改主区情境；设定与大纲切右抽屉（互斥）；设置一步直达配置中心。
+ * 图标栏一级入口。对话/码字/知识库改主区情境（互斥，进入其一即离开其余）；
+ * 设定与大纲切右抽屉（互斥）；设置一步直达配置中心。
  */
 const handleRailEntry = (entry: IdeRailEntryId): void => {
     const action = resolveRailEntryAction(shellContext.value, entry);
@@ -625,25 +662,24 @@ const handleRailEntry = (entry: IdeRailEntryId): void => {
         return;
     }
     if (action === "toggle-lorebook") {
-        // 两个右侧抽屉互斥：开一个就关另一个，避免两栏一起挤掉对话。
-        lorebookDrawerOpen.value = !lorebookDrawerOpen.value;
-        if (lorebookDrawerOpen.value) {
-            outlineDrawerOpen.value = false;
-        }
+        toggleLorebookDrawer();
         return;
     }
     if (action === "toggle-outline") {
-        outlineDrawerOpen.value = !outlineDrawerOpen.value;
-        if (outlineDrawerOpen.value) {
-            lorebookDrawerOpen.value = false;
-        }
+        toggleOutlineDrawer();
         return;
     }
     if (action === "focus-chat") {
+        leaveKnowledgeSurface();
         writingRequested.value = false;
         swapPreference.value = shellHasOpenDocument.value ? "chat" : null;
         return;
     }
+    if (action === "focus-knowledge") {
+        enterKnowledgeSurface();
+        return;
+    }
+    leaveKnowledgeSurface();
     writingRequested.value = true;
     swapPreference.value = null;
 };
@@ -713,6 +749,8 @@ const ideToolPanelStyle = computed(() => ideToolPanelOpen.value ? {width: `${lef
 function handleShellReferenceOpen(target: string): void {
     if (isCodexMode.value && target.startsWith("lorebook/")) {
         lorebookDrawerOpen.value = true;
+        outlineDrawerOpen.value = false;
+        leaveKnowledgeSurface();
         return;
     }
     void openWorkspaceReference(target);
@@ -1021,6 +1059,8 @@ async function openWorkspaceReference(target: string): Promise<void> {
     }
     if (isCodexMode.value && resolvedPath.startsWith("lorebook/")) {
         lorebookDrawerOpen.value = true;
+        outlineDrawerOpen.value = false;
+        leaveKnowledgeSurface();
         return;
     }
     await novelIdeStore.openWorkspacePath(resolvedPath, "permanent");
@@ -1817,6 +1857,7 @@ async function showAgentSession(sessionId: number): Promise<void> {
             layoutMode.value = "codex";
             lorebookDrawerOpen.value = false;
             outlineDrawerOpen.value = false;
+            knowledgeRequested.value = false;
         });
     }
     agentPanelOpen.value = true;
@@ -1843,6 +1884,9 @@ const refreshAgentModeSessions = async (): Promise<void> => {
  * Agent Mode 选择指定 session。
  */
 const selectAgentModeSession = async (sessionId: number): Promise<void> => {
+    // 选会话是「我要跟它说话」：从知识库回到对话态，会话流立刻可见。
+    leaveKnowledgeSurface();
+    swapPreference.value = shellHasOpenDocument.value ? "chat" : null;
     await agentSurfaceRef.value?.selectSession(sessionId);
 };
 
@@ -1859,6 +1903,9 @@ const openTraceSession = async (sessionId: number): Promise<void> => {
  * Agent Mode 新建默认 leader session。
  */
 const createAgentModeSession = async (): Promise<void> => {
+    // 新开对话要和「新访谈」一样回到对话态，否则在知识库里点了新建却看不到对话流。
+    leaveKnowledgeSurface();
+    swapPreference.value = shellHasOpenDocument.value ? "chat" : null;
     await agentSurfaceRef.value?.createSession();
 };
 
@@ -1884,6 +1931,7 @@ const closeAgentSurface = (): void => {
         layoutMode.value = "codex";
         lorebookDrawerOpen.value = false;
         outlineDrawerOpen.value = false;
+        knowledgeRequested.value = false;
     }
     agentPanelOpen.value = false;
 };
@@ -1899,6 +1947,7 @@ const toggleAgentPanel = async (): Promise<void> => {
             layoutMode.value = "codex";
             lorebookDrawerOpen.value = false;
             outlineDrawerOpen.value = false;
+            knowledgeRequested.value = false;
         });
     }
     agentPanelOpen.value = !agentPanelOpen.value;
@@ -1923,6 +1972,7 @@ const handleSidebarToggle = (tab: NovelIdeTab): void => {
             layoutMode.value = "codex";
             lorebookDrawerOpen.value = false;
             outlineDrawerOpen.value = false;
+            knowledgeRequested.value = false;
             agentPanelOpen.value = false;
             activeLeftTab.value = tab;
         });
@@ -2100,6 +2150,7 @@ const openPlotWorkbench = async (): Promise<void> => {
             layoutMode.value = "codex";
             lorebookDrawerOpen.value = false;
             outlineDrawerOpen.value = false;
+            knowledgeRequested.value = false;
             activeLeftTab.value = "plot";
         });
     } else {
@@ -2992,16 +3043,17 @@ onBeforeUnmount(() => {
                         />
                     </main>
 
-                    <!-- 对话面：agentChatCentered 时 order-2 居中，否则 order-4 收进右侧伴随栏；DOM 位置不变，AgentChatSurface 不重挂载 -->
+                    <!-- 对话面：agentChatCentered 时 order-2 居中，否则 order-4 收进右侧伴随栏；DOM 位置不变，AgentChatSurface 不重挂载。
+                         知识库态下它同样保持挂载（宽度收成 0），只为不让 AgentChatSurface 重挂载。 -->
                     <section
-                        v-if="shellView.agentChatCentered || shellView.editorVisible"
+                        v-if="shellView.agentChatCentered || shellView.editorVisible || shellView.knowledgeVisible"
                         data-role="ide-shell-chat"
                         class="mode-transition-agent relative z-30 flex h-full min-h-0 shrink-0 flex-col overflow-hidden bg-[var(--bg-panel)]"
                         :class="[
                             agentChatCentered
                                 ? 'ide-chat-surface-centered order-2 w-full flex-1'
                                 : 'order-4 overflow-hidden border-l border-[var(--border-color)] transition-[width,border-color] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
-                            shellWritingSurface && !companionVisible ? 'pointer-events-none border-l-0 opacity-0' : '',
+                            shellChatCollapsed ? 'pointer-events-none border-l-0 opacity-0' : '',
                             resizingCompanion ? 'select-none transition-none' : '',
                         ]"
                         :style="agentChatCentered ? undefined : shellCompanionStyle"
@@ -3033,6 +3085,13 @@ onBeforeUnmount(() => {
                             />
                         </IdeChatHost>
                     </section>
+
+                    <!-- 知识库面：主区第三态，与写作面同层占中央；进入时两个右侧抽屉已收起（见 enterKnowledgeSurface） -->
+                    <IdeKnowledgeView
+                        v-if="shellView.knowledgeVisible"
+                        class="order-2"
+                        @open-chapter="leaveKnowledgeSurface"
+                    />
 
                     <!-- 右侧抽屉：大纲与设定都只读浏览，排在伴随栏右侧，不挤掉对话；两者互斥 -->
                     <IdeOutlineDrawer class="order-5" :open="outlineDrawerOpen" @close="outlineDrawerOpen = false" />

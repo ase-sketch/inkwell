@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import IdeShellModePill from "nbook/app/components/novel-ide/shell/IdeShellModePill.vue";
+import IdeShellModePill, {type IdeShellPillOptionId} from "nbook/app/components/novel-ide/shell/IdeShellModePill.vue";
 import Tooltip from "nbook/app/components/common/Tooltip.vue";
 import type {IdeShellSurface} from "nbook/app/utils/ide-shell-layout";
 
 const props = defineProps<{
+    /** 主区现在居中显示谁（三态）；知识库态下胶囊两个选项都不高亮。 */
     surface: IdeShellSurface;
     canSwitch: boolean;
     /** 当前文稿标题；为空表示还没有打开文稿。 */
@@ -15,7 +16,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-    (event: "select-surface", value: IdeShellSurface): void;
+    (event: "select-surface", value: IdeShellPillOptionId): void;
     (event: "toggle-lorebook"): void;
     (event: "toggle-outline"): void;
 }>();

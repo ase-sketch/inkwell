@@ -68,6 +68,7 @@ const {isResizing, panelStyle} = useResizablePanel(resizeHandleRef, {
 const primaryEntries = computed<Array<{id: IdeRailEntryId; icon: string; label: string}>>(() => [
     {id: "chat", icon: "i-lucide-message-square", label: t("ide.rail.chat")},
     {id: "write", icon: "i-lucide-square-pen", label: t("ide.rail.write")},
+    {id: "knowledge", icon: "i-lucide-library-big", label: t("ide.rail.knowledge")},
     {id: "outline", icon: "i-lucide-list-tree", label: t("ide.rail.outline")},
     {id: "lorebook", icon: "i-lucide-book-open-text", label: t("ide.rail.lorebook")},
 ]);

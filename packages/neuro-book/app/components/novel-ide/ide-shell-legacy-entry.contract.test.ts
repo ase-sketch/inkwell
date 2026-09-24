@@ -47,6 +47,19 @@ describe("Ide shell legacy entry", () => {
         expect(branch).toContain("<IdeChatHost");
         expect(branch).toContain("<MarkdownStudioWorkbench");
 
+        // 第三态：知识库面在新壳分支内挂载，对话面在三种主区情境下都保持挂载
+        // （知识库态下宽度收成 0，只为不让 AgentChatSurface 重挂载丢会话流）。
+        expect(branch).toContain("<IdeKnowledgeView");
+        expect(branch).toContain("shellView.knowledgeVisible");
+        expect(branch).toContain('v-if="shellView.agentChatCentered || shellView.editorVisible || shellView.knowledgeVisible"');
+
+        // 知识库与两个右侧抽屉互斥（进入即都收起），离开由聊天/码字入口、开抽屉、选会话等既有动作负责。
+        const knowledgeEntry = indexPage.slice(indexPage.indexOf("const enterKnowledgeSurface = (): void => {"));
+        expect(knowledgeEntry).toContain("knowledgeRequested.value = true;");
+        expect(knowledgeEntry).toContain("lorebookDrawerOpen.value = false;");
+        expect(knowledgeEntry).toContain("outlineDrawerOpen.value = false;");
+        expect(indexPage).toContain('if (action === "focus-knowledge") {');
+
         // 两个壳的图标栏互斥渲染：同一时刻只有一个入口栏。
         expect(indexPage).toContain('<IdeShellSidebar\n            v-if="isCodexMode"');
         expect(indexPage).toContain('<NovelIdeActivityBar\n            v-if="!isCodexMode"');
@@ -66,13 +79,17 @@ describe("Ide shell legacy entry", () => {
         expect(await readSource(legacyToolPanelPath)).toContain("<template>");
     });
 
-    it("左栏是带文字标签的一级导航，且保留四个入口", async () => {
+    it("左栏是带文字标签的一级导航，聊天/码字/知识库/大纲/设定都在", async () => {
         const rail = await readSource(railPath);
 
         expect(rail).toContain('{id: "chat"');
         expect(rail).toContain('{id: "write"');
+        expect(rail).toContain('{id: "knowledge"');
+        expect(rail).toContain('{id: "outline"');
         expect(rail).toContain('{id: "lorebook"');
-        expect(rail).toContain('data-rail-entry="settings"');
+        expect(rail).toContain("data-rail-entry=\"settings\"");
+        // 知识库入口带作者可读的文字标签与图标，不是纯图标轨。
+        expect(rail).toContain('t("ide.rail.knowledge")');
         // 一级导航必须渲染文字标签，不再是纯图标窄轨。
         expect(rail).toContain("{{ entry.label }}");
         expect(rail).toContain("i-lucide-plus");
@@ -95,7 +112,8 @@ describe("Ide shell legacy entry", () => {
         // 工作态下 AI 不消失：伴随栏有独立开关，且不依赖 agentChatCentered。
         expect(indexPage).toContain('data-role="ide-shell-companion-toggle"');
         expect(indexPage).toContain("const companionVisible = ref(true);");
-        expect(indexPage).toContain("const shellCompanionVisible = computed(() => shellWritingSurface.value && companionVisible.value);");
+        // 知识库与写作面同层：两个工作面都保留伴随栏里的对话。
+        expect(indexPage).toContain("const shellCompanionVisible = computed(() => (shellWritingSurface.value || shellKnowledgeSurface.value) && companionVisible.value);");
         expect(indexPage).not.toContain("shellView.value.agentChatCentered ? {width: \"0px\"}");
         // 胶囊只切主区中央；伴随栏由 companionVisible 这个独立开关控制。
         expect(indexPage).toContain("const toggleCodexCompanion = (): void => {");

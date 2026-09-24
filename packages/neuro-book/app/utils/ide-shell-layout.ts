@@ -1,7 +1,7 @@
 import type {WorkspaceFileNode} from "nbook/app/stores/novel-ide";
 
 /** 左侧栏上的一级入口。 */
-export type IdeRailEntryId = "chat" | "write" | "outline" | "lorebook" | "settings";
+export type IdeRailEntryId = "chat" | "write" | "knowledge" | "outline" | "lorebook" | "settings";
 
 /**
  * 对作者裸露的写作资产根目录。
@@ -10,8 +10,8 @@ export type IdeRailEntryId = "chat" | "write" | "outline" | "lorebook" | "settin
  */
 export const MANUSCRIPT_ROOT = "manuscript";
 
-/** 主区当前由谁占据。 */
-export type IdeShellSurface = "chat" | "editor";
+/** 主区当前由谁占据：对话 / 写作面 / 知识库。三者同一时刻只有一个占主区中央。 */
+export type IdeShellSurface = "chat" | "editor" | "knowledge";
 
 /**
  * 主区情境的原始输入。只描述事实，不描述 UI。
@@ -24,6 +24,11 @@ export type IdeShellContext = Readonly<{
      * 它只在没有打开文稿时有效：此时写作面显示文件浏览与空态，而不是把用户困在纯对话里。
      */
     writingRequested: boolean;
+    /**
+     * 用户是否显式进入了知识库态（点左侧栏「知识库」）。
+     * 知识库与写作面同层：进入知识库时写作面让出主区中央，一次只有一个面居中。
+     */
+    knowledgeRequested: boolean;
     /** 右侧设定抽屉是否展开。 */
     lorebookDrawerOpen: boolean;
     /** 右侧大纲抽屉是否展开。两个抽屉互斥，同一时刻最多展开一个。 */
@@ -44,6 +49,8 @@ export type IdeShellView = Readonly<{
     agentChatCentered: boolean;
     /** 写作面是否渲染。 */
     editorVisible: boolean;
+    /** 知识库是否占据主区中央。 */
+    knowledgeVisible: boolean;
     /** 一键互换把手当前是否可用。 */
     swapHandleVisible: boolean;
     /** 左侧栏上高亮的入口。 */
@@ -189,22 +196,37 @@ export function resolveLorebookEntrySummary(entry: WorkspaceFileNode): string {
 /**
  * 按当前事实推导主区情境。
  *
- * 访谈态与码字态由同一份事实表决定，不额外维护开关：
+ * 对话态、码字态与知识库态由同一份事实表决定，不额外维护开关：
+ * - 显式进入知识库：知识库独占主区中央，写作面与对话都不占中央（对话留在伴随栏）；
  * - 没有打开文稿且没有进入码字态：对话全宽居中，写作面不参与布局；
  * - 打开文稿（或显式进入码字态）：写作面居中，对话收进右侧伴随栏；
  * - 设定抽屉与大纲抽屉是否展开不影响主区情境，只影响右栏是否有抽屉与伴聊并存，
  *   以及左侧栏高亮谁（两个抽屉互斥，同时展开时设定优先）。
+ *
+ * 知识库排在写作面之前：它由一次显式点击进入，优先级高于「有文稿就居中」的默认推导，
+ * 否则打开着文稿时点「知识库」会毫无反应。退出知识库由「聊天 / 码字」两个入口负责。
  */
 export function resolveIdeShellView(context: IdeShellContext): IdeShellView {
     const drawerEntry: IdeRailEntryId | null = context.lorebookDrawerOpen
         ? "lorebook"
         : context.outlineDrawerOpen ? "outline" : null;
+    if (context.knowledgeRequested) {
+        return {
+            surface: "knowledge",
+            agentChatCentered: false,
+            editorVisible: false,
+            knowledgeVisible: true,
+            swapHandleVisible: false,
+            railEntry: "knowledge",
+        };
+    }
     const writingSurface = context.documentOpen || context.writingRequested;
     if (!writingSurface) {
         return {
             surface: "chat",
             agentChatCentered: true,
             editorVisible: false,
+            knowledgeVisible: false,
             swapHandleVisible: false,
             railEntry: drawerEntry ?? "chat",
         };
@@ -213,6 +235,7 @@ export function resolveIdeShellView(context: IdeShellContext): IdeShellView {
         surface: "editor",
         agentChatCentered: false,
         editorVisible: true,
+        knowledgeVisible: false,
         swapHandleVisible: context.documentOpen,
         railEntry: drawerEntry ?? "write",
     };
@@ -221,6 +244,7 @@ export function resolveIdeShellView(context: IdeShellContext): IdeShellView {
 /**
  * 应用一键互换：把主区中央让给对话，写作面让出主区。
  * 只在确实有文稿（把手可见）时有意义；重复调用是幂等的。
+ * 知识库态下把手不可见，因此互换对它自然是空操作。
  */
 export function applyIdeShellSwap(view: IdeShellView): IdeShellView {
     if (!view.swapHandleVisible || view.surface === "chat") {
@@ -231,6 +255,7 @@ export function applyIdeShellSwap(view: IdeShellView): IdeShellView {
         surface: "chat",
         agentChatCentered: true,
         editorVisible: false,
+        knowledgeVisible: false,
         swapHandleVisible: true,
     };
 }
@@ -318,16 +343,19 @@ export function formatSessionRelativeTime(updatedAt: number, now: number = Date.
 /**
  * 按当前情境解析图标栏入口的点击结果。
  * 返回 null 表示这次点击只影响抽屉或设置，不改主区情境。
+ * 入口与主区面一一对应，全部是无状态映射——点击是幂等的，不出现「再点一次切回去」的怪态。
  */
 export function resolveRailEntryAction(
     context: IdeShellContext,
     entry: IdeRailEntryId,
-): "focus-chat" | "focus-editor" | "toggle-lorebook" | "toggle-outline" | "open-settings" | null {
+): "focus-chat" | "focus-editor" | "focus-knowledge" | "toggle-lorebook" | "toggle-outline" | "open-settings" | null {
     switch (entry) {
         case "chat":
             return "focus-chat";
         case "write":
             return "focus-editor";
+        case "knowledge":
+            return "focus-knowledge";
         case "outline":
             return "toggle-outline";
         case "lorebook":

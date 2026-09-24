@@ -43,27 +43,29 @@ function directory(path: string, children: WorkspaceFileNode[]): WorkspaceFileNo
 
 describe("Ide shell layout", () => {
     it("没有打开文稿时聊天全宽居中，写作面不参与布局", () => {
-        const view = resolveIdeShellView({documentOpen: false, writingRequested: false, lorebookDrawerOpen: false, outlineDrawerOpen: false});
+        const view = resolveIdeShellView({documentOpen: false, writingRequested: false, knowledgeRequested: false, lorebookDrawerOpen: false, outlineDrawerOpen: false});
 
         expect(view.surface).toBe("chat");
         expect(view.agentChatCentered).toBe(true);
         expect(view.editorVisible).toBe(false);
+        expect(view.knowledgeVisible).toBe(false);
         expect(view.swapHandleVisible).toBe(false);
         expect(view.railEntry).toBe("chat");
     });
 
     it("打开文稿后编辑器居中，聊天收进右侧伴随栏并出现互换把手", () => {
-        const view = resolveIdeShellView({documentOpen: true, writingRequested: false, lorebookDrawerOpen: false, outlineDrawerOpen: false});
+        const view = resolveIdeShellView({documentOpen: true, writingRequested: false, knowledgeRequested: false, lorebookDrawerOpen: false, outlineDrawerOpen: false});
 
         expect(view.surface).toBe("editor");
         expect(view.agentChatCentered).toBe(false);
         expect(view.editorVisible).toBe(true);
+        expect(view.knowledgeVisible).toBe(false);
         expect(view.swapHandleVisible).toBe(true);
         expect(view.railEntry).toBe("write");
     });
 
     it("没有文稿但用户点了码字，写作面居中且不出现无意义的互换把手", () => {
-        const view = resolveIdeShellView({documentOpen: false, writingRequested: true, lorebookDrawerOpen: false, outlineDrawerOpen: false});
+        const view = resolveIdeShellView({documentOpen: false, writingRequested: true, knowledgeRequested: false, lorebookDrawerOpen: false, outlineDrawerOpen: false});
 
         expect(view.surface).toBe("editor");
         expect(view.editorVisible).toBe(true);
@@ -73,8 +75,8 @@ describe("Ide shell layout", () => {
     });
 
     it("设定抽屉不改变主区情境，只改变图标栏高亮", () => {
-        const interview = resolveIdeShellView({documentOpen: false, writingRequested: false, lorebookDrawerOpen: true, outlineDrawerOpen: false});
-        const writing = resolveIdeShellView({documentOpen: true, writingRequested: false, lorebookDrawerOpen: true, outlineDrawerOpen: false});
+        const interview = resolveIdeShellView({documentOpen: false, writingRequested: false, knowledgeRequested: false, lorebookDrawerOpen: true, outlineDrawerOpen: false});
+        const writing = resolveIdeShellView({documentOpen: true, writingRequested: false, knowledgeRequested: false, lorebookDrawerOpen: true, outlineDrawerOpen: false});
 
         expect(interview.surface).toBe("chat");
         expect(interview.railEntry).toBe("lorebook");
@@ -84,23 +86,24 @@ describe("Ide shell layout", () => {
     });
 
     it("一键互换只把中央让给对话，重复调用幂等", () => {
-        const writing = resolveIdeShellView({documentOpen: true, writingRequested: false, lorebookDrawerOpen: false, outlineDrawerOpen: false});
+        const writing = resolveIdeShellView({documentOpen: true, writingRequested: false, knowledgeRequested: false, lorebookDrawerOpen: false, outlineDrawerOpen: false});
         const swapped = applyIdeShellSwap(writing);
 
         expect(swapped.surface).toBe("chat");
         expect(swapped.agentChatCentered).toBe(true);
         expect(swapped.editorVisible).toBe(false);
+        expect(swapped.knowledgeVisible).toBe(false);
         // 文稿仍然打开，所以把手必须留着，否则用户回不去码字态。
         expect(swapped.swapHandleVisible).toBe(true);
         expect(applyIdeShellSwap(swapped)).toEqual(swapped);
 
-        const interview = resolveIdeShellView({documentOpen: false, writingRequested: false, lorebookDrawerOpen: false, outlineDrawerOpen: false});
+        const interview = resolveIdeShellView({documentOpen: false, writingRequested: false, knowledgeRequested: false, lorebookDrawerOpen: false, outlineDrawerOpen: false});
         expect(applyIdeShellSwap(interview)).toEqual(interview);
     });
 
     it("大纲抽屉与设定抽屉一样不改变主区情境，只影响左侧栏高亮", () => {
-        const interview = resolveIdeShellView({documentOpen: false, writingRequested: false, lorebookDrawerOpen: false, outlineDrawerOpen: true});
-        const writing = resolveIdeShellView({documentOpen: true, writingRequested: false, lorebookDrawerOpen: false, outlineDrawerOpen: true});
+        const interview = resolveIdeShellView({documentOpen: false, writingRequested: false, knowledgeRequested: false, lorebookDrawerOpen: false, outlineDrawerOpen: true});
+        const writing = resolveIdeShellView({documentOpen: true, writingRequested: false, knowledgeRequested: false, lorebookDrawerOpen: false, outlineDrawerOpen: true});
 
         expect(interview.surface).toBe("chat");
         expect(interview.agentChatCentered).toBe(true);
@@ -109,13 +112,13 @@ describe("Ide shell layout", () => {
         expect(writing.agentChatCentered).toBe(false);
         expect(writing.railEntry).toBe("outline");
         // 两个抽屉互斥：同时为真时设定优先，界面不会两头高亮。
-        const both = resolveIdeShellView({documentOpen: true, writingRequested: false, lorebookDrawerOpen: true, outlineDrawerOpen: true});
+        const both = resolveIdeShellView({documentOpen: true, writingRequested: false, knowledgeRequested: false, lorebookDrawerOpen: true, outlineDrawerOpen: true});
         expect(both.railEntry).toBe("lorebook");
     });
 
     it("大纲入口解析成切换大纲抽屉，不影响主区情境", () => {
-        const interview = {documentOpen: false, writingRequested: false, lorebookDrawerOpen: false, outlineDrawerOpen: false};
-        const writing = {documentOpen: true, writingRequested: false, lorebookDrawerOpen: false, outlineDrawerOpen: false};
+        const interview = {documentOpen: false, writingRequested: false, knowledgeRequested: false, lorebookDrawerOpen: false, outlineDrawerOpen: false};
+        const writing = {documentOpen: true, writingRequested: false, knowledgeRequested: false, lorebookDrawerOpen: false, outlineDrawerOpen: false};
 
         expect(resolveRailEntryAction(interview, "outline")).toBe("toggle-outline");
         expect(resolveRailEntryAction(writing, "outline")).toBe("toggle-outline");
@@ -124,9 +127,9 @@ describe("Ide shell layout", () => {
     });
 
     it("图标栏入口按当前情境解析点击结果", () => {
-        const interview = {documentOpen: false, writingRequested: false, lorebookDrawerOpen: false, outlineDrawerOpen: false};
-        const writing = {documentOpen: true, writingRequested: false, lorebookDrawerOpen: false, outlineDrawerOpen: false};
-        const writingNoDocument = {documentOpen: false, writingRequested: true, lorebookDrawerOpen: false, outlineDrawerOpen: false};
+        const interview = {documentOpen: false, writingRequested: false, knowledgeRequested: false, lorebookDrawerOpen: false, outlineDrawerOpen: false};
+        const writing = {documentOpen: true, writingRequested: false, knowledgeRequested: false, lorebookDrawerOpen: false, outlineDrawerOpen: false};
+        const writingNoDocument = {documentOpen: false, writingRequested: true, knowledgeRequested: false, lorebookDrawerOpen: false, outlineDrawerOpen: false};
 
         expect(resolveRailEntryAction(interview, "chat")).toBe("focus-chat");
         expect(resolveRailEntryAction(interview, "write")).toBe("focus-editor");
@@ -136,6 +139,52 @@ describe("Ide shell layout", () => {
         expect(resolveRailEntryAction(writing, "settings")).toBe("open-settings");
         expect(resolveIdeShellView(writingNoDocument).surface).toBe("editor");
         expect(resolveIdeShellView(interview).surface).toBe("chat");
+    });
+
+    it("进入知识库后主区让给知识库，对话与写作面都不占中央", () => {
+        const interview = resolveIdeShellView({documentOpen: false, writingRequested: false, knowledgeRequested: true, lorebookDrawerOpen: false, outlineDrawerOpen: false});
+        const writing = resolveIdeShellView({documentOpen: true, writingRequested: false, knowledgeRequested: true, lorebookDrawerOpen: false, outlineDrawerOpen: false});
+
+        // 没有文稿与开着文稿两种情境下，知识库都独占主区中央。
+        for (const view of [interview, writing]) {
+            expect(view.surface).toBe("knowledge");
+            expect(view.knowledgeVisible).toBe(true);
+            expect(view.agentChatCentered).toBe(false);
+            expect(view.editorVisible).toBe(false);
+            expect(view.swapHandleVisible).toBe(false);
+            expect(view.railEntry).toBe("knowledge");
+        }
+    });
+
+    it("知识库由一次显式点击进入，优先于「有文稿就居中」的默认推导", () => {
+        // 没有这条优先规则，开着文稿时点「知识库」会毫无反应。
+        const writing = resolveIdeShellView({documentOpen: true, writingRequested: true, knowledgeRequested: true, lorebookDrawerOpen: false, outlineDrawerOpen: false});
+        expect(writing.surface).toBe("knowledge");
+
+        // 退出知识库（knowledgeRequested 复位）后回到原来的推导结果。
+        const backToWriting = resolveIdeShellView({documentOpen: true, writingRequested: true, knowledgeRequested: false, lorebookDrawerOpen: false, outlineDrawerOpen: false});
+        expect(backToWriting.surface).toBe("editor");
+    });
+
+    it("知识库态下抽屉不抢左栏高亮，且一键互换是空操作", () => {
+        const knowledge = resolveIdeShellView({documentOpen: true, writingRequested: false, knowledgeRequested: true, lorebookDrawerOpen: true, outlineDrawerOpen: false});
+
+        // 知识库自己占满主区，右侧抽屉在进入时已被收起；即便事实里还留着抽屉为真，高亮也归知识库。
+        expect(knowledge.railEntry).toBe("knowledge");
+        expect(applyIdeShellSwap(knowledge)).toEqual(knowledge);
+    });
+
+    it("知识库入口解析成进入知识库，与对话/码字入口同层互斥", () => {
+        const interview = {documentOpen: false, writingRequested: false, knowledgeRequested: false, lorebookDrawerOpen: false, outlineDrawerOpen: false};
+        const writing = {documentOpen: true, writingRequested: false, knowledgeRequested: false, lorebookDrawerOpen: false, outlineDrawerOpen: false};
+
+        expect(resolveRailEntryAction(interview, "knowledge")).toBe("focus-knowledge");
+        expect(resolveRailEntryAction(writing, "knowledge")).toBe("focus-knowledge");
+        // 三个主区入口各自只解析成自己的动作，不互相顶替。
+        expect(resolveRailEntryAction(interview, "chat")).toBe("focus-chat");
+        expect(resolveRailEntryAction(interview, "write")).toBe("focus-editor");
+        // 解析结果是纯函数：不读也不改事实。
+        expect(interview.knowledgeRequested).toBe(false);
     });
 
     it("只把 lorebook/ 下的设定条目投影进抽屉，普通目录与文稿文件排除", () => {
