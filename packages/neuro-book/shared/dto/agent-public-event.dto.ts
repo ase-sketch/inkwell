@@ -251,6 +251,11 @@ export type AgentChatSystemEntryDto = {
     source: "custom" | "reminder" | "compaction" | "branch_summary";
     label: string;
     content: PublicTextPreviewDto;
+    /**
+     * 本轮该条注入检索到的设定/伏笔明细（M2.7a）。只有真实发生检索注入的 system 气泡才有；
+     * 无注入就是无字段——零命中与「本轮不触发检索」在这里不做区分。
+     */
+    retrieval?: RetrievalSummaryDto;
 };
 
 export type AgentChatInvocationErrorEntryDto = {
@@ -285,6 +290,7 @@ export type ChatEntryKind = AgentChatEntryDto["type"];
 import type {Usage} from "@earendil-works/pi-ai";
 import type {AttachmentId} from "nbook/shared/dto/agent-attachment.dto";
 import type {LowCodeFieldDto, LowCodeJsonObject} from "nbook/shared/dto/low-code-form.dto";
+import type {RetrievalSummaryDto} from "nbook/shared/dto/agent-retrieval.dto";
 
 export type AgentUserInputFieldDto = Omit<LowCodeFieldDto, "component" | "resource"> & {
     component: Exclude<LowCodeFieldDto["component"], "resource-preset">;

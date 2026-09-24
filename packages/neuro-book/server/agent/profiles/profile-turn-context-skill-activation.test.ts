@@ -143,6 +143,9 @@ describe("skill-activation 物化（$skill-key 显式唤起真注入）", () => 
         expect(text).toContain("SKILL.md");
         expect(text).toContain("仅作分析参照");
         expect(text).toContain("不是用户本轮的要求");
+        // 归因：技能注入不算「检索设定」，因此只有标签、没有检索明细。
+        expect(result.insertions[0]!.labels).toEqual(["TurnContext:skill-activation"]);
+        expect(result.insertions[0]!.retrieval).toBeUndefined();
     });
 
     it("未知 key 跳过注入（未命中的提醒仍归 MentionedSkillsReminder）", async () => {

@@ -267,6 +267,38 @@ describe("M2a 里程碑验收场景：30+ 条目 / 5+ 未决伏笔 / 3 轮注入
         expect(entities).not.toContain("条目24");
     });
 
+    // M2.7a 验收：徽标数据必须由落盘 entry 的结构化字段直达前端，不能靠解析注入正文反推。
+    it("每一轮注入都带结构化检索明细与来源标签，条目标题与正文一一对应", async () => {
+        const result = await materializeTurn("云哥接下来打算怎么查内鬼？");
+        expect(result.insertions).toHaveLength(2);
+
+        const [ledger, entities] = result.insertions;
+        expect(ledger!.labels).toEqual(["TurnContext:promise-ledger"]);
+        expect(entities!.labels).toEqual(["TurnContext:mentioned-entities"]);
+
+        expect(ledger!.retrieval).toMatchObject({kind: "promise-ledger", omittedCount: 0});
+        expect(ledger!.retrieval!.items.map((item) => item.title))
+            .toEqual(["断剑之誓", "井底之声", "失踪的商队", "天机阁内鬼", "苏云的旧伤"]);
+        expect(ledger!.retrieval!.items.every((item) => typeof item.promiseId === "number")).toBe(true);
+
+        expect(entities!.retrieval).toMatchObject({kind: "mentioned-entities", omittedCount: 0});
+        expect(entities!.retrieval!.items).toContainEqual({
+            title: "苏云",
+            category: "character",
+            path: "lorebook/character/su-yun",
+            trigger: "云哥",
+        });
+        // 明细里的每一条都必须真的出现在同一条注入正文里——两边同源，不是各自推断。
+        for (const item of entities!.retrieval!.items) {
+            expect(injectedText(entities!.message)).toContain(item.path!);
+        }
+        // 明细里的标题必须真的出现在同一条注入正文里——两边同源，不是各自推断。
+        for (const item of ledger!.retrieval!.items) {
+            expect(injectedText(ledger!.message)).toContain(item.title!);
+        }
+        expect(injectedText(entities!.message)).toContain("苏云");
+    });
+
     // 里程碑验收第 2 条：随机抽 5 条正文后 AI 沉淀条目，均有来源标注与章节/引用锚点
     it("锚点机器抽检：generated 条目全合规，违规条目能被门禁标出", async () => {
         const {readFile} = await import("node:fs/promises");

@@ -12,7 +12,7 @@ import {
 } from "nbook/server/workspace-files/project-identity";
 import type {ReadyProjectSessionRef} from "nbook/server/workspace-files/project-session-types";
 import type {StoryPromiseDto} from "nbook/shared/dto/plot.dto";
-import {materializeProfileTurnContexts} from "./profile-turn-context";
+import {materializeProfileTurnContexts, turnContextLabel} from "./profile-turn-context";
 
 const mocks = vi.hoisted(() => ({
     requireReadyModuleHandle: vi.fn(),
@@ -201,6 +201,59 @@ describe("promise-ledger 物化", () => {
         expect(charLength(text)).toBeLessThanOrEqual(1500);
         expect(text).toMatch(/还有 \d+ 条未注入/u);
         expect(text).toContain("超长伏笔1");
+    });
+
+    it("检索明细只记录真正进了正文的伏笔，omittedCount 与正文的截断口径一致", async () => {
+        stubModules({
+            plot: {
+                plot: {
+                    listStoryPromises: vi.fn(async () => [
+                        promiseDto({id: "11", name: "断剑之誓", importance: "high"}),
+                        promiseDto({id: "12", name: "井底之声", importance: "low"}),
+                        promiseDto({id: "13", name: "已兑现", status: "fulfilled"}),
+                    ]),
+                },
+            },
+        });
+
+        const result = await materialize([{kind: "promise-ledger", appendingIndex: 0}]);
+
+        expect(result.insertions[0]!.retrieval).toEqual({
+            kind: "promise-ledger",
+            items: [
+                {title: "断剑之誓", promiseId: 11},
+                {title: "井底之声", promiseId: 12},
+            ],
+            omittedCount: 0,
+        });
+        // 标签与检索明细随同一条注入一起产出。
+        expect(result.insertions[0]!.labels).toEqual(["TurnContext:promise-ledger"]);
+    });
+
+    it("条数预算截断时 omittedCount 报出未注入条数，items 只含已注入的那些", async () => {
+        const promises = Array.from({length: 13}, (_value, index) => promiseDto({
+            id: String(300 + index),
+            name: `伏笔${String(index + 1)}`,
+        }));
+        stubModules({plot: {plot: {listStoryPromises: vi.fn(async () => promises)}}});
+
+        const result = await materialize([{kind: "promise-ledger", appendingIndex: 0}]);
+        const retrieval = result.insertions[0]!.retrieval!;
+
+        expect(retrieval.items).toHaveLength(10);
+        expect(retrieval.omittedCount).toBe(3);
+        expect(injectedText(result.insertions[0]!.message)).toContain("还有 3 条未注入");
+    });
+
+    it("title 与 name 不同时，明细标题与正文条目标签口径一致", async () => {
+        stubModules({
+            plot: {plot: {listStoryPromises: vi.fn(async () => [
+                promiseDto({id: "21", name: "断剑之誓", title: "重铸断剑"}),
+            ])}},
+        });
+
+        const result = await materialize([{kind: "promise-ledger", appendingIndex: 0}]);
+        expect(result.insertions[0]!.retrieval?.items[0]?.title).toBe("断剑之誓（重铸断剑）");
     });
 
     it("Plot 模块不可用时跳过该 kind 并记 warn，不影响同轮其他 kind", async () => {
@@ -420,6 +473,80 @@ describe("mentioned-entities 物化", () => {
     it("lorebook 内容节点为空时跳过注入", async () => {
         const result = await materialize({pendingUserMessage: "云哥的过去。"});
         expect(result.insertions).toEqual([]);
+    });
+
+    it("检索明细带标题、一级类目、来源路径与实际命中词", async () => {
+        await writeLorebook(projectRoot, [
+            {directory: "lorebook/character/hero", title: "苏云", aliases: ["云哥", "楼主"], body: "天机阁主。"},
+        ]);
+
+        const result = await materialize({pendingUserMessage: "云哥这次会怎么做？"});
+
+        expect(result.insertions[0]!.retrieval).toEqual({
+            kind: "mentioned-entities",
+            items: [{
+                title: "苏云",
+                category: "character",
+                path: "lorebook/character/hero",
+                trigger: "云哥",
+            }],
+            omittedCount: 0,
+        });
+        expect(result.insertions[0]!.labels).toEqual(["TurnContext:mentioned-entities"]);
+    });
+
+    it("命中词取实际命中的那一个：标题命中报标题，目录 slug 命中报 slug", async () => {
+        await writeLorebook(projectRoot, [
+            {directory: "lorebook/location/castle", title: "黑鸦堡", body: "北境要塞。"},
+        ]);
+
+        const byTitle = await materialize({pendingUserMessage: "黑鸦堡有人吗？"});
+        expect(byTitle.insertions[0]!.retrieval?.items[0]?.trigger).toBe("黑鸦堡");
+
+        const bySlug = await materialize({pendingUserMessage: "castle 那边呢？"});
+        expect(bySlug.insertions[0]!.retrieval?.items[0]?.trigger).toBe("castle");
+    });
+
+    it("命中超过 5 条时 omittedCount 报出未注入条数", async () => {
+        await writeLorebook(projectRoot, Array.from({length: 7}, (_value, index) => ({
+            directory: `lorebook/character/hero-${String(index + 1)}`,
+            title: `角色${String(index + 1)}`,
+            aliases: ["云哥"],
+            body: "档案。",
+        })));
+
+        const result = await materialize({pendingUserMessage: "云哥和他们的关系？"});
+        const retrieval = result.insertions[0]!.retrieval!;
+
+        expect(retrieval.items).toHaveLength(5);
+        expect(retrieval.omittedCount).toBe(2);
+    });
+
+    it("零命中时既不注入也不产出检索明细", async () => {
+        await writeLorebook(projectRoot, [
+            {directory: "lorebook/character/hero", title: "苏云", aliases: ["云哥"], body: "天机阁主。"},
+        ]);
+
+        const result = await materialize({pendingUserMessage: "今天天气不错。"});
+        expect(result.insertions).toEqual([]);
+    });
+});
+
+describe("turnContext 标签落位", () => {
+    it("四类节点各自带上自己的 kind 标签，与物化结果一一对应", async () => {
+        // promise-ledger / mentioned-entities 无 project 时跳过，file-change-notice 无 history 时跳过，
+        // skill-activation 无 $key 时跳过——因此这里只钉标签函数本身的映射，物化落位由各 kind 的用例覆盖。
+        expect([
+            turnContextLabel("file-change-notice"),
+            turnContextLabel("promise-ledger"),
+            turnContextLabel("mentioned-entities"),
+            turnContextLabel("skill-activation"),
+        ]).toEqual([
+            "TurnContext:file-change-notice",
+            "TurnContext:promise-ledger",
+            "TurnContext:mentioned-entities",
+            "TurnContext:skill-activation",
+        ]);
     });
 });
 

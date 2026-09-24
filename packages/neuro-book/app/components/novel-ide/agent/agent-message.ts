@@ -3,6 +3,7 @@ import type {AgentMessage as PiAgentMessage, AgentToolCall as PiAgentToolCall, A
 import type {AgentActiveInvocationDto, AgentAssistantUpdateDto, AgentRuntimeStreamEventDto, AgentPendingApprovalDto, AgentPendingUserInputDto, AgentMode} from "nbook/shared/dto/agent-session.dto";
 import {AgentModeSchema} from "nbook/shared/dto/agent-session.dto";
 import type {AgentChatEntryDto, PublicTextPreviewDto, PublicToolArgsDto, PublicToolResultDto, PublicValuePreviewDto} from "nbook/shared/dto/agent-public-event.dto";
+import type {RetrievalSummaryDto} from "nbook/shared/dto/agent-retrieval.dto";
 import type {AgentAttachmentDisplay} from "nbook/app/components/novel-ide/agent/agent-attachment";
 import type {LowCodeFormDto} from "nbook/shared/dto/low-code-form.dto";
 import {LowCodeFormDtoSchema} from "nbook/shared/dto/low-code-form.dto";
@@ -107,6 +108,11 @@ export type AgentMessage = {
     systemDisplayKind?: SystemMessageDisplayKind;
     /** 系统消息可选标题，不存在时使用默认 System/System Reminder。 */
     systemLabel?: string;
+    /**
+     * 仅 system 消息使用：本轮这条注入实际检索到的设定/伏笔明细（M2.7a）。
+     * 零命中不注入、旧 session 的 entry 也没有这个字段，此时保持不存在——界面据此不显示任何徽标。
+     */
+    retrieval?: RetrievalSummaryDto;
     content: string;
     /** durable history 中原始正文的 UTF-8 字节数；live/optimistic 消息为空。 */
     contentBytes?: number;
@@ -989,6 +995,9 @@ const messageFromChatEntry = (entry: Exclude<AgentChatEntryDto, {type: "tool_res
         type: "system",
         systemDisplayKind: entry.source === "reminder" ? "reminder" : "system",
         systemLabel: entry.label,
+        // 只在服务端真的给出检索归因时才挂字段：旧 session 无字段时不能挂空壳，
+        // 否则气泡会显示「检索到 0 条」这种没发生过的谎报。
+        ...(entry.retrieval ? {retrieval: entry.retrieval} : {}),
         content: entry.content.preview,
         contentBytes: entry.content.bytes,
         contentOmitted: entry.content.omitted,

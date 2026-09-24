@@ -3,9 +3,24 @@ import {
     previewProfileTurnContexts,
     materializeProfileTurnContexts,
     mergeProfileTurnContextMessages,
+    turnContextLabel,
+    type ProfileTurnContextKind,
     type ProfileTurnContextPlan,
 } from "./profile-turn-context";
 import {createStoredUserMessage, messageText} from "nbook/server/agent/messages/message-utils";
+
+describe("turnContext 来源标签", () => {
+    const kinds: ProfileTurnContextKind[] = [
+        "file-change-notice",
+        "promise-ledger",
+        "mentioned-entities",
+        "skill-activation",
+    ];
+
+    it.each(kinds)("%s 的标签是 TurnContext:<kind>，与既有标签风格一致", (kind) => {
+        expect(turnContextLabel(kind)).toBe(`TurnContext:${kind}`);
+    });
+});
 
 describe("profile-turn-context 基础设施", () => {
     describe("previewProfileTurnContexts", () => {

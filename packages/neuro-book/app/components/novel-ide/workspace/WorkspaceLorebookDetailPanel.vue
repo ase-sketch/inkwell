@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import YAML from "yaml";
 import {storeToRefs} from "pinia";
 import SideDetailPanel from "nbook/app/components/common/SideDetailPanel.vue";
 import TagInput from "nbook/app/components/common/form/TagInput.vue";
@@ -11,39 +10,13 @@ import {
 } from "nbook/app/components/novel-ide/workspace/workspace-entry-meta";
 import {useNovelIdeStore, type WorkspaceFileIssue, type WorkspaceFileNode} from "nbook/app/stores/novel-ide";
 import {normalizeLucideIconName, readLucideIconClass} from "nbook/app/utils/lucide-icons";
+import {parseMarkdownDocument} from "nbook/app/components/novel-ide/workspace/workspace-frontmatter-profile";
+import {
+    createLorebookDraft,
+    renderLorebookDraft,
+    type LorebookFileDraft,
+} from "nbook/app/components/novel-ide/workspace/workspace-lorebook-draft";
 
-type LorebookFileRef = {
-    relation: string;
-    target: string;
-    note: string | null;
-};
-
-type LorebookFileDraft = {
-    title: string;
-    name: string;
-    path: string;
-    icon: string | null;
-    type: "location" | "character" | "item" | "rule" | "note";
-    subtype: string | null;
-    status: string;
-    aliases: string[];
-    tags: string[];
-    summary: string;
-    content: string;
-    refs: LorebookFileRef[];
-    retrieval: {
-        enabled: boolean;
-        trigger: string | null;
-    };
-    governance: {
-        source: string;
-        review: string;
-    };
-    /** 旧内容节点可能保留的废弃 writingTip 字段；仅用于原样写回。 */
-    legacyWritingTip?: string | null;
-};
-
-const FRONTMATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/;
 const LOCATION_SUBTYPES = ["world", "continent", "nation", "region", "city", "district", "building", "room", "landmark", "facility", "ruin", "dungeon", "settlement", "transport"];
 const ITEM_SUBTYPES = ["artifact", "consumable", "equipment", "resource", "document", "token"];
 const CHARACTER_SUBTYPES = ["person", "important", "background", "unknown", "group"];
@@ -77,7 +50,7 @@ const expandedSections = ref({
 const typeMeta = computed(() => editForm.value ? getWorkspaceLorebookTypeMeta(editForm.value.type) : null);
 const currentIconName = computed(() => normalizeLucideIconName(editForm.value?.icon) ?? normalizeLucideIconName(props.node?.icon));
 const currentIconClass = computed(() => readLucideIconClass(currentIconName.value) ?? typeMeta.value?.icon ?? "i-lucide-scroll-text");
-const isDirty = computed(() => editForm.value ? renderDraft(editForm.value) !== selectedFileContent.value : false);
+const isDirty = computed(() => editForm.value ? renderLorebookDraft(editForm.value) !== selectedFileContent.value : false);
 const relatedIssues = computed(() => {
     if (!props.node) {
         return [];
@@ -126,7 +99,7 @@ const saveDraft = async (): Promise<void> => {
         return;
     }
 
-    const nextContent = renderDraft(editForm.value);
+    const nextContent = renderLorebookDraft(editForm.value);
     if (nextContent === selectedFileContent.value) {
         return;
     }
@@ -168,135 +141,10 @@ watch(() => [props.node?.path, selectedFileContent.value], () => {
         return;
     }
     const parsed = parseMarkdownDocument(selectedFileContent.value);
-    editForm.value = createDraft(props.node, parsed.frontmatter, parsed.body);
+    editForm.value = createLorebookDraft(props.node, parsed.frontmatter, parsed.body);
     lastAppliedContent.value = selectedFileContent.value;
     diagnostics.value = parsed.error ?? "";
 }, {immediate: true});
-
-function parseMarkdownDocument(content: string): {
-    frontmatter: Record<string, unknown>;
-    body: string;
-    error: string | null;
-} {
-    const match = content.match(FRONTMATTER_PATTERN);
-    if (!match) {
-        return {frontmatter: {}, body: content, error: null};
-    }
-
-    try {
-        const parsed = YAML.parse(match[1] ?? "", {logLevel: "silent"});
-        return {
-            frontmatter: isPlainObject(parsed) ? parsed : {},
-            body: content.slice(match[0].length),
-            error: isPlainObject(parsed) || parsed === null ? null : t("ide.workspace.common.frontmatterObjectError"),
-        };
-    } catch (error) {
-        return {
-            frontmatter: {},
-            body: content.slice(match[0].length),
-            error: error instanceof Error ? error.message : t("ide.workspace.common.frontmatterParseFailed"),
-        };
-    }
-}
-
-function createDraft(node: WorkspaceFileNode, frontmatter: Record<string, unknown>, body: string): LorebookFileDraft {
-    const legacyWritingTip = Object.prototype.hasOwnProperty.call(frontmatter, "writingTip")
-        ? {legacyWritingTip: readNullableString(frontmatter.writingTip)}
-        : {};
-    return {
-        title: readString(frontmatter.title, node.title || basename(node.path)),
-        name: basename(node.path).replace(/\.md$/i, ""),
-        path: node.path,
-        icon: normalizeLucideIconName(frontmatter.icon),
-        type: readLorebookType(frontmatter.type),
-        subtype: readNullableString(frontmatter.subtype),
-        status: readString(frontmatter.status, "draft"),
-        aliases: readStringArray(frontmatter.aliases),
-        tags: readStringArray(frontmatter.tags),
-        summary: readString(frontmatter.summary, ""),
-        content: body,
-        refs: readRefs(frontmatter.refs),
-        retrieval: readRetrieval(frontmatter.retrieval),
-        governance: readGovernance(frontmatter.governance),
-        ...legacyWritingTip,
-    };
-}
-
-function renderDraft(draft: LorebookFileDraft): string {
-    const frontmatter = {
-        title: draft.title,
-        icon: draft.icon,
-        type: draft.type,
-        subtype: draft.subtype,
-        status: draft.status,
-        aliases: draft.aliases,
-        tags: draft.tags,
-        summary: draft.summary,
-        refs: draft.refs,
-        retrieval: draft.retrieval,
-        governance: draft.governance,
-        ...(draft.legacyWritingTip !== undefined ? {writingTip: draft.legacyWritingTip} : {}),
-    };
-    return `---\n${YAML.stringify(frontmatter).trimEnd()}\n---\n\n${draft.content}`;
-}
-
-function readLorebookType(value: unknown): LorebookFileDraft["type"] {
-    return ["location", "character", "item", "rule", "note"].includes(String(value))
-        ? String(value) as LorebookFileDraft["type"]
-        : "note";
-}
-
-function readString(value: unknown, fallback: string): string {
-    return typeof value === "string" ? value : fallback;
-}
-
-function readNullableString(value: unknown): string | null {
-    return typeof value === "string" && value.trim() ? value : null;
-}
-
-function readStringArray(value: unknown): string[] {
-    return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
-}
-
-function readRefs(value: unknown): LorebookFileRef[] {
-    if (!Array.isArray(value)) {
-        return [];
-    }
-    return value.filter(isPlainObject).map((item) => ({
-        relation: readString(item.relation, ""),
-        target: readString(item.target, ""),
-        note: readNullableString(item.note),
-    }));
-}
-
-function readRetrieval(value: unknown): LorebookFileDraft["retrieval"] {
-    if (!isPlainObject(value)) {
-        return {enabled: true, trigger: null};
-    }
-    return {
-        enabled: typeof value.enabled === "boolean" ? value.enabled : true,
-        trigger: readNullableString(value.trigger),
-    };
-}
-
-function readGovernance(value: unknown): LorebookFileDraft["governance"] {
-    if (!isPlainObject(value)) {
-        return {source: "manual", review: "proposed"};
-    }
-    return {
-        source: readString(value.source, "manual"),
-        review: readString(value.review, "proposed"),
-    };
-}
-
-function basename(filePath: string): string {
-    const normalizedPath = filePath.replace(/\/$/, "");
-    return normalizedPath.includes("/") ? normalizedPath.slice(normalizedPath.lastIndexOf("/") + 1) : normalizedPath;
-}
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-    return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
 </script>
 
 <template>

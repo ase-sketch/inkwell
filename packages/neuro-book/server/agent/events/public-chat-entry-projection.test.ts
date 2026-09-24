@@ -369,6 +369,37 @@ describe("chatEntryKind", () => {
         expect(projectAgentChatEntry(sessionEntry) === null).toBe(chatEntryKind(sessionEntry) === null);
     });
 
+    it("带检索明细的 custom_message 原样透传，且不因裁剪而失真", () => {
+        const retrieval = {
+            kind: "mentioned-entities" as const,
+            items: [{title: "苏云", category: "character", path: "lorebook/character/hero", trigger: "云哥"}],
+            omittedCount: 2,
+        };
+        const projected = projectAgentChatEntry(entry({
+            type: "custom_message",
+            visibleToModel: true,
+            message: {role: "user", content: [{type: "text", text: "<mentioned-entities>…"}], timestamp: 1},
+            retrieval,
+        }));
+
+        expect(projected?.type).toBe("system");
+        if (projected?.type !== "system") return;
+        expect(projected.retrieval).toEqual(retrieval);
+    });
+
+    it("无检索明细的旧 entry 不产出 retrieval 字段，而不是空对象", () => {
+        const projected = projectAgentChatEntry(entry({
+            type: "custom_message",
+            visibleToModel: true,
+            message: {role: "user", content: [{type: "text", text: "普通提醒"}], timestamp: 1},
+        }));
+
+        expect(projected?.type).toBe("system");
+        if (projected?.type !== "system") return;
+        // 「无字段」是唯一表示「本轮没有检索注入」的形态，零命中与不触发不在此区分。
+        expect("retrieval" in projected).toBe(false);
+    });
+
     it("kind 非 null 时投影产出的 type 与 kind 相同", () => {
         for (const item of cases) {
             const kind = chatEntryKind(item.entry);

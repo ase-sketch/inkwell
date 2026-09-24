@@ -3,8 +3,10 @@ import type {CustomMessageSessionEntry, NeuroSessionContext, SessionEntryDraft, 
 import type {StoredAgentMessage} from "nbook/server/agent/messages/stored-types";
 import type {PiTraceSegmentKind} from "nbook/server/agent/observability/pi-request-recorder";
 import type {PromptPrefixAttribution} from "nbook/server/agent/observability/trace-segments";
+import type {RetrievalSummaryDto} from "nbook/shared/dto/agent-retrieval.dto";
 import type {ProfileTurnPlan} from "nbook/server/agent/profiles/types";
 import {profileStateKey} from "nbook/server/agent/profiles/profile-dsl";
+import type {MaterializedProfileTurnContext} from "nbook/server/agent/profiles/profile-turn-context";
 
 export type PrepareRunWritePlanInput = {
     sessionId: number;
@@ -12,6 +14,13 @@ export type PrepareRunWritePlanInput = {
     context: NeuroSessionContext;
     prepared: ProfileTurnPlan;
     sessionContextEnabled: boolean;
+    /**
+     * 本轮 Profile turn context 的物化产物（M2.7a）。
+     *
+     * 检索明细与 turnContext 标签都只存在于物化结果里（消息体不带任何归因字段），
+     * 所以必须显式传进来，不能从 `prepared.appendingMessages` 反查。
+     */
+    turnContextInsertions?: readonly MaterializedProfileTurnContext["insertions"][number][];
 };
 
 /**
@@ -26,15 +35,55 @@ export function compilePrepareRunWritePlan(input: PrepareRunWritePlanInput): Ses
         prepareEntries.push(...input.prepared.historyInitMessages.map((message, index) => customMessageEntry(message, "historySet", labels?.historyInit?.[index])));
     }
     if (input.sessionContextEnabled) {
-        // 两段的顺序必须与 promptSourceLabels 的拼接顺序一致，否则归因会整体错位。
         const modelContextAppending = input.prepared.modelContextAppendingMessages ?? [];
         const appending = input.prepared.appendingMessages ?? [];
-        const appendingMessages = [...modelContextAppending, ...appending];
-        const appendingLabels = [
-            ...modelContextAppending.map((_, index) => labels?.modelContextAppending?.[index] ?? null),
-            ...appending.map((_, index) => labels?.appending?.[index] ?? null),
-        ];
-        prepareEntries.push(...appendingMessages.map((message, index) => customMessageEntry(message, "appending", appendingLabels[index])));
+        // 归因一律按**消息对象引用**绑定，绝不按下标在两个数组之间对齐。
+        //
+        // 曾经的写法是用同一个 index 同时索引 `appending`（harness 已 merge 注入，长度 = merged）
+        // 和 `labels.appending`（DSL 编译产物，长度 = 静态消息数）。两个数组长度不同，注入越多错得越远：
+        // 注入会拿走到静态消息的标签，静态消息则整体后移。同理，多条注入共用同一个 appendingIndex，
+        // 用 Map<index, insertion> 还会互相覆盖，只剩最后一条。
+        //
+        // `mergeProfileTurnContextMessages` 是按引用把 `insertion.message` 放进 merged 数组的，
+        // 所以引用查找既准确又不受下标语义影响。`buildPromptPrefixAttribution` 早就用同样的引用口径，
+        // 这里只是与它对齐。
+        const injections = new Map<StoredAgentMessage, MaterializedProfileTurnContext["insertions"][number]>();
+        for (const insertion of input.turnContextInsertions ?? []) {
+            injections.set(insertion.message, insertion);
+        }
+
+        const entries: AppendManySessionEntryDraft[] = [];
+        let injectionCount = 0;
+        const pushAppending = (message: StoredAgentMessage, dslLabels: readonly string[] | null | undefined): void => {
+            const injection = injections.get(message);
+            if (injection) {
+                injectionCount += 1;
+                entries.push(customMessageEntry(message, "appending", injection.labels, injection.retrieval));
+                return;
+            }
+            entries.push(customMessageEntry(message, "appending", dslLabels));
+        };
+
+        // DSL 静态消息按**消费顺序**取标签：下标只在 DSL 自己的数组内递增，不跨数组复用。
+        let modelContextIndex = 0;
+        for (const message of modelContextAppending) {
+            pushAppending(message, labels?.modelContextAppending?.[modelContextIndex] ?? null);
+            modelContextIndex += 1;
+        }
+        let appendingIndex = 0;
+        for (const message of appending) {
+            pushAppending(message, labels?.appending?.[appendingIndex] ?? null);
+            // 注入消息不属于 DSL 数组，不消耗 DSL 下标——这正是原来错位的来源。
+            if (!injections.has(message)) {
+                appendingIndex += 1;
+            }
+        }
+        // 注入没能在 merged 数组里按引用命中，说明 prepare 与 merge 用了不同的消息对象；
+        // 此时静默继续会把归因挂错，宁可当场炸。
+        if (injectionCount !== injections.size) {
+            throw new Error(`Profile turn context 注入未能按引用命中 appendingMessages：expected=${String(injections.size)}, matched=${String(injectionCount)}。`);
+        }
+        prepareEntries.push(...entries);
     }
     for (const write of input.prepared.stateWrites ?? []) {
         assertValidProfileStateWrite(input.profileKey, write);
@@ -144,12 +193,16 @@ function customMessageEntry(
     message: StoredAgentMessage,
     zone: "historySet" | "appending",
     labels: readonly string[] | null | undefined,
+    retrieval?: RetrievalSummaryDto,
 ): AppendManySessionEntryDraft {
     return {
         type: "custom_message" as const,
         message,
         visibleToModel: true,
         promptSource: {zone, ...(labels?.length ? {labels} : {})},
+        // 检索明细走独立字段而不并进 promptSource：它有自己的一等结构（条目标题/类目/命中词），
+        // 混进扁平标签串就又要靠解析字符串取回。
+        ...(retrieval ? {retrieval} : {}),
     };
 }
 

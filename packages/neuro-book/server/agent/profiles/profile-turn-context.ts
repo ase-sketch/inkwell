@@ -36,10 +36,22 @@ import {
     MAX_AGENT_CHANGE_NOTICE_CHARS,
 } from "nbook/shared/agent/file-change-policy";
 import type {OperationActor, UnseenGroup} from "@notnotype/nb-history";
+import {RetrievalSummaryDtoSchema} from "nbook/shared/dto/agent-retrieval.dto";
+import type {RetrievalItemDto, RetrievalSummaryDto} from "nbook/shared/dto/agent-retrieval.dto";
 
 export type FileChangeAwareness = "off" | "minimal" | "full";
 
 export type ProfileTurnContextKind = "file-change-notice" | "promise-ledger" | "mentioned-entities" | "skill-activation";
+
+/**
+ * turnContext 注入的来源标签（Task 126 / M2.7a）：`TurnContext:<kind>`。
+ *
+ * 与 `Import:AGENTS.md`、`Reminder:agent-mode` 同一套标签风格。标签由 kind 直接得出，
+ * 不依赖节点在 AppendingSet 里的书写位置——这是它比位置推断更耐用的原因。
+ */
+export function turnContextLabel(kind: ProfileTurnContextKind): string {
+    return "TurnContext:" + kind;
+}
 
 export type ProfileTurnContextPlan =
     | {
@@ -89,6 +101,13 @@ export type MaterializedProfileTurnContext = {
     insertions: Array<{
         appendingIndex: number;
         message: StoredAgentMessage;
+        /**
+         * 本轮该条注入的检索明细（M2.7a）。只有 promise-ledger / mentioned-entities 带，
+         * file-change-notice 与 skill-activation 不带（它们不是「检索设定」）。
+         */
+        retrieval?: RetrievalSummaryDto;
+        /** 该条注入的来源标签，如 `TurnContext:promise-ledger`。由节点 kind 直接得出。 */
+        labels?: readonly string[];
     }>;
     settlements: ProfileTurnContextSettlement[];
 };
@@ -145,6 +164,23 @@ export async function materializeProfileTurnContexts(input: {
     }
     const insertions: MaterializedProfileTurnContext["insertions"] = [];
     const settlements: ProfileTurnContextSettlement[] = [];
+    /**
+     * 登记一条 turnContext 注入。
+     *
+     * 来源标签直接在**注入真正产生的这一刻**由该节点自己的 kind 得出，不走 DSL 位置推断。
+     * 这些节点不产出消息，DSL 侧无从把标签挂到消息对象上（具名 fragment 才走 WeakMap 旁表）；
+     * 而「这条注入是哪种 kind」在物化器这里本就是第一手事实——从它反推标签既不依赖节点书写顺序，
+     * 也不会因为将来新增一个不产出消息的节点而整体错位。
+     */
+    const pushInsertion = (plan: ProfileTurnContextPlan, message: StoredAgentMessage, retrieval?: RetrievalSummaryDto): void => {
+        insertions.push({
+            appendingIndex: plan.appendingIndex,
+            message,
+            // 这里是检索明细的生产边界：物化期拼错的字段必须当场炸，不能带着坏结构一路落盘到界面。
+            ...(retrieval ? {retrieval: RetrievalSummaryDtoSchema.parse(retrieval)} : {}),
+            labels: [turnContextLabel(plan.kind)],
+        });
+    };
     for (const plan of input.plans) {
         // skill-activation 不依赖 project：Install Root 也参与解析。
         if (plan.kind === "skill-activation") {
@@ -154,10 +190,7 @@ export async function materializeProfileTurnContexts(input: {
                 input.pendingUserMessage ?? null,
             );
             if (text) {
-                insertions.push({
-                    appendingIndex: plan.appendingIndex,
-                    message: createStoredUserMessage(text),
-                });
+                pushInsertion(plan, createStoredUserMessage(text));
             }
             continue;
         }
@@ -166,25 +199,19 @@ export async function materializeProfileTurnContexts(input: {
             continue;
         }
         if (plan.kind === "promise-ledger") {
-            const text = await materializePromiseLedger(input.project);
-            if (text) {
-                insertions.push({
-                    appendingIndex: plan.appendingIndex,
-                    message: createStoredUserMessage(text),
-                });
+            const materialized = await materializePromiseLedger(input.project);
+            if (materialized) {
+                pushInsertion(plan, createStoredUserMessage(materialized.text), materialized.retrieval);
             }
             continue;
         }
         if (plan.kind === "mentioned-entities") {
-            const text = await materializeMentionedEntities(input.project, {
+            const materialized = await materializeMentionedEntities(input.project, {
                 pendingUserMessage: input.pendingUserMessage ?? null,
                 selectedFilePath: input.selectedFilePath ?? null,
             });
-            if (text) {
-                insertions.push({
-                    appendingIndex: plan.appendingIndex,
-                    message: createStoredUserMessage(text),
-                });
+            if (materialized) {
+                pushInsertion(plan, createStoredUserMessage(materialized.text), materialized.retrieval);
             }
             continue;
         }
@@ -201,10 +228,7 @@ export async function materializeProfileTurnContexts(input: {
             groups,
             maxChars: input.diffMaxChars,
         });
-        insertions.push({
-            appendingIndex: plan.appendingIndex,
-            message: createStoredUserMessage(buildFileChangeReminder(groups, plan.mode, diffDetails, input.diffMaxChars)),
-        });
+        pushInsertion(plan, createStoredUserMessage(buildFileChangeReminder(groups, plan.mode, diffDetails, input.diffMaxChars)));
         settlements.push({
             kind: "file-change-notice",
             history,
@@ -324,7 +348,7 @@ export function renderSkillActivation(entries: Array<{key: string; path: string;
  *
  * 零 open、取数失败或 Plot 模块不可用时返回 null（跳过注入）；异常只记 warn，不影响本轮对话。
  */
-async function materializePromiseLedger(project: ReadyProjectSessionRef): Promise<string | null> {
+async function materializePromiseLedger(project: ReadyProjectSessionRef): Promise<MaterializedInjection | null> {
     try {
         const plotWorld = await activateReadyProjectModule(project, PROJECT_PLOT_WORLD_MODULE_TOKEN);
         const promises = await plotWorld.plot.listStoryPromises();
@@ -332,7 +356,18 @@ async function materializePromiseLedger(project: ReadyProjectSessionRef): Promis
         if (open.length === 0) {
             return null;
         }
-        return renderPromiseLedger(open);
+        const rendered = renderPromiseLedger(open);
+        return {
+            text: rendered.text,
+            retrieval: {
+                kind: "promise-ledger",
+                items: rendered.items.map((promise): RetrievalItemDto => ({
+                    title: promiseDisplayName(promise),
+                    promiseId: Number(promise.id),
+                })),
+                omittedCount: rendered.omittedCount,
+            },
+        };
     } catch (error) {
         await appLogger.warn("agent.profileTurnContext.promiseLedgerSkipped", {
             reason: error instanceof Error ? error.message : String(error),
@@ -343,32 +378,51 @@ async function materializePromiseLedger(project: ReadyProjectSessionRef): Promis
 
 /**
  * 渲染伏笔账本正文；超出条数或字符预算时截断并标注剩余条数。
+ *
+ * 同时返回真正进了正文的伏笔，供调用方构造结构化检索明细——截断口径只有这一处，
+ * 明细与正文因此不可能不一致。
  */
-export function renderPromiseLedger(promises: StoryPromiseDto[]): string {
+export function renderPromiseLedger(promises: StoryPromiseDto[]): {text: string; items: StoryPromiseDto[]; omittedCount: number} {
     const header = ["<promise-ledger>", PROMISE_LEDGER_PREAMBLE];
     const footer = ["</promise-ledger>"];
     const lines: string[] = [];
+    const rendered: StoryPromiseDto[] = [];
     let omitted = promises.length;
     for (const promise of promises.slice(0, PROMISE_LEDGER_MAX_ITEMS)) {
-        const rendered = renderPromiseEntry(promise);
+        const entry = renderPromiseEntry(promise);
         const rest = omitted - 1;
-        const candidate = rest > 0 ? [...lines, ...rendered, omittedPromiseLine(rest)] : [...lines, ...rendered];
+        const candidate = rest > 0 ? [...lines, ...entry, omittedPromiseLine(rest)] : [...lines, ...entry];
         if (charCount([...header, ...candidate, ...footer].join("\n")) > PROMISE_LEDGER_MAX_CHARS) {
             break;
         }
-        lines.push(...rendered);
+        lines.push(...entry);
+        rendered.push(promise);
         omitted = rest;
     }
     if (omitted > 0) {
         lines.push(omittedPromiseLine(omitted));
     }
-    return [...header, ...lines, ...footer].join("\n");
+    return {text: [...header, ...lines, ...footer].join("\n"), items: rendered, omittedCount: omitted};
+}
+
+/** 物化产物：注入正文 + 随行的结构化检索明细。 */
+type MaterializedInjection = {
+    text: string;
+    retrieval: RetrievalSummaryDto;
+};
+
+/**
+ * 伏笔的界面显示名，口径与注入正文的条目标签一致：
+ * title 与 name 不同时显示 `name（title）`，否则只显示 name。
+ */
+function promiseDisplayName(promise: StoryPromiseDto): string {
+    const title = promise.title ? promise.title.trim() : "";
+    return title && title !== promise.name ? promise.name + "（" + title + "）" : promise.name;
 }
 
 /** 单条伏笔：结构化字段 + 来源 id，便于模型与人回溯账本。 */
 function renderPromiseEntry(promise: StoryPromiseDto): string[] {
-    const title = promise.title ? promise.title.trim() : "";
-    const label = title && title !== promise.name ? promise.name + "（" + title + "）" : promise.name;
+    const label = promiseDisplayName(promise);
     const lines = ["- " + label + " [id=" + promise.id + "] importance=" + promise.importance];
     const summary = compactLine(promise.summary);
     if (summary) {
@@ -393,7 +447,7 @@ function omittedPromiseLine(count: number): string {
 async function materializeMentionedEntities(
     project: ReadyProjectSessionRef,
     input: {pendingUserMessage: StoredUserMessage | null; selectedFilePath: string | null},
-): Promise<string | null> {
+): Promise<MaterializedInjection | null> {
     const userText = input.pendingUserMessage ? messageText(input.pendingUserMessage).trim() : "";
     if (!userText && !input.selectedFilePath) {
         return null;
@@ -408,7 +462,8 @@ async function materializeMentionedEntities(
             root: absoluteFsPath(project.workspace.root),
             pathPredicate: (entry) => trigger.chapterPath === null || entry.relativePath !== trigger.chapterPath,
         });
-        const matches = matchLorebookEntries(nodes, [userText, trigger.chapterBody]);
+        const matchResult = matchLorebookEntries(nodes, [userText, trigger.chapterBody]);
+        const matches = matchResult.matches;
         if (matches.length === 0) {
             return null;
         }
@@ -420,7 +475,20 @@ async function materializeMentionedEntities(
                 body: await readEntryBody(project.workspace.root, match.path),
             });
         }
-        return renderMentionedEntities(entries, trigger.chapterName);
+        return {
+            text: renderMentionedEntities(entries, trigger.chapterName),
+            retrieval: {
+                kind: "mentioned-entities",
+                // 命中明细直接取自本轮真实匹配结果，不解析注入正文反推。
+                items: matches.map((match): RetrievalItemDto => ({
+                    title: match.title,
+                    category: lorebookCategoryOf(match.path),
+                    path: match.path,
+                    trigger: match.trigger,
+                })),
+                omittedCount: matchResult.omittedCount,
+            },
+        };
     } catch (error) {
         await appLogger.warn("agent.profileTurnContext.mentionedEntitiesSkipped", {
             reason: error instanceof Error ? error.message : String(error),
@@ -468,11 +536,20 @@ async function resolveChapterTrigger(
 }
 
 /** lorebook 内容节点匹配结果。 */
-type LorebookMatch = {
+export type LorebookMatch = {
     path: string;
     title: string;
     aliases: string[];
     score: number;
+    /** 实际命中的词：标题、别名或目录 slug 中得分最高的那一个。 */
+    trigger: string;
+};
+
+/** 匹配结果连同被 5 条预算截掉的条数。 */
+export type LorebookMatchResult = {
+    matches: LorebookMatch[];
+    /** 命中但超出 MENTIONED_ENTITIES_MAX_ITEMS 未注入的条数。 */
+    omittedCount: number;
 };
 
 /**
@@ -480,12 +557,12 @@ type LorebookMatch = {
  *
  * 匹配口径：中文直接子串包含；纯 ASCII 词按词边界匹配，避免 "art" 命中 "start"。
  */
-export function matchLorebookEntries(nodes: WorkspaceFileNode[], triggerTexts: Array<string | null>): LorebookMatch[] {
+export function matchLorebookEntries(nodes: WorkspaceFileNode[], triggerTexts: Array<string | null>): LorebookMatchResult {
     const haystack = triggerTexts
         .filter((text): text is string => typeof text === "string" && text.trim().length > 0)
         .join("\n");
     if (!haystack) {
-        return [];
+        return {matches: [], omittedCount: 0};
     }
     const matches: LorebookMatch[] = [];
     for (const node of nodes) {
@@ -499,24 +576,43 @@ export function matchLorebookEntries(nodes: WorkspaceFileNode[], triggerTexts: A
             : [];
         const slug = directory.slice(directory.lastIndexOf("/") + 1);
         let score = 0;
-        if (title && containsTrigger(haystack, title)) {
-            score += 100 + charCount(title);
-        }
-        for (const alias of aliases) {
-            if (containsTrigger(haystack, alias)) {
-                score += 60 + charCount(alias);
+        // 同时记下得分最高的命中词，作为界面上的「命中词」归因。
+        let trigger = "";
+        let triggerScore = 0;
+        const observe = (candidate: string, weight: number): void => {
+            if (!candidate || !containsTrigger(haystack, candidate)) {
+                return;
             }
+            const candidateScore = weight + charCount(candidate);
+            score += candidateScore;
+            if (candidateScore > triggerScore) {
+                trigger = candidate;
+                triggerScore = candidateScore;
+            }
+        };
+        observe(title, 100);
+        for (const alias of aliases) {
+            observe(alias, 60);
         }
-        if (containsTrigger(haystack, slug)) {
-            score += 20 + charCount(slug);
-        }
+        observe(slug, 20);
         if (score > 0) {
-            matches.push({path: directory, title: title || slug, aliases, score});
+            matches.push({path: directory, title: title || slug, aliases, score, trigger: trigger || title || slug});
         }
     }
-    return matches
-        .sort((left, right) => right.score - left.score || left.path.localeCompare(right.path))
-        .slice(0, MENTIONED_ENTITIES_MAX_ITEMS);
+    const sorted = matches.sort((left, right) => right.score - left.score || left.path.localeCompare(right.path));
+    const capped = sorted.slice(0, MENTIONED_ENTITIES_MAX_ITEMS);
+    return {matches: capped, omittedCount: sorted.length - capped.length};
+}
+
+/**
+ * 设定卡的一级类目：条目目录去掉 `lorebook/` 前缀后的第一段。
+ *
+ * 与前端 `lorebookCategoryOf` 同一口径；无二级目录时退回目录名本身。
+ */
+function lorebookCategoryOf(directory: string): string {
+    const relative = directory.startsWith("lorebook/") ? directory.slice("lorebook/".length) : directory;
+    const slash = relative.indexOf("/");
+    return slash < 0 ? relative : relative.slice(0, slash);
 }
 
 /** 中文按子串包含；纯 ASCII 词按词边界匹配。 */

@@ -347,6 +347,19 @@ describe("file-change-reminder 纯函数", () => {
 
         expect(merged.map((message) => storedMessageText(message))).toEqual(["BEFORE", "NOTICE", "AFTER"]);
     });
+
+    it("动态 notice 的来源标签是 TurnContext:file-change-notice，且不带检索明细", async () => {
+        const {materializeProfileTurnContexts} = await import("nbook/server/agent/profiles/profile-turn-context");
+        const result = await materializeProfileTurnContexts({
+            plans: [{kind: "file-change-notice", mode: "minimal", appendingIndex: 0}],
+            project: null,
+            sessionId: 1,
+            diffMaxChars: 512,
+        });
+
+        // 无 project 时跳过注入——零注入就没有标签，也不该凭空造出检索明细。
+        expect(result.insertions).toEqual([]);
+    });
 });
 
 /** 构造 notice 纯函数测试使用的单条 unseen 分组。 */
@@ -471,6 +484,17 @@ describe("file-change notice 端到端（FauxProvider 黑盒）", () => {
         expect(notice).toContain("manuscript/ch1.md");
         expect(notice).toContain("Diff:");
         expect(notice).toContain("+用户改动");
+
+        // M2.7a：第二轮起的注入走 Run Kernel 的写入路径，归因必须在那里一并落盘。
+        const snapshot = await harness.repo.readSession(created.sessionId);
+        const noticeEntry = snapshot.entries.find((entry): entry is Extract<typeof entry, {type: "custom_message"}> =>
+            entry.type === "custom_message" && storedMessageText(entry.message).includes("<file-change-notice>"));
+        expect(noticeEntry?.promptSource).toEqual({
+            zone: "appending",
+            labels: ["TurnContext:file-change-notice"],
+        });
+        // 文件变更不是「检索设定」，不带检索明细。
+        expect(noticeEntry && "retrieval" in noticeEntry).toBe(false);
 
         // 第三轮：游标已推进且无新变更，不再注入
         faux.setResponses([fauxAssistantMessage("第三轮完成")]);

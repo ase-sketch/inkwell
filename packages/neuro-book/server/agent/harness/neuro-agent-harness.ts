@@ -4085,6 +4085,8 @@ export class NeuroAgentHarness {
             context,
             prepared: preparedWithTurnContext,
             sessionContextEnabled: options.sessionContextEnabled,
+            // 检索明细只存在于物化结果里，必须显式透传给写盘计划（M2.7a）。
+            turnContextInsertions: materializedTurnContexts.insertions,
         });
         return {
             plan: preparedWithTurnContext,
@@ -4824,13 +4826,12 @@ export class NeuroAgentHarness {
             // M2c：$skill-key 显式唤起的正文由 SkillCatalog 解析，不依赖当前 Project。
             skillResolver: this.skills,
         });
-        const messages = materialized.insertions
-            .sort((left, right) => left.appendingIndex - right.appendingIndex)
-            .map((insertion) => insertion.message);
-        if (messages.length === 0) {
+        const insertions = materialized.insertions
+            .sort((left, right) => left.appendingIndex - right.appendingIndex);
+        if (insertions.length === 0) {
             return;
         }
-        frame.messages.push(...messages);
+        frame.messages.push(...insertions.map((insertion) => insertion.message));
         frame.pendingProfileTurnContextSettlements = [
             ...frame.pendingProfileTurnContextSettlements ?? [],
             ...materialized.settlements,
@@ -4838,16 +4839,20 @@ export class NeuroAgentHarness {
         if (frame.lastTurnIngest?.transcript === "runtime_only") {
             return;
         }
+        // 归因（labels / retrieval）必须在这里一并落盘：第二轮起的注入走的是这条写入路径，
+        // 不经过 compilePrepareRunWritePlan，漏掉就等于「只有首轮有徽标」。
         const entries = await withRunKernelPhase("ingest", () => this.executeWritePlan({
             target: {sessionId: frame.sessionId},
             cause: "profile.turn-context",
             durability: "savePoint",
             ops: [{
                 kind: "appendMany",
-                entries: messages.map((message) => ({
+                entries: insertions.map((insertion) => ({
                     type: "custom_message" as const,
-                    message,
+                    message: insertion.message,
                     visibleToModel: true,
+                    promptSource: {zone: "appending" as const, ...(insertion.labels?.length ? {labels: insertion.labels} : {})},
+                    ...(insertion.retrieval ? {retrieval: insertion.retrieval} : {}),
                 })),
             }],
         }, frame.invocationId));

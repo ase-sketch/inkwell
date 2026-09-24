@@ -88,6 +88,8 @@ export function projectAgentChatEntry(
             source: reminder ? "reminder" : "custom",
             label: reminder ? "System Reminder" : `Custom: ${customMessageKind(entry.message)}`,
             content: textPreview(content, CHAT_ENTRY_PREVIEW_BYTES),
+            // M2.7a：检索明细原样透传，它是物化期产出的结构，不是从正文解析出来的。
+            ...(entry.retrieval ? {retrieval: entry.retrieval} : {}),
         };
     }
     if (entry.type === "compaction") {

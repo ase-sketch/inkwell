@@ -15,6 +15,7 @@ import type {
     AgentTriggerMenuState,
 } from "nbook/app/components/novel-ide/agent/trigger-menu";
 import {canEditHistoryMessage} from "nbook/app/components/novel-ide/agent/agent-chat-history-ui";
+import {retrievalBadgeLabel, retrievalDisplayItems, retrievalItemMeta} from "nbook/app/components/novel-ide/agent/agent-retrieval-display";
 
 const THINKING_SUMMARY_LENGTH = 48;
 const SWIPE_MIN_DELTA_X = 48;
@@ -282,6 +283,23 @@ const systemSummary = computed(() => {
     return firstLine.length > 86 ? `${firstLine.slice(0, 86)}...` : firstLine;
 });
 
+/**
+ * 本轮这条注入实际检索到的内容；没有检索（旧 session、零命中）就是 null，气泡不做任何变化。
+ */
+const systemRetrieval = computed(() => props.node.message.retrieval ?? null);
+
+/** 折叠头徽标：不展开也能看见 AI 这轮检索了什么。 */
+const retrievalBadge = computed(() => {
+    const summary = systemRetrieval.value;
+    return summary ? retrievalBadgeLabel(summary, t) : "";
+});
+
+/** 展开后的明细行。 */
+const retrievalItems = computed(() => {
+    const summary = systemRetrieval.value;
+    return summary ? retrievalDisplayItems(summary, t) : [];
+});
+
 /** 切换系统消息展开态。 */
 const toggleSystem = (): void => {
     isSystemCollapsed.value = !isSystemCollapsed.value;
@@ -409,6 +427,14 @@ const endSwipe = (event: PointerEvent): void => {
                 <span class="shrink-0 font-medium uppercase tracking-[0.18em]">{{ systemLabel }}</span>
                 <span v-if="isSystemCollapsed && systemSummary" class="min-w-0 flex-1 truncate normal-case tracking-normal opacity-75">{{ systemSummary }}</span>
                 <span v-else class="min-w-0 flex-1"></span>
+                <!-- 检索徽标常驻折叠头：不展开也能看见这一轮读过哪些设定。 -->
+                <span
+                    v-if="retrievalBadge"
+                    class="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--status-info-border)] bg-[var(--status-info-bg)] px-1.5 py-0.5 text-[10px] normal-case tracking-normal text-[var(--status-info)]"
+                >
+                    <span class="i-lucide-book-open h-3 w-3 shrink-0"></span>
+                    {{ retrievalBadge }}
+                </span>
                 <span :class="isSystemCollapsed ? 'i-lucide-chevron-down' : 'i-lucide-chevron-up'" class="h-3.5 w-3.5 shrink-0"></span>
             </button>
             <!-- 跑挂的运行也是一条分支；没有它用户切不回上一个成功的回答。 -->
@@ -428,6 +454,17 @@ const endSwipe = (event: PointerEvent): void => {
                 <div v-if="props.node.message.content" class="min-w-0 text-xs leading-relaxed" :class="isSystemError ? 'text-[var(--status-danger)]' : 'text-[var(--text-muted)]'">
                     <AgentMarkdownContent :content="props.node.message.content" :html="props.node.message.html" :open-reference="props.openReference" />
                 </div>
+            </div>
+
+            <!-- 检索明细：气泡正文是给模型看的原文，这里只回答作者「这轮读了哪些设定」。 -->
+            <div v-if="retrievalItems.length > 0" class="mt-1.5 min-w-0 w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)]/60 px-3 py-2">
+                <ul class="min-w-0 space-y-1">
+                    <li v-for="(item, index) in retrievalItems" :key="index" class="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                        <span class="text-xs text-[var(--text-main)]">{{ item.title }}</span>
+                        <span v-if="item.category" class="rounded border border-[var(--border-color)] bg-[var(--bg-input)] px-1.5 py-0.5 text-[10px] text-[var(--text-secondary)]">{{ item.category }}</span>
+                        <span v-for="meta in retrievalItemMeta(item, t)" :key="meta" class="min-w-0 truncate text-[10px] text-[var(--text-muted)]">{{ meta }}</span>
+                    </li>
+                </ul>
             </div>
         </div>
     </div>

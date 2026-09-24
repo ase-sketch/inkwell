@@ -6,6 +6,7 @@ import type {AgentMode} from "nbook/shared/dto/agent-session.dto";
 import type {ChatEntryKind} from "nbook/shared/dto/agent-public-event.dto";
 import type {AttachmentRef} from "nbook/shared/dto/agent-attachment.dto";
 import type {AgentSessionIdentity} from "nbook/shared/dto/agent-session.dto";
+import type {RetrievalSummaryDto} from "nbook/shared/dto/agent-retrieval.dto";
 
 export type SessionId = number;
 export type SessionEntryId = string;
@@ -143,6 +144,15 @@ export type CustomMessageSessionEntry = {
         /** Profile DSL 具名节点来源，如 `Import:AGENTS.md`、`SkillCatalog`。匿名消息无此字段。 */
         labels?: readonly string[];
     };
+    /**
+     * 本轮检索注入的结构化明细（M2.7a）。与 promptSource 同性质：纯可观测旁路，
+     * 不参与 reduce、不影响可见性、不进入发给模型的消息体。
+     *
+     * 只有 promise-ledger / mentioned-entities 两类真实注入才会写这个字段；
+     * 零命中时物化器根本不注入，因此「无此字段」就等于「本轮没有检索注入」。
+     * 旧 session 天然没有该字段，按可选读取，不做数据迁移。
+     */
+    retrieval?: RetrievalSummaryDto;
 };
 
 export type LeafSessionEntry = {

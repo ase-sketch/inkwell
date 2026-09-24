@@ -366,6 +366,38 @@ describe("JsonlSessionRepository", () => {
         });
     });
 
+    it("custom_message 的检索明细原样往返，旧 entry 无该字段也能读回", async () => {
+        const session = await repo.createSession({profileKey: "leader.default", initial: {}});
+        const retrieval = {
+            kind: "mentioned-entities" as const,
+            items: [{title: "苏云", category: "character", path: "lorebook/character/hero", trigger: "云哥"}],
+            omittedCount: 2,
+        };
+        await repo.appendEntry(session.metadata.sessionId, {
+            type: "custom_message",
+            message: {role: "user", content: [{type: "text", text: "<mentioned-entities>…"}], timestamp: 1},
+            visibleToModel: true,
+            promptSource: {zone: "appending", labels: ["TurnContext:mentioned-entities"]},
+            retrieval,
+        });
+        // 旧 session 形态：同类型的 entry，但没有 retrieval 字段。
+        await repo.appendEntry(session.metadata.sessionId, {
+            type: "custom_message",
+            message: {role: "user", content: [{type: "text", text: "旧提醒"}], timestamp: 2},
+            visibleToModel: true,
+            promptSource: {zone: "appending", labels: ["Reminder:agent-mode"]},
+        });
+
+        const snapshot = await repo.readSession(session.metadata.sessionId);
+        const entries = snapshot.entries.filter((entry) => entry.type === "custom_message");
+
+        expect(entries[0]).toMatchObject({retrieval});
+        // 旧 entry 读回后不存在该字段，而不是被补成 null 或空对象。
+        expect(entries[1] && "retrieval" in entries[1]).toBe(false);
+        expect(entries[1]?.type === "custom_message" ? entries[1].promptSource : null)
+            .toEqual({zone: "appending", labels: ["Reminder:agent-mode"]});
+    });
+
     it("session 列表支持 profile、状态、关系和数量筛选", async () => {
         const leader = await repo.createSession({
             profileKey: "leader.default",
