@@ -4,7 +4,7 @@
 
 Inkwell fork 自 [neuro-book](https://github.com/notnotype/neuro-book)（基座 commit 4590627，一次性取材、不跟进上游），沿用其 agent 运行时、写作工程化（World Engine / 伏笔账本 / llmlint）与编辑器，改造集中在四个点：访谈 profile、会话闸门、作者界面层、阅读模块。本地 Web 应用（Nuxt 4 + Bun），Windows 便携 zip 分发。
 
-<!-- TODO: 截图 -->
+
 
 ## 开发
 

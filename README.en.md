@@ -4,7 +4,7 @@
 
 Inkwell is forked from [neuro-book](https://github.com/notnotype/neuro-book) (base commit 4590627, one-time import, not tracking upstream). It reuses the agent runtime, writing-engineering trio (World Engine / promise ledger / llmlint) and the editor, with changes focused on four areas: interview profile, session gate, author UI shell, and a reading module. Local web app (Nuxt 4 + Bun), distributed as a Windows portable zip.
 
-<!-- TODO: screenshot -->
+
 
 ## Development
 

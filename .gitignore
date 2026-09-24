@@ -30,8 +30,7 @@ product/
 
 # IDE
 .idea
-.claude/settings.local.json
-.claude/worktrees/
+.claude/
 # 开发 Agent 治理真相源：只跟踪 .agents，仓库运行态全部留在系统 Temp
 /.agent/
 # 用户管理的本地资产：只跟踪约定文件
@@ -40,20 +39,9 @@ product/
 /.agents/*
 !/.agents/AGENTS.md
 !/.agents/README.md
-!/.agents/roles/
-!/.agents/roles/**
-!/.agents/skills/
-!/.agents/skills/**
-!/.agents/issues/
-!/.agents/issues/**
 !/.agents/notes/
 !/.agents/notes/**
-!/.agents/works/
-!/.agents/works/**
 # playwright-cli 默认生成的浏览器快照与 console 产物，不进入 Git
-!/.agents/tasks/
-!/.agents/tasks/**
-/.agents/tasks/**/benchmarks/results/*.json
 .playwright-cli/
 # 外部工具产生的调试 trace（与运行时 .nbook/agent/traces 无关）
 .traces/
