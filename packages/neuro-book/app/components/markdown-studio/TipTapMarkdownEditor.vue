@@ -85,6 +85,7 @@ const emit = defineEmits<{
     (e: "inline-comment-select", index: number): void;
     (e: "inline-ai-reference", reference: InlineEditReference): void;
     (e: "stuck-interview", reference: InlineEditReference): void;
+    (e: "selection-critique", reference: InlineEditReference): void;
 }>();
 
 const {prompt} = useDialog();
@@ -901,6 +902,41 @@ function startStuckInterviewFromSelection(): void {
 }
 
 /**
+ * 从当前选区触发「发给顾问挑刺」。
+ */
+function startSelectionCritiqueFromSelection(): void {
+    const currentEditor = editor.value;
+    const path = props.activePath.trim();
+    if (!path) {
+        notification.warning(t("markdownStudio.editor.currentPathMissing"));
+        return;
+    }
+
+    const text = selectedClipboardText().trim();
+    if (!text) {
+        notification.warning(t("markdownStudio.editor.selectBodyFirst"));
+        return;
+    }
+
+    const locatedFromEditor: SelectionRangeLocation = currentEditor ? locateSelectionRangeFromEditor(currentEditor) : {match: "unknown"};
+    const located = locatedFromEditor.match === "unique"
+        ? locatedFromEditor
+        : locateSelectionRange(getMarkdown(), text);
+    const textRange = currentEditor ? locateInlineAiSelectionTextRange(currentEditor) : undefined;
+    emit("selection-critique", {
+        ref: buildSelectionRefChip({
+            path,
+            range: located.range,
+        }),
+        path,
+        range: located.range,
+        textRange,
+        match: located.match,
+        text,
+    });
+}
+
+/**
  * 当前选区是否包含内容。
  */
 function hasSelection(): boolean {
@@ -1366,6 +1402,7 @@ function isSaveShortcut(event: KeyboardEvent): boolean {
                 @add-bilingual="void addBilingualFromMenu()"
                 @add-ai-reference="addAiReferenceFromSelection"
                 @stuck-interview="startStuckInterviewFromSelection"
+                @selection-critique="startSelectionCritiqueFromSelection"
             />
 
             <ReferenceSelectorPopover

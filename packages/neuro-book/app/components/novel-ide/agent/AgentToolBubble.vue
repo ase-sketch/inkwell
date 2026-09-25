@@ -38,7 +38,7 @@ const resultAttachments = computed(() => (props.toolCall.publicResult?.content ?
 
 <template>
     <div v-if="renderConfig.mode === 'message' && renderConfig.component" class="group flex min-w-0 w-full flex-col items-stretch pl-6">
-        <component :is="renderConfig.component" :tool-call="props.toolCall" />
+        <component :is="renderConfig.component" :tool-call="props.toolCall" :session-id="props.sessionId" />
         <AgentAttachmentGallery
             v-if="resultAttachments.length > 0"
             :attachments="resultAttachments"

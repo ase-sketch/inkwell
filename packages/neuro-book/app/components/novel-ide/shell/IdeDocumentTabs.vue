@@ -6,6 +6,7 @@ import {useNotification} from "nbook/app/composables/useNotification";
 import {useNovelIdeStore, type WorkspaceEditorTab} from "nbook/app/stores/novel-ide";
 import {resolveApiErrorMessage} from "nbook/app/utils/api-error";
 import {exportChaptersToTxt, normalizePath, type ChapterExportScope} from "nbook/app/utils/chapter-export";
+import {parseManuscriptChapterPath} from "nbook/app/utils/review-entry";
 
 const props = defineProps<{
     tabs: readonly WorkspaceEditorTab[];
@@ -15,6 +16,7 @@ const props = defineProps<{
 const emit = defineEmits<{
     (event: "select-tab", path: string): void;
     (event: "close-tab", path: string): void;
+    (event: "review-chapter", path: string): void;
 }>();
 
 const {t, te} = useI18n();
@@ -31,6 +33,18 @@ const tt = (key: string, fallback: string): string => (te(key) ? t(key) : fallba
 /** 只展出正文标签：作者不需要在标签条上分辨编辑器类型。 */
 const visibleTabs = computed(() => props.tabs);
 const hasActiveDocument = computed(() => Boolean(props.activePath));
+/** 当前打开的必须是章节正文（manuscript/{卷}/{章}/index.md）才谈得上「审这一章」。 */
+const activeChapter = computed(() => parseManuscriptChapterPath(props.activePath));
+const canReviewChapter = computed(() => activeChapter.value !== null);
+
+/** 请顾问审当前这一章：只把章节正文路径交给宿主，路径口径由宿主再核一遍。 */
+function requestChapterReview(): void {
+    const chapter = activeChapter.value;
+    if (!chapter) {
+        return;
+    }
+    emit("review-chapter", chapter.manuscriptPath);
+}
 
 function handleOutsideClick(event: MouseEvent): void {
     if (exportMenuRef.value && !exportMenuRef.value.contains(event.target as Node)) {
@@ -125,8 +139,22 @@ async function triggerExport(scope: ChapterExportScope): Promise<void> {
             </Tooltip>
         </div>
 
-        <!-- 右侧辅助工具：阅读预览与导出菜单 -->
+        <!-- 右侧辅助工具：审稿、阅读预览与导出菜单 -->
         <div class="flex shrink-0 items-center gap-1 pl-2 border-l border-[var(--border-color)]">
+            <!-- 审这一章：只对章节正文可用，其他文件置灰 -->
+            <Tooltip :text="canReviewChapter ? t('ide.critique.entry.chapterTooltip') : t('ide.critique.entry.chapterDisabledTooltip')" placement="bottom">
+                <button
+                    type="button"
+                    class="flex h-7 items-center gap-1 rounded px-2 text-[12px] text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-main)] disabled:cursor-not-allowed disabled:opacity-40"
+                    :disabled="!canReviewChapter"
+                    data-role="ide-review-chapter-button"
+                    @click="requestChapterReview"
+                >
+                    <span class="i-lucide-search-check h-3.5 w-3.5"></span>
+                    <span class="hidden sm:inline">{{ t("ide.critique.entry.chapterLabel") }}</span>
+                </button>
+            </Tooltip>
+
             <!-- 排版阅读预览按钮 -->
             <Tooltip :text="tt('ide.reading.buttonTooltip', '排版阅读预览')" placement="bottom">
                 <button

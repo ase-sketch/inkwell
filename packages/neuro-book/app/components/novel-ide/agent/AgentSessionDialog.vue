@@ -182,6 +182,7 @@ function profileDisplayName(profileKey: string): string {
         case "leader.default": return t("agent.profiles.leaderDefault");
         case "interview.new-book": return t("agent.profiles.interviewNewBook");
         case "interview.stuck": return t("agent.profiles.interviewStuck");
+        case "review.chapter": return t("agent.profiles.reviewChapter");
         case "summarizer": return t("agent.profiles.summarizer");
         case "memory.curator": return t("agent.profiles.memoryCurator");
         case "researcher": return t("agent.profiles.researcher");

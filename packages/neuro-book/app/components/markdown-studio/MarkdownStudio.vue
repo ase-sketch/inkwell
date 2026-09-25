@@ -59,6 +59,7 @@ const emit = defineEmits<{
     (e: "update-monaco-temporary-font-size", value: number): void;
     (e: "inline-ai-reference", reference: InlineEditReference): void;
     (e: "stuck-interview", reference: InlineEditReference): void;
+    (e: "selection-critique", reference: InlineEditReference): void;
 }>();
 
 /**
@@ -109,6 +110,7 @@ function handleSourceBlur(): void {
                     @inline-comment-select="controller.activateInlineComment"
                     @inline-ai-reference="emit('inline-ai-reference', $event)"
                     @stuck-interview="emit('stuck-interview', $event)"
+                    @selection-critique="emit('selection-critique', $event)"
                 />
                 <template #fallback>
                     <div class="flex min-h-[65vh] items-center justify-center text-[var(--text-muted)]">

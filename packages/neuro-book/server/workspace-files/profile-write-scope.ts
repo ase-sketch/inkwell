@@ -22,6 +22,9 @@ const INTERACTIVE_PROFILE_KEYS: readonly string[] = Object.freeze([
     "leader.default",
     "interview.new-book",
     "interview.stuck",
+    // 审稿 profile 走最严口径：它本身不持有任何写文件工具（连 read 之外的文件工具都没有），
+    // 登记进来只作 fail-closed 兜底——万一今后有人给它挂上写工具，manuscript/ 依旧写不进去。
+    "review.chapter",
     "inline.editor",
 ]);
 

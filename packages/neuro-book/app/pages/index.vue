@@ -71,6 +71,16 @@ import {buildWorkspaceReferenceSections} from "nbook/app/utils/workspace-referen
 import {resolveWorkspaceFileExtension, type FrontmatterProfileKind} from "nbook/shared/editor-workbench";
 import {buildSelectionRefChip, type InlineEditPayload, type InlineEditReference, type InlineEditTask} from "nbook/app/utils/inline-editor-selection";
 import {buildStuckInterviewMessage, findReusableStuckInterviewSession} from "nbook/app/utils/stuck-interview";
+import {
+    buildChapterReviewMessage,
+    buildSelectionCritiqueMessage,
+    CHAPTER_REVIEW_PROFILE_KEY,
+    chapterReviewSessionStorageKey,
+    findReusableChapterReviewSession,
+    parseManuscriptChapterPath,
+    readRememberedChapterReviewSessionId,
+    rememberChapterReviewSession,
+} from "nbook/app/utils/review-entry";
 import type {DesktopMenuCommandId} from "@notnotype/neuro-book-contracts/desktop";
 import {dispatchDesktopMenuCommand} from "@notnotype/neuro-book-contracts/desktop";
 
@@ -258,7 +268,7 @@ function handleSensitiveWordJump(line: number): void {
     dispatchEditorJumpToLine(line);
 }
 
-const {alert, choose, chooseCards, prompt} = useDialog();
+const {alert, confirm, choose, chooseCards, prompt} = useDialog();
 /** 新壳左栏宽度：240-260px，由 IdeShellSidebar 自己限制并回传。 */
 const shellSidebarWidth = ref(248);
 const notification = useNotification();
@@ -551,6 +561,20 @@ const startInterviewFromSidebar = async (): Promise<void> => {
     await agentSurfaceRef.value?.createSession("interview.new-book");
 };
 
+/** 审稿的本地记忆：浏览器用 localStorage，服务端渲染时退化成一个不落盘的替身。 */
+const reviewEntryStorage = (): Pick<Storage, "getItem" | "setItem"> => import.meta.client
+    ? localStorage
+    : {
+        getItem: () => null,
+        setItem: () => {},
+    };
+
+/** 划词挑刺落在当前文件所属的那条对话上，在章节正文里就等价于这一章的对话。 */
+const selectionCritiqueStorageKey = (path: string): string => chapterReviewSessionStorageKey({
+    scopeKey: agentSessionScopeKey(workspaceKind.value, currentProjectRoot.value || ""),
+    chapterPath: path,
+});
+
 /** 划词「卡文追问」：切到对话态，复用或新建 interview.stuck 会话，并自动发出首条引导消息。 */
 const handleStuckInterview = async (reference: InlineEditReference): Promise<void> => {
     leaveKnowledgeSurface();
@@ -581,6 +605,104 @@ const handleStuckInterview = async (reference: InlineEditReference): Promise<voi
         guidance: t("markdownStudio.selection.stuckGuidance"),
     });
     await surface.sendMessage(message);
+};
+
+/** 划词「发给顾问挑刺」：切到对话态，复用或新建 review.chapter 会话，并自动发出首条消息。 */
+const handleSelectionCritique = async (reference: InlineEditReference): Promise<void> => {
+    leaveKnowledgeSurface();
+    writingRequested.value = false;
+    swapPreference.value = shellHasOpenDocument.value ? "chat" : null;
+    companionVisible.value = true;
+    await nextTick();
+
+    const surface = agentSurfaceRef.value;
+    if (!surface) {
+        return;
+    }
+
+    const sessions = await surface.ensureSessionReady();
+    const projectRoot = currentProjectRoot.value || null;
+    const existing = findReusableChapterReviewSession(sessions, {
+        rememberedSessionId: readRememberedChapterReviewSessionId(reviewEntryStorage(), selectionCritiqueStorageKey(reference.path)),
+        currentProjectRoot: projectRoot,
+    });
+    if (existing) {
+        if (surface.activeSessionId !== existing.sessionId) {
+            await surface.selectSession(existing.sessionId);
+        }
+    } else {
+        await surface.createSession(CHAPTER_REVIEW_PROFILE_KEY);
+    }
+
+    await nextTick();
+    await surface.sendMessage(buildSelectionCritiqueMessage({
+        ref: reference.ref,
+        guidance: t("ide.critique.entry.selectionGuidance"),
+    }));
+};
+
+/**
+ * 「审这一章」：先让作者确认审哪一章，再切到对话态，复用或新建 review.chapter 会话并发出审稿引导语。
+ *
+ * 同一章记着上次那条会话接着用；换一章读不到这一章的记录，自然另开一条，
+ * 两章的审稿意见不会混进同一条对话。
+ */
+const handleChapterReview = async (chapterPath: string): Promise<void> => {
+    const chapter = parseManuscriptChapterPath(chapterPath);
+    if (!chapter) {
+        notification.warning(t("ide.critique.entry.notChapterBody"), {title: t("ide.critique.entry.notChapterBodyTitle")});
+        return;
+    }
+
+    const confirmed = await confirm(
+        t("ide.critique.entry.confirmMessage", {chapter: chapter.chapter}),
+        t("ide.critique.entry.confirmTitle"),
+    );
+    if (!confirmed) {
+        return;
+    }
+
+    leaveKnowledgeSurface();
+    writingRequested.value = false;
+    swapPreference.value = shellHasOpenDocument.value ? "chat" : null;
+    companionVisible.value = true;
+    await nextTick();
+
+    const surface = agentSurfaceRef.value;
+    if (!surface) {
+        return;
+    }
+
+    const sessions = await surface.ensureSessionReady();
+    const projectRoot = currentProjectRoot.value || null;
+    const storageKey = chapterReviewSessionStorageKey({
+        scopeKey: agentSessionScopeKey(workspaceKind.value, currentProjectRoot.value || ""),
+        chapterPath: chapter.manuscriptPath,
+    });
+    const existing = findReusableChapterReviewSession(sessions, {
+        rememberedSessionId: readRememberedChapterReviewSessionId(reviewEntryStorage(), storageKey),
+        currentProjectRoot: projectRoot,
+    });
+
+    if (existing) {
+        if (surface.activeSessionId !== existing.sessionId) {
+            await surface.selectSession(existing.sessionId);
+        }
+    } else {
+        await surface.createSession(CHAPTER_REVIEW_PROFILE_KEY);
+    }
+
+    await nextTick();
+    const message = buildChapterReviewMessage({
+        chapterPath: chapter.manuscriptPath,
+        guidance: t("ide.critique.entry.chapterGuidance"),
+    });
+    await surface.sendMessage(message);
+
+    const reviewedSessionId = surface.activeSessionId;
+    if (typeof reviewedSessionId === "number") {
+        rememberChapterReviewSession(reviewEntryStorage(), storageKey, reviewedSessionId);
+    }
 };
 
 /** 伴随栏切换：对话在工作态下的独立开关。 */
@@ -2984,6 +3106,7 @@ onBeforeUnmount(() => {
                                 @open-profile-workbench="profileWorkbenchOpen = true"
                                 @inline-ai-reference="addInlineAiReference"
                                 @stuck-interview="void handleStuckInterview($event)"
+                                @selection-critique="void handleSelectionCritique($event)"
                             >
                                 <template #tab-bar>
                                     <IdeDocumentTabs
@@ -2991,6 +3114,7 @@ onBeforeUnmount(() => {
                                         :active-path="displayActiveWorkspaceTabPath"
                                         @select-tab="void selectWorkspaceTab($event)"
                                         @close-tab="void closeEditorTab($event)"
+                                        @review-chapter="void handleChapterReview($event)"
                                     />
                                 </template>
                             </MarkdownStudioWorkbench>
@@ -3211,6 +3335,7 @@ onBeforeUnmount(() => {
                             @open-profile-workbench="profileWorkbenchOpen = true"
                             @inline-ai-reference="addInlineAiReference"
                             @stuck-interview="void handleStuckInterview($event)"
+                            @selection-critique="void handleSelectionCritique($event)"
                         />
                     </div>
                 </div>

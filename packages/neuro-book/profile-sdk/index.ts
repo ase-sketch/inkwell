@@ -34,6 +34,14 @@ export {Type};
 export type {Static, TSchema};
 export type * from "nbook/profile-sdk/contracts";
 export {INLINE_PROPOSAL_PENDING_MARKER, INLINE_PROPOSE_EDIT_TOOL} from "nbook/shared/inline-proposal";
+/**
+ * submit_critiques 工具名（M3 质疑契约）。
+ *
+ * 刻意写成字面量而不是 re-export `nbook/shared/chapter-critique`：那个模块 import zod，
+ * 而 profile 编译图会把 barrel 的每个 re-export 都拉进来，zod 会污染**每一个** profile
+ * artifact（profile-sdk-contract 测试对此有硬断言）。两边取值一致由契约测试钉住。
+ */
+export const SUBMIT_CRITIQUES_TOOL = "submit_critiques";
 
 export const {
     DirectorInitialSchema,

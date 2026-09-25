@@ -7,6 +7,8 @@ import AgentWriteFileBubble from "nbook/app/components/novel-ide/agent/AgentWrit
 import AgentApplyPatchBubble from "nbook/app/components/novel-ide/agent/AgentApplyPatchBubble.vue";
 import AgentTaskBubble from "nbook/app/components/novel-ide/agent/AgentTaskBubble.vue";
 import AgentWorkflowBubble from "nbook/app/components/novel-ide/agent/AgentWorkflowBubble.vue";
+import CritiqueCard from "nbook/app/components/novel-ide/agent/CritiqueCard.vue";
+import { SUBMIT_CRITIQUES_TOOL } from "nbook/shared/chapter-critique";
 
 /** Tool 节点渲染模式。 */
 export type AgentToolRenderMode = "inline" | "block" | "message" | "hidden";
@@ -73,6 +75,13 @@ const TOOL_RENDER_REGISTRY: Record<string, AgentToolRenderConfig> = {
         typeLabel: "Checklist",
         collapsedPreviewKey: "agent.tool.taskStatusUpdate",
         component: markRaw(AgentTaskBubble),
+    },
+    // 审稿质疑卡：常驻可见、卡片自带折叠，逐条处置不该藏在折叠头后面（同 Checklist 先例）。
+    [SUBMIT_CRITIQUES_TOOL]: {
+        mode: "message",
+        typeLabel: "Critique",
+        collapsedPreviewKey: "ide.critique.card.title",
+        component: markRaw(CritiqueCard),
     },
 };
 

@@ -13,6 +13,30 @@ process.env.NEURO_BOOK_REPOSITORY_ROOT ??= TEST_REPOSITORY_ROOT;
 const ASSETS_AGENT_ROOT = resolve("assets", "workspace", ".nbook", "agent");
 const PROFILE_SOURCE_PATH = resolve(ASSETS_AGENT_ROOT, "profiles", "builtin", "interview.stuck.profile.tsx");
 const SKILL_PATH = resolve(ASSETS_AGENT_ROOT, "skills", "ka-wen", "SKILL.md");
+const SHEN_GAO_SKILL_PATH = resolve(ASSETS_AGENT_ROOT, "skills", "shen-gao", "SKILL.md");
+
+/** llmlint 规则库里 detector.type = semantic 的八条规则：id 与官方中文标题（与 llmlint 规则库同口径）。 */
+const LLMLINT_SEMANTIC_RULE_IDS = [
+    "hollow-summary-paragraph",
+    "hidden-actor",
+    "mechanical-elevation-ending",
+    "over-explaining-reader",
+    "quotable-punchline",
+    "register-mismatch",
+    "monotone-rhythm",
+    "low-specificity",
+] as const;
+
+const LLMLINT_SEMANTIC_RULE_TITLES = [
+    "空泛总结段",
+    "隐藏行动者",
+    "段尾机械升华",
+    "过度解释",
+    "金句感",
+    "语体错位",
+    "节奏单调",
+    "缺少具体信息",
+] as const;
 
 const interviewStuckProfile = normalizeAgentProfile(interviewStuckProfileDefinition);
 
@@ -169,5 +193,55 @@ describe("ka-wen 技能包载荷", () => {
 
         expect(body).toContain("不代写正文");
         expect(body).toContain("不替作者拍板");
+    });
+});
+
+describe("shen-gao 审稿量表技能包载荷", () => {
+    it("SkillCatalog 用目录名作 key，并解析出 name / description", async () => {
+        const catalog = new SkillCatalog(resolve(ASSETS_AGENT_ROOT, "skills"));
+        const skill = await catalog.get("shen-gao");
+
+        expect(skill).toMatchObject({
+            key: "shen-gao",
+            name: "shen-gao",
+            source: "install",
+        });
+        expect(skill?.description).toContain("质疑");
+        expect(skill?.skillPath).toBe(SHEN_GAO_SKILL_PATH);
+    });
+
+    it("正文先讲怎么用，并覆盖动机 / 伏笔 / AI 味三轴与处置口径", async () => {
+        const body = await readFile(SHEN_GAO_SKILL_PATH, "utf8");
+
+        expect(body).toContain("## 怎么用");
+        expect(body).toContain("## 动机轴");
+        expect(body).toContain("## 伏笔轴");
+        expect(body).toContain("## AI 味轴");
+        expect(body).toContain("认可 / 驳回 / 记下");
+        // 软引用 M2a 注入物与 M3 窄工具：只做文字引用，不做插值。
+        expect(body).toContain("未决伏笔账本");
+        expect(body).toContain("llmlint_check");
+        expect(body).not.toContain("${");
+    });
+
+    it("AI 味轴与 llmlint 语义规则对位，八条规则 id 逐条在册", async () => {
+        const body = await readFile(SHEN_GAO_SKILL_PATH, "utf8");
+
+        for (const ruleId of LLMLINT_SEMANTIC_RULE_IDS) {
+            expect(body).toContain(ruleId);
+        }
+        // 每条 semantic 规则的中文口径与 llmlint 规则库一致。
+        for (const title of LLMLINT_SEMANTIC_RULE_TITLES) {
+            expect(body).toContain(title);
+        }
+    });
+
+    it("输出纪律写死在技能包里：带原文引用、交作者处置、绝不代改正文", async () => {
+        const body = await readFile(SHEN_GAO_SKILL_PATH, "utf8");
+
+        expect(body).toContain("原文引用");
+        expect(body).toContain("交给作者处置");
+        expect(body).toContain("正文的每个字都归作者");
+        expect(body).toContain("规则命中是证据，不是判决");
     });
 });

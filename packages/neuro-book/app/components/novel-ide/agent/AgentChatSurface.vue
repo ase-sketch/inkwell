@@ -393,6 +393,7 @@ const createProfileOptions = computed<LeaderCreateProfileOption[]>(() => {
             {profileKey: "leader.default", label: profileDisplayName("leader.default"), iconClass: profileIconClass("leader.default")},
             {profileKey: "interview.new-book", label: profileDisplayName("interview.new-book"), iconClass: profileIconClass("interview.new-book")},
             {profileKey: "interview.stuck", label: profileDisplayName("interview.stuck"), iconClass: profileIconClass("interview.stuck")},
+            {profileKey: "review.chapter", label: profileDisplayName("review.chapter"), iconClass: profileIconClass("review.chapter")},
         );
     }
     const seen = new Set<string>();
@@ -659,6 +660,7 @@ function profileDisplayName(profileKey: string): string {
         case "leader.default": return t("agent.profiles.leaderDefault");
         case "interview.new-book": return t("agent.profiles.interviewNewBook");
         case "interview.stuck": return t("agent.profiles.interviewStuck");
+        case "review.chapter": return t("agent.profiles.reviewChapter");
         default: return profileKey;
     }
 }
@@ -672,6 +674,7 @@ function profileIconClass(profileKey: string): string {
         case "leader.default": return "i-lucide-sparkles";
         case "interview.new-book": return "i-lucide-book-open-text";
         case "interview.stuck": return "i-lucide-life-buoy";
+        case "review.chapter": return "i-lucide-search-check";
         default: return "i-lucide-bot";
     }
 }
