@@ -4,9 +4,11 @@ import type {LorebookFileAnchor} from "nbook/app/components/novel-ide/workspace/
 import {
     collectFactionTitles,
     groupEntriesByFaction,
+    isReferenceEntryPath,
     normalizeKnowledgeEntryPath,
     orderAnchors,
     projectKnowledgeEntries,
+    REFERENCE_GROUP_TITLE,
     resolveFirstAppearance,
     UNGROUPED_FACTION_TITLE,
     type KnowledgeEntry,
@@ -452,6 +454,127 @@ describe("Knowledge projection · 阵营分组", () => {
             "lorebook/faction/qingyun-sect",
             "lorebook/faction/black-tower",
             "lorebook/faction/mist-guild",
+        ]);
+    });
+});
+
+describe("Knowledge projection · 参考资料分组", () => {
+    function entry(overrides: Partial<KnowledgeEntry> & {path: string}): KnowledgeEntry {
+        return {
+            title: overrides.path,
+            category: "note",
+            aliases: [],
+            subtype: null,
+            source: null,
+            summary: "",
+            anchors: [],
+            factionPaths: [],
+            firstAppearance: null,
+            ...overrides,
+        };
+    }
+
+    it("note 深度 ≥3 的条目算参考资料：两条调研产物既有落点都算", () => {
+        expect(isReferenceEntryPath("lorebook/note/research/民国盐商")).toBe(true);
+        expect(isReferenceEntryPath("lorebook/note/genre-research/诡秘之主")).toBe(true);
+        // workspace 前缀与 index.md 写法与投影层其他口径一致，不影响判定。
+        expect(isReferenceEntryPath("workspace/lorebook/note/research/盐政/index.md")).toBe(true);
+        // 再深一层同样是参考资料，不设上限。
+        expect(isReferenceEntryPath("lorebook/note/research/盐政/引文")).toBe(true);
+    });
+
+    it("note 深度 2 的项目模板不算参考资料，维持落未分组桶的原行为", () => {
+        expect(isReferenceEntryPath("lorebook/note/project-profile")).toBe(false);
+        expect(isReferenceEntryPath("lorebook/note/story-concept")).toBe(false);
+
+        const groups = groupEntriesByFaction([
+            entry({path: "lorebook/note/project-profile", title: "项目档案"}),
+        ]);
+
+        expect(groups.map((group) => [group.factionPath, group.factionTitle])).toEqual([
+            [null, UNGROUPED_FACTION_TITLE],
+        ]);
+    });
+
+    it("非 note 类目即便深度 ≥3 也不算参考资料", () => {
+        expect(isReferenceEntryPath("lorebook/character/hero")).toBe(false);
+        expect(isReferenceEntryPath("lorebook/faction/qingyun-sect")).toBe(false);
+        // 类目名只是以 note 开头不算数，防止 notes-app 这类类目被误吃进来。
+        expect(isReferenceEntryPath("lorebook/notes-app/scratch/deep")).toBe(false);
+    });
+
+    it("排序位置：参考资料在所有阵营 tab 之后、「未分组」桶之前", () => {
+        const groups = groupEntriesByFaction([
+            entry({path: "lorebook/note/research/盐政", title: "盐政调研"}),
+            entry({path: "lorebook/character/hero", category: "character", title: "阿苍", factionPaths: ["lorebook/faction/qingyun-sect"]}),
+            entry({path: "lorebook/item/sword", category: "item", title: "青霜剑"}),
+        ], new Map([["lorebook/faction/qingyun-sect", "青云宗"]]));
+
+        expect(groups.map((group) => [group.factionPath, group.factionTitle])).toEqual([
+            ["lorebook/faction/qingyun-sect", "青云宗"],
+            [null, REFERENCE_GROUP_TITLE],
+            [null, UNGROUPED_FACTION_TITLE],
+        ]);
+        expect(groups[1]!.entries.map((item) => item.path)).toEqual(["lorebook/note/research/盐政"]);
+        expect(groups[2]!.entries.map((item) => item.path)).toEqual(["lorebook/item/sword"]);
+    });
+
+    it("组间互斥且参考资料优先：被 refs 指向阵营的调研条目只进参考资料组", () => {
+        const groups = groupEntriesByFaction([
+            entry({
+                path: "lorebook/note/research/盐政",
+                title: "盐政调研",
+                // 脏数据：调研条目被挂到了阵营名下，也不该出现在阵营 tab 或未分组里。
+                factionPaths: ["lorebook/faction/qingyun-sect", "lorebook/faction/black-tower"],
+            }),
+            entry({path: "lorebook/character/hero", category: "character", title: "阿苍", factionPaths: ["lorebook/faction/qingyun-sect"]}),
+        ], new Map([
+            ["lorebook/faction/qingyun-sect", "青云宗"],
+            ["lorebook/faction/black-tower", "黑塔"],
+        ]));
+
+        expect(groups.map((group) => [group.factionTitle, group.entries.map((item) => item.path)])).toEqual([
+            ["青云宗", ["lorebook/character/hero"]],
+            [REFERENCE_GROUP_TITLE, ["lorebook/note/research/盐政"]],
+        ]);
+    });
+
+    it("多个调研条目共存时都进同一组，且不落未分组", () => {
+        const groups = groupEntriesByFaction([
+            entry({path: "lorebook/note/research/盐政", title: "盐政调研"}),
+            entry({path: "lorebook/note/genre-research/诡秘之主", title: "题材拆解"}),
+            entry({path: "lorebook/note/project-profile", title: "项目档案"}),
+        ]);
+
+        expect(groups.map((group) => [group.factionTitle, group.entries.map((item) => item.path)])).toEqual([
+            [REFERENCE_GROUP_TITLE, ["lorebook/note/research/盐政", "lorebook/note/genre-research/诡秘之主"]],
+            [UNGROUPED_FACTION_TITLE, ["lorebook/note/project-profile"]],
+        ]);
+    });
+
+    it("只有阵营条目、没有调研条目时不造空的参考资料组", () => {
+        const groups = groupEntriesByFaction([
+            entry({path: "lorebook/character/hero", category: "character", title: "阿苍", factionPaths: ["lorebook/faction/qingyun-sect"]}),
+        ], new Map([["lorebook/faction/qingyun-sect", "青云宗"]]));
+
+        expect(groups.map((group) => group.factionTitle)).toEqual(["青云宗"]);
+    });
+
+    it("端到端：工作区树里只有调研条目时，投影 → 分组直接给出参考资料组", () => {
+        const entries = projectKnowledgeEntries([
+            directory("lorebook", [
+                directory("lorebook/note", [
+                    directory("lorebook/note/research", [
+                        entryNode("lorebook/note/research/盐政/index.md", "note", {title: "盐政调研"}),
+                    ]),
+                ]),
+            ]),
+        ]);
+
+        const groups = groupEntriesByFaction(entries, collectFactionTitles(entries));
+
+        expect(groups.map((group) => [group.factionTitle, group.entries.map((item) => item.title)])).toEqual([
+            [REFERENCE_GROUP_TITLE, ["盐政调研"]],
         ]);
     });
 });

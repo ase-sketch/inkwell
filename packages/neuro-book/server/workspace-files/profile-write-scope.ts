@@ -11,7 +11,7 @@ import type {AuthorizedFileOperation, ResolvedFileTarget} from "nbook/server/wor
 const INTERACTIVE_WRITE_PREFIXES = [
     "lorebook/",
     "outline/",
-    "references/",
+    "reference/",
     "agents/",
     // Plan Mode 的计划文件：与正文无关，红线不覆盖；harness 本身也为该目录开了写审批豁免。
     ".agent/plan/",

@@ -4,12 +4,14 @@ import {
     groupEntriesByFaction,
     normalizeKnowledgeEntryPath,
     projectKnowledgeEntries,
+    REFERENCE_GROUP_TITLE,
     type KnowledgeEntry,
 } from "nbook/app/components/novel-ide/knowledge/knowledge-projection";
 import {
     buildChapterOrderIndex,
     buildKnowledgeTabs,
     filterKnowledgeEntries,
+    KNOWLEDGE_REFERENCE_TAB_ID,
     KNOWLEDGE_UNGROUPED_TAB_ID,
     knowledgeEntryExcerpt,
     orderKnowledgeEntry,
@@ -201,6 +203,77 @@ describe("Knowledge view state · 阵营 tab", () => {
         expect(resolveActiveTabId(tabs, "lorebook/faction/gone")).toBe("lorebook/faction/moyuan");
         expect(resolveActiveTabId(tabs, "")).toBe("lorebook/faction/moyuan");
         expect(resolveActiveTabId([], "anything")).toBe("");
+    });
+});
+
+describe("Knowledge view state · 参考资料 tab", () => {
+    const nodes = [
+        entryNode("lorebook/note/research/盐政/index.md", "note", {title: "盐政调研"}),
+        entryNode("lorebook/note/project-profile/index.md", "note", {title: "项目档案"}),
+        entryNode("lorebook/character/hero/index.md", "character", {
+            title: "阿苍",
+            refs: [{target: "lorebook/faction/qingyun", relation: "member_of"}],
+        }),
+        entryNode("lorebook/faction/qingyun/index.md", "faction", {title: "青云宗"}),
+    ];
+
+    function tabsOf() {
+        const entries = projectKnowledgeEntries(nodes);
+        return buildKnowledgeTabs(groupEntriesByFaction(entries, new Map([["lorebook/faction/qingyun", "青云宗"]])));
+    }
+
+    it("参考资料单独一个 tab，排在阵营之后、未分组之前，组名用投影层的常量", () => {
+        const tabs = tabsOf();
+
+        expect(tabs.map((tab) => tab.title)).toEqual(["青云宗", REFERENCE_GROUP_TITLE, "未分组"]);
+        expect(tabs.map((tab) => tab.count)).toEqual([1, 1, 1]);
+    });
+
+    it("参考资料与未分组互斥：两个都不是阵营 tab，但只有未分组带 ungrouped 标志", () => {
+        const tabs = tabsOf();
+
+        expect(tabs[1]).toMatchObject({
+            id: KNOWLEDGE_REFERENCE_TAB_ID,
+            factionPath: null,
+            reference: true,
+            ungrouped: false,
+        });
+        expect(tabs[2]).toMatchObject({
+            id: KNOWLEDGE_UNGROUPED_TAB_ID,
+            factionPath: null,
+            reference: false,
+            ungrouped: true,
+        });
+        // 阵营 tab 两个标志都为 false。
+        expect(tabs[0]).toMatchObject({reference: false, ungrouped: false});
+    });
+
+    it("参考资料 tab 的内容是调研条目，深度 2 的 note 条目仍在未分组", () => {
+        const tabs = tabsOf();
+
+        expect(tabs[1]!.id).toBe(KNOWLEDGE_REFERENCE_TAB_ID);
+        expect(tabs[2]!.title).toBe("未分组");
+        // 组内条目由投影层决定，这里只钉住两个固定 id 不会互相串台。
+        expect(tabs[1]!.id).not.toBe(tabs[2]!.id);
+    });
+
+    it("没有调研条目时不出现参考资料 tab", () => {
+        const tabs = buildKnowledgeTabs(groupEntriesByFaction([
+            entry({path: "lorebook/item/sword", category: "item"}),
+        ]));
+
+        expect(tabs.map((tab) => tab.title)).toEqual(["未分组"]);
+        expect(tabs[0]!.reference).toBe(false);
+    });
+
+    it("知识库只有调研条目时，第一个 tab 就是参考资料，直接可见", () => {
+        const entries = projectKnowledgeEntries([
+            entryNode("lorebook/note/genre-research/诡秘之主/index.md", "note", {title: "题材拆解"}),
+        ]);
+        const tabs = buildKnowledgeTabs(groupEntriesByFaction(entries));
+
+        expect(tabs.map((tab) => [tab.id, tab.title])).toEqual([[KNOWLEDGE_REFERENCE_TAB_ID, REFERENCE_GROUP_TITLE]]);
+        expect(resolveActiveTabId(tabs, "")).toBe(KNOWLEDGE_REFERENCE_TAB_ID);
     });
 });
 

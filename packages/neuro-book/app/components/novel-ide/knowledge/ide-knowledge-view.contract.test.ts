@@ -30,6 +30,15 @@ describe("IdeKnowledgeView · 三栏接线", () => {
         expect(source).toContain('data-role="ide-knowledge-cards"');
     });
 
+    it("「参考资料」组的图标由投影/状态层给的 reference 标志决定，组件不自己判断谁是参考资料", async () => {
+        const source = await readView();
+
+        expect(source).toContain("tab.reference ? 'i-lucide-newspaper' : 'i-lucide-flag'");
+        // 组件不出现识别口径（note / 深度），分组判定只住在投影层。
+        expect(source).not.toContain("isReferenceEntryPath");
+        expect(source).not.toContain("REFERENCE_GROUP_TITLE");
+    });
+
     it("选中态（当前阵营、当前条目、查看/编辑）全部由容器持有", async () => {
         const source = await readView();
 

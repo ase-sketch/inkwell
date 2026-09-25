@@ -1,6 +1,7 @@
 import {
     orderAnchors,
     normalizeKnowledgeEntryPath,
+    REFERENCE_GROUP_TITLE,
     resolveFirstAppearance,
     UNGROUPED_FACTION_TITLE,
     type ChapterOrderLookup,
@@ -29,6 +30,9 @@ import type {WorkspaceFileNode} from "nbook/app/stores/novel-ide";
 
 /** 「一个阵营都没归属」那个 tab 的稳定 id；阵营 tab 的 id 就是阵营条目路径。 */
 export const KNOWLEDGE_UNGROUPED_TAB_ID = "__ungrouped__";
+
+/** 「参考资料」那个 tab 的稳定 id（它不是阵营，没有阵营条目路径可用）。 */
+export const KNOWLEDGE_REFERENCE_TAB_ID = "__reference__";
 
 /** 卡片摘要摘录的默认长度（字符）。 */
 const CARD_EXCERPT_LENGTH = 72;
@@ -73,15 +77,17 @@ export type ChapterOrderIndex = Readonly<{
     chapters: ChapterRef[];
 }>;
 
-/** 左侧阵营 tab 的展示数据。 */
+/** 左侧分组 tab 的展示数据。 */
 export type KnowledgeTabInfo = Readonly<{
-    /** 阵营条目路径；「未分组」是 KNOWLEDGE_UNGROUPED_TAB_ID。 */
+    /** 阵营条目路径；「参考资料」是 KNOWLEDGE_REFERENCE_TAB_ID，「未分组」是 KNOWLEDGE_UNGROUPED_TAB_ID。 */
     id: string;
     title: string;
     factionPath: string | null;
     /** tab 上显示的条数。 */
     count: number;
     ungrouped: boolean;
+    /** 是不是「参考资料」组；它与 ungrouped 互斥，两者都为 false 时才是阵营 tab。 */
+    reference: boolean;
 }>;
 
 /**
@@ -168,22 +174,43 @@ export function stripChapterOrdinal(value: string): string {
     return name.replace(/^\d+\s*[-—_]\s*/u, "").trim();
 }
 
-/** 阵营分组 → 左侧 tab 数据；「未分组」桶沿用投影层给的名字。 */
+/**
+ * 分组 → 左侧 tab 数据。
+ *
+ * 非阵营的两个组名沿用投影层给的常量（「参考资料」/「未分组」），
+ * 这样组名与排序口径都只住在投影层一处，视图层不再各写一份中文。
+ */
 export function buildKnowledgeTabs(groups: readonly FactionGroup[]): KnowledgeTabInfo[] {
     return (groups ?? []).map((group) => ({
         id: knowledgeTabId(group),
-        title: group.factionPath === null
-            ? UNGROUPED_FACTION_TITLE
-            : readText(group.factionTitle) || group.factionPath,
+        title: isReferenceGroup(group)
+            ? REFERENCE_GROUP_TITLE
+            : group.factionPath === null
+                ? UNGROUPED_FACTION_TITLE
+                : readText(group.factionTitle) || group.factionPath,
         factionPath: group.factionPath,
         count: group.entries.length,
-        ungrouped: group.factionPath === null,
+        ungrouped: group.factionPath === null && !isReferenceGroup(group),
+        reference: isReferenceGroup(group),
     }));
 }
 
-/** 分组的 tab id：阵营条目路径，未分组桶用固定 id。 */
-export function knowledgeTabId(group: Pick<FactionGroup, "factionPath">): string {
+/** 分组的 tab id：阵营条目路径；参考资料与未分组各用固定 id。 */
+export function knowledgeTabId(group: Pick<FactionGroup, "factionPath" | "factionTitle">): string {
+    if (isReferenceGroup(group)) {
+        return KNOWLEDGE_REFERENCE_TAB_ID;
+    }
     return group.factionPath ?? KNOWLEDGE_UNGROUPED_TAB_ID;
+}
+
+/**
+ * 是不是「参考资料」分组。
+ *
+ * 投影层用 factionPath = null 同时表达「参考资料」与「未分组」两组，靠组名区分；
+ * 复用投影层的 REFERENCE_GROUP_TITLE，不在这里另写一份中文字面量。
+ */
+function isReferenceGroup(group: Pick<FactionGroup, "factionPath" | "factionTitle">): boolean {
+    return group?.factionPath === null && readText(group?.factionTitle) === REFERENCE_GROUP_TITLE;
 }
 
 /**

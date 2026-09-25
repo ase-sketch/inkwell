@@ -11,7 +11,7 @@ import {
     readAnchors,
     type LorebookFileAnchor,
 } from "nbook/app/components/novel-ide/workspace/workspace-lorebook-draft";
-import {isLorebookBrowsableEntry, lorebookCategoryOf} from "nbook/app/utils/ide-shell-layout";
+import {isLorebookBrowsableEntry, lorebookCategoryOf, lorebookEntryDepth} from "nbook/app/utils/ide-shell-layout";
 import type {WorkspaceFileNode} from "nbook/app/stores/novel-ide";
 
 /**
@@ -21,10 +21,13 @@ import type {WorkspaceFileNode} from "nbook/app/stores/novel-ide";
  * 条目卡片数据、阵营分组与章序履历。视图层只负责渲染，不在组件里解析 frontmatter，
  * 也不自己判断「谁是阵营成员」——口径全部收敛在这里。
  *
- * 三条已定口径（改这里等于改契约，务必同步测试）：
+ * 四条已定口径（改这里等于改契约，务必同步测试）：
  * - 阵营归属：refs 里 target 指向 lorebook/faction/<条目> 的条目即算该阵营成员，
  *   与 relation 无关；一条目可属多个阵营，每个阵营 tab 里都会出现；
  *   一个阵营都没归属的条目进「未分组」桶，且永远排在最后。
+ * - 参考资料：note 类目且 lorebook 深度 ≥ 3 的条目（lorebook/note/<分组>/<条目>/ 形态）
+ *   单独成组，排在所有阵营 tab 之后、「未分组」桶之前；该组与阵营互斥且优先——
+ *   调研摘要条目不是阵营成员，即使 refs 指向阵营（脏数据）也只进参考资料组。
  * - 卡片三标注：来源类型取 governance.source；戏份分级取 subtype；首次登场取 anchors 里最早出现的章。
  * - 履历：anchors 按章序正序排列；章序解析函数由调用方注入（后续接大纲树）。
  */
@@ -35,8 +38,23 @@ const LOREBOOK_ROOT = "lorebook";
 /** 阵营类目名：refs 指向这个类目的条目，就是那个阵营的成员。 */
 export const FACTION_CATEGORY = "faction";
 
+/** 备注类目名：调研摘要条目落在这个类目下。 */
+export const NOTE_CATEGORY = "note";
+
 /** 「一个阵营都没归属」的桶名，直接显示给作者。 */
 export const UNGROUPED_FACTION_TITLE = "未分组";
+
+/** 「参考资料」分组的组名，直接显示给作者。 */
+export const REFERENCE_GROUP_TITLE = "参考资料";
+
+/**
+ * 参考资料条目的 lorebook 深度下限。
+ *
+ * 调研产物的既有落点是 lorebook/note/<分组>/<条目>/（note/research/<主题>/、
+ * note/genre-research/<书>/），深度为 3；深度 2 的 note 条目
+ * （note/project-profile、note/story-concept 等项目模板）维持原行为，落「未分组」桶。
+ */
+const REFERENCE_MIN_LOREBOOK_DEPTH = 3;
 
 /**
  * 章序解析函数：给章名，返回它在书里的序号；返回 null / undefined 表示解析不出来。
@@ -73,11 +91,17 @@ export type KnowledgeEntry = Readonly<{
     firstAppearance: string | null;
 }>;
 
-/** 阵营分组：一个阵营一个 tab。 */
+/**
+ * 左侧分组：一个阵营一个 tab，外加「参考资料」与「未分组」两个非阵营分组。
+ *
+ * factionPath 为 null 的有两个：factionTitle 是 REFERENCE_GROUP_TITLE 的参考资料组，
+ * 与 UNGROUPED_FACTION_TITLE 的未分组桶。要区分它们请按 factionTitle 判，
+ * 不要只看 factionPath 是不是 null。
+ */
 export type FactionGroup = Readonly<{
-    /** 阵营条目路径；null 表示「未分组」桶。 */
+    /** 阵营条目路径；null 表示「参考资料」组或「未分组」桶。 */
     factionPath: string | null;
-    /** 阵营名；未知时回退路径最后一段。 */
+    /** 组名；阵营名未知时回退路径最后一段。 */
     factionTitle: string;
     /** 组内条目，保持传入顺序（排序由调用方决定）。 */
     entries: KnowledgeEntry[];
@@ -108,6 +132,22 @@ function segmentsOf(filePath: string): string[] {
 function isFactionEntryPath(filePath: string): boolean {
     const segments = segmentsOf(filePath);
     return segments[0] === LOREBOOK_ROOT && segments[1] === FACTION_CATEGORY && segments.length >= 3;
+}
+
+/**
+ * 判断一个条目是不是「参考资料」组里的调研摘要条目。
+ *
+ * 口径（派发者 2026-09-25 拍板）：类目为 note 且 lorebook 深度 ≥ 3，
+ * 即 lorebook/note/<分组>/<条目>/ 这一形态。深度口径复用 ide-shell-layout 的
+ * lorebookEntryDepth，不在这里另起一套数法。深度 2 的 note 条目
+ * （note/project-profile 等项目模板）不算参考资料，维持落「未分组」的原行为。
+ *
+ * 入参是条目路径，不是 refs 目标路径：条目确实存在才算数，因此这里看真实路径，
+ * 不看条目自己写的 refs。
+ */
+export function isReferenceEntryPath(filePath: string): boolean {
+    const category = lorebookCategoryOf(filePath);
+    return category === NOTE_CATEGORY && lorebookEntryDepth(filePath) >= REFERENCE_MIN_LOREBOOK_DEPTH;
 }
 
 /**
@@ -249,12 +289,18 @@ function readChapterOrder(anchor: LorebookFileAnchor, chapterOrder?: ChapterOrde
 }
 
 /**
- * 把条目按阵营分组，喂给知识库视图的阵营 tab。
+ * 把条目分组，喂给知识库视图左侧的 tab。
  *
- * factionTitles 由调用方提供（一般来自 collectFactionTitles），未知阵营回退路径最后一段；
- * 一条条目归属几个阵营就出现在几个组里；没有阵营归属的进「未分组」桶并置底。
+ * 三档优先级由高到低，一条条目只出现在一个档里：
+ * 1. 「参考资料」：note 类目且 lorebook 深度 ≥ 3 的调研摘要条目单独成组，
+ *    排在所有阵营 tab 之后、「未分组」桶之前。它压过阵营归属——调研条目不是阵营成员，
+ *    即使 refs 指向某个阵营（脏数据）也只进这一组，不出现在阵营 tab，更不落未分组。
+ * 2. 阵营：一条条目归属几个阵营就出现在几个组里，阵营组按阵营名排序。
+ * 3. 「未分组」：前两档都没命中的条目，置底。
+ *
  * 例外：阵营条目自己（category = faction）不进「未分组」——它已经是分组轴上的 tab，
  * 再以卡片身份躺在未分组里只会重复；faction 条目自身的详情入口 v1 不提供。
+ * factionTitles 由调用方提供（一般来自 collectFactionTitles），未知阵营回退路径最后一段。
  * 条目数组为空时返回空数组——没有条目就没有组，不造空壳。
  */
 export function groupEntriesByFaction(
@@ -262,9 +308,15 @@ export function groupEntriesByFaction(
     factionTitles: ReadonlyMap<string, string> = new Map(),
 ): FactionGroup[] {
     const buckets = new Map<string, KnowledgeEntry[]>();
+    const references: KnowledgeEntry[] = [];
     const ungrouped: KnowledgeEntry[] = [];
 
     for (const entry of entries ?? []) {
+        // 参考资料最优先：调研摘要条目即便 refs 指向阵营，也只进这一组。
+        if (isReferenceEntryPath(entry.path)) {
+            references.push(entry);
+            continue;
+        }
         const factionPaths = Array.from(new Set(entry.factionPaths ?? []));
         if (factionPaths.length === 0) {
             // 阵营条目只作为分组轴上的 tab 存在，不再作为卡片落进未分组。
@@ -291,6 +343,11 @@ export function groupEntriesByFaction(
         }))
         .sort((left, right) => left.factionTitle.localeCompare(right.factionTitle, "zh-Hans-CN")
             || left.factionPath.localeCompare(right.factionPath));
+
+    // 参考资料排在所有阵营 tab 之后、「未分组」桶之前；没条目就不造空壳组。
+    if (references.length > 0) {
+        groups.push({factionPath: null, factionTitle: REFERENCE_GROUP_TITLE, entries: references});
+    }
 
     if (ungrouped.length > 0) {
         groups.push({factionPath: null, factionTitle: UNGROUPED_FACTION_TITLE, entries: ungrouped});

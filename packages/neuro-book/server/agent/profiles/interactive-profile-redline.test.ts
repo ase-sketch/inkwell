@@ -175,3 +175,19 @@ describe("交互型 profile 红线：摘 bash + 置顶声明", () => {
         });
     }
 });
+
+describe("交互型 profile 红线：写域声明与运行时白名单同口径", () => {
+    it("leader.default 的写域声明列出 reference/，且不再出现错别字 references/", async () => {
+        const {systemPrompt} = await prepareLeaderDefaultPrompt();
+
+        // 声明行必须与 profile-write-scope.ts 的 INTERACTIVE_WRITE_PREFIXES 指向同一批真实目录。
+        const writeScopeLine = systemPrompt
+            .split("\n")
+            .find((line) => line.includes("write / edit / apply_patch"));
+
+        expect(writeScopeLine).toBeTruthy();
+        expect(writeScopeLine).toContain("reference/");
+        expect(writeScopeLine).not.toContain("references/");
+    });
+});
+

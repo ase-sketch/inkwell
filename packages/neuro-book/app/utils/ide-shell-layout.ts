@@ -86,8 +86,13 @@ export function lorebookCategoryOf(filePath: string): string | null {
     return segments[rootIndex + 1] ?? null;
 }
 
-/** 计算相对 lorebook 根的层级深度；不在 lorebook 下返回 -1。 */
-function lorebookEntryDepth(filePath: string): number {
+/**
+ * 计算相对 lorebook 根的层级深度；不在 lorebook 下返回 -1。
+ *
+ * lorebook/<类目>/<条目> 深度为 2，lorebook/<类目>/<分组>/<条目> 深度为 3。
+ * 导出给知识库投影层复用「参考资料」识别口径，避免两处各数一套深度。
+ */
+export function lorebookEntryDepth(filePath: string): number {
     const segments = normalizeWorkspacePathForLayout(filePath).split("/").filter(Boolean);
     const rootIndex = segments[0] === "workspace" ? 1 : 0;
     if (segments[rootIndex] !== "lorebook") {

@@ -262,7 +262,9 @@ onMounted(() => {
         </div>
 
         <div v-else class="flex min-h-0 flex-1">
-            <!-- 左：阵营列表。每个阵营一个 tab，带条数，「未分组」置底。
+            <!-- 左：分组列表。每个阵营一个 tab，带条数；「参考资料」按投影层的口径排在阵营之后、
+                 「未分组」之前，带自己的图标与作者说得通的组名。分组口径全在投影层，
+                 这里不判断谁是参考资料，只按 tab 上带的 reference 标志换图标。
                  编辑中把左中两栏置灰禁用：改完或取消才离开编辑器，避免未保存的改动被切换动作吞掉。 -->
             <aside
                 class="flex w-[188px] shrink-0 flex-col border-r border-[var(--border-color)] bg-[var(--bg-sidebar)]"
@@ -287,7 +289,7 @@ onMounted(() => {
                         :data-active="tab.id === activeTabId ? 'true' : 'false'"
                         @click="selectTab(tab.id)"
                     >
-                        <span class="i-lucide-flag h-3.5 w-3.5 shrink-0 opacity-70"></span>
+                        <span :class="tab.reference ? 'i-lucide-newspaper' : 'i-lucide-flag'" class="h-3.5 w-3.5 shrink-0 opacity-70"></span>
                         <span class="min-w-0 flex-1 truncate text-[12px]">{{ tab.title }}</span>
                         <span class="font-ui-sans shrink-0 text-[10px] tabular-nums opacity-70">{{ t("ide.knowledge.view.entryCount", {count: tab.count}) }}</span>
                     </button>

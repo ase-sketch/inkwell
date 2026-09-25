@@ -24,12 +24,12 @@ describe("交互型 profile 写入域白名单", () => {
         }
     });
 
-    it("放行 lorebook/、outline/、references/、agents/、.agent/plan/ 下的全部写操作", async () => {
+    it("放行 lorebook/、outline/、reference/、agents/、.agent/plan/ 下的全部写操作", async () => {
         const {workspaceRoot, ready} = await openNovelProject();
         const allowed = [
             "lorebook/character/protagonist/index.md",
             "outline/act-1.md",
-            "references/world-rules.md",
+            "reference/research/world-rules.md",
             "agents/leader.default/persona.md",
             // Plan Mode 计划文件：红线只禁正文，计划文件必须照常可写。
             ".agent/plan/feature.md",
@@ -44,6 +44,28 @@ describe("交互型 profile 写入域白名单", () => {
                             target: {relativePath},
                         });
                 }
+            }
+        }
+    });
+
+    it("写域错别字修正：reference/research/ 放行，references/ 不再放行，manuscript/ 仍拒", async () => {
+        const {workspaceRoot, ready} = await openNovelProject();
+
+        for (const profileKey of INTERACTIVE_PROFILES) {
+            const operationContext = context(workspaceRoot, ready, profileKey);
+            for (const operation of WRITE_OPERATIONS) {
+                // 真实目录是 reference/（无 s）：M4 研究笔记的落点必须可写。
+                await expect(authorizeFileOperation(operationContext, "reference/research/漕运/index.md", operation))
+                    .resolves.toMatchObject({
+                        operation,
+                        target: {relativePath: "reference/research/漕运/index.md"},
+                    });
+                // 修复前放行的 references/ 是错别字前缀，不再构成放行理由。
+                await expect(authorizeFileOperation(operationContext, "references/world-rules.md", operation))
+                    .rejects.toThrow(/references\//u);
+                // 红线未松动：正文目录照旧一律拒绝。
+                await expect(authorizeFileOperation(operationContext, "manuscript/chapter.md", operation))
+                    .rejects.toThrow(/manuscript\//u);
             }
         }
     });
