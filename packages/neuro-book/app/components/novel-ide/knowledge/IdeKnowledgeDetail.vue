@@ -10,10 +10,12 @@ import {
     type DetailBadgeKind,
     type DetailTranslate,
 } from "nbook/app/components/novel-ide/knowledge/knowledge-detail-display";
+import IdeKnowledgeEvolution from "nbook/app/components/novel-ide/knowledge/IdeKnowledgeEvolution.vue";
 import type {
     ChapterOrderLookup,
     KnowledgeEntry,
 } from "nbook/app/components/novel-ide/knowledge/knowledge-projection";
+import type {IdeTheme} from "nbook/app/utils/theme/theme-tokens";
 
 /**
  * 知识库条目详情：只读展示。
@@ -28,12 +30,21 @@ const props = defineProps<{
     factionTitles?: Map<string, string>;
     /** 章序解析函数，一般来自大纲树。 */
     chapterOrder?: ChapterOrderLookup;
+    /** 当前 Project Root；为空（用户资产模式）时「演进」区块不显示。 */
+    projectRoot?: string | null;
+    /** 当前主题 ID，交给前后对比的编辑器。 */
+    theme?: IdeTheme;
 }>();
 
 const emit = defineEmits<{
     (event: "jump-chapter", chapter: string): void;
     (event: "edit"): void;
+    /** 请求跳到某场对话看全程。 */
+    (event: "jump-session", sessionId: number): void;
 }>();
+
+/** 条目在历史里记的是它自己的 index.md（作者说「这条设定」，历史记的是那个文件）。 */
+const evolutionPath = computed(() => props.entry.path ? `${props.entry.path}/index.md` : null);
 
 const {t} = useI18n();
 
@@ -208,6 +219,16 @@ function jumpToChapter(chapter: string): void {
                     data-role="ide-knowledge-detail-history-empty"
                 >{{ t("ide.knowledge.detail.historyEmpty") }}</p>
             </section>
+
+            <!-- 演进：紧接简历之后——先看「这条设定在正文哪里立住」，再看「它一路怎么变过来的」。 -->
+            <IdeKnowledgeEvolution
+                v-if="props.projectRoot"
+                class="mt-5 block border-t border-[var(--border-color)] pt-4"
+                :project-root="props.projectRoot"
+                :entry-path="evolutionPath"
+                :theme="props.theme"
+                @jump-session="emit('jump-session', $event)"
+            />
         </div>
     </article>
 </template>

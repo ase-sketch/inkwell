@@ -52,12 +52,14 @@ import type {PlotTreeDto} from "nbook/shared/dto/plot.dto";
 const emit = defineEmits<{
     /** 已经打开某章正文，请求宿主把主区切到码字面。 */
     (event: "open-chapter", path: string): void;
+    /** 请求宿主打开某场对话，让作者回看那条设定是被哪次访谈改的。 */
+    (event: "jump-session", sessionId: number): void;
 }>();
 
 const {t} = useI18n();
 const store = useNovelIdeStore();
 const notification = useNotification();
-const {currentProjectRoot, loadingWorkspaceTree, workspaceTree} = storeToRefs(store);
+const {currentProjectRoot, loadingWorkspaceTree, workspaceTree, theme} = storeToRefs(store);
 
 /** 把 vue-i18n 的 t 适配成投影模块要求的形状。 */
 const translate: DetailTranslate = (key, params) => params ? t(key, params) : t(key);
@@ -383,9 +385,12 @@ onMounted(() => {
                     :entry="activeEntry"
                     :faction-titles="factionTitles"
                     :chapter-order="chapterOrder"
+                    :project-root="currentProjectRoot"
+                    :theme="theme"
                     class="flex-1"
                     @jump-chapter="void jumpToChapter($event)"
                     @edit="startEditing()"
+                    @jump-session="emit('jump-session', $event)"
                 />
 
                 <div v-else class="flex min-h-0 flex-1 items-center justify-center px-6 py-10" data-role="ide-knowledge-detail-empty">

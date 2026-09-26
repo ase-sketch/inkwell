@@ -3215,6 +3215,7 @@ onBeforeUnmount(() => {
                         v-if="shellView.knowledgeVisible"
                         class="order-2"
                         @open-chapter="leaveKnowledgeSurface"
+                        @jump-session="void showAgentSession($event)"
                     />
 
                     <!-- 右侧抽屉：大纲与设定都只读浏览，排在伴随栏右侧，不挤掉对话；两者互斥 -->
