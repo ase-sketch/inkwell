@@ -82,6 +82,8 @@ const emit = defineEmits<{
     (e: "resend-unknown", message: AgentMessage): void;
     (e: "dismiss-unknown", message: AgentMessage): void;
     (e: "start-interview"): void;
+    /** 把这条 AI 消息提取成设定卡草稿；只上报消息，不在这里发起会话。 */
+    (e: "extract-to-lorebook", message: AgentMessage): void;
 }>();
 
 const scrollRef = ref<HTMLDivElement | null>(null);
@@ -382,6 +384,7 @@ defineExpose({ scrollToBottom: forceScrollToBottom, scrollRef });
                     @attachment-registered="emit('attachment-registered', $event)"
                     @resend-unknown="emit('resend-unknown', $event)"
                     @dismiss-unknown="emit('dismiss-unknown', $event)"
+                    @extract-to-lorebook="emit('extract-to-lorebook', $event)"
                 />
                 <AgentToolBubble
                     v-else-if="node.kind === 'tool'"

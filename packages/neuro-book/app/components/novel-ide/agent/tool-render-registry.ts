@@ -8,7 +8,9 @@ import AgentApplyPatchBubble from "nbook/app/components/novel-ide/agent/AgentApp
 import AgentTaskBubble from "nbook/app/components/novel-ide/agent/AgentTaskBubble.vue";
 import AgentWorkflowBubble from "nbook/app/components/novel-ide/agent/AgentWorkflowBubble.vue";
 import CritiqueCard from "nbook/app/components/novel-ide/agent/CritiqueCard.vue";
+import LorebookDraftCard from "nbook/app/components/novel-ide/agent/LorebookDraftCard.vue";
 import { SUBMIT_CRITIQUES_TOOL } from "nbook/shared/chapter-critique";
+import { SUBMIT_LOREBOOK_DRAFT_TOOL } from "nbook/shared/lorebook-draft";
 
 /** Tool 节点渲染模式。 */
 export type AgentToolRenderMode = "inline" | "block" | "message" | "hidden";
@@ -82,6 +84,13 @@ const TOOL_RENDER_REGISTRY: Record<string, AgentToolRenderConfig> = {
         typeLabel: "Critique",
         collapsedPreviewKey: "ide.critique.card.title",
         component: markRaw(CritiqueCard),
+    },
+    // 设定卡确认卡：字段要能就地改、确认要不藏在折叠头后面（同 Critique 先例）。
+    [SUBMIT_LOREBOOK_DRAFT_TOOL]: {
+        mode: "message",
+        typeLabel: "Lorebook",
+        collapsedPreviewKey: "ide.lorebookDraft.card.title",
+        component: markRaw(LorebookDraftCard),
     },
 };
 

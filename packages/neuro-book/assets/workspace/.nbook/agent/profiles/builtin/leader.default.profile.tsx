@@ -1,7 +1,7 @@
 /** @jsxImportSource nbook/profile-sdk */
 /** @jsxRuntime automatic */
-import {Type, type Static} from "nbook/profile-sdk";
-import {defineAgentProfile} from "nbook/profile-sdk";
+import {SUBMIT_LOREBOOK_DRAFT_TOOL, Type, type ProfileJsonValue, type ProfileToolResult, type Static} from "nbook/profile-sdk";
+import {defineAgentProfile, defineProfileTool} from "nbook/profile-sdk";
 import {builtin, plotReadBindings, plotWriteBindings, toolset} from "nbook/profile-sdk";
 import {LeaderDefaultInitialSchema, LeaderDefaultOutputSchema} from "nbook/profile-sdk";
 import {
@@ -157,6 +157,156 @@ const DEFAULT_LEADER_PERSONA = profileText`
     你可以轻松自然地接住用户的灵感，也可以直接指出设定、节奏或表达里的问题。
 `;
 
+
+/**
+ * 设定卡草稿契约的形状与长度上限（与 shared/lorebook-draft.ts 同源）。
+ *
+ * profile 编译只放行 nbook/profile-sdk 与 node builtin，不能 import zod，所以这里按同一份
+ * 契约手写校验；改 shared 契约时两边必须一起改，一致性由 leader 的注册测试钉住。
+ */
+const DRAFT_CATEGORIES = ["character", "faction", "location", "item", "system", "world", "event", "note", "instruction"] as const;
+const MAX_DRAFT_TITLE_LENGTH = 100;
+const MAX_DRAFT_ALIAS_LENGTH = 50;
+const MAX_DRAFT_ALIASES = 12;
+const MAX_DRAFT_SUMMARY_LENGTH = 200;
+const MAX_DRAFT_BODY_LENGTH = 4_000;
+const MAX_DRAFT_SOURCE_EXCERPT_LENGTH = 2_000;
+const MAX_DRAFT_SLUG_LENGTH = 60;
+const DRAFT_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
+
+/** 类目的作者可读说法：对模型说话也要说人话，不出现 character / instruction 这类目录名。 */
+const DRAFT_CATEGORY_LABELS: Record<string, string> = {
+    character: "角色",
+    faction: "势力",
+    location: "地点",
+    item: "物品",
+    system: "体系",
+    world: "世界",
+    event: "事件",
+    note: "笔记",
+    instruction: "写作规范",
+};
+
+/** 草稿提交后的悬挂标记，与 shared/lorebook-draft.ts 的常量同值。 */
+const DRAFT_PENDING_MARKER = "LOREBOOK_DRAFT_PENDING_AUTHOR_REVIEW";
+
+/** 取一个非空文本字段，超出长度上限当场报错并讲清是哪个字段。 */
+function requireDraftText(value: unknown, field: string, limit: number): string {
+    if (typeof value !== "string" || !value.trim()) {
+        throw new Error("设定卡草稿缺少" + field + "。");
+    }
+    const text = value.trim();
+    if (text.length > limit) {
+        throw new Error("设定卡草稿的" + field + "太长（" + String(text.length) + " 字，上限 " + String(limit) + " 字）。请压缩后再提交。");
+    }
+    return text;
+}
+
+/**
+ * 校验并归一化 submit_lorebook_draft 入参。
+ *
+ * 校验口径与 shared/lorebook-draft.ts 的 zod schema 一一对应；报错一律讲清哪里不对、
+ * 怎么改，让模型能自己修好重提，而不是把失败甩回给作者。
+ */
+function validateLorebookDraft(params: unknown): {
+    title: string;
+    category: string;
+    aliases: string[];
+    summary: string;
+    body: string;
+    sourceExcerpt: string;
+    suggestedSlug?: string;
+} {
+    if (!params || typeof params !== "object" || Array.isArray(params)) {
+        throw new Error("设定卡草稿的参数不是一个对象。请按 title / category / aliases / summary / body / sourceExcerpt 重新提交。");
+    }
+    const raw = params as Record<string, unknown>;
+    const title = requireDraftText(raw["title"], "标题", MAX_DRAFT_TITLE_LENGTH);
+    const category = requireDraftText(raw["category"], "类目", 32);
+    if (!(DRAFT_CATEGORIES as readonly string[]).includes(category)) {
+        throw new Error("设定卡草稿的类目不对：" + category + "。只能是 " + DRAFT_CATEGORIES.join(" / ") + "。");
+    }
+    const rawAliases = raw["aliases"] ?? [];
+    if (!Array.isArray(rawAliases)) {
+        throw new Error("设定卡草稿的别名必须是一个列表，没有别名就给空列表。");
+    }
+    if (rawAliases.length > MAX_DRAFT_ALIASES) {
+        throw new Error("设定卡草稿的别名超过单次上限 " + String(MAX_DRAFT_ALIASES) + " 条。只留正文与对话里真的会出现的称呼。");
+    }
+    const aliases = rawAliases.map((item, index) => requireDraftText(item, "第 " + String(index + 1) + " 个别名", MAX_DRAFT_ALIAS_LENGTH));
+    const summary = requireDraftText(raw["summary"], "摘要", MAX_DRAFT_SUMMARY_LENGTH);
+    const body = requireDraftText(raw["body"], "条目正文", MAX_DRAFT_BODY_LENGTH);
+    const sourceExcerpt = requireDraftText(raw["sourceExcerpt"], "原文摘录", MAX_DRAFT_SOURCE_EXCERPT_LENGTH);
+    let suggestedSlug: string | undefined;
+    if (raw["suggestedSlug"] !== undefined && raw["suggestedSlug"] !== null && raw["suggestedSlug"] !== "") {
+        suggestedSlug = requireDraftText(raw["suggestedSlug"], "建议目录名", MAX_DRAFT_SLUG_LENGTH);
+        if (!DRAFT_SLUG_PATTERN.test(suggestedSlug)) {
+            throw new Error("设定卡草稿的建议目录名不合法：" + suggestedSlug + "。只能用小写字母、数字与中划线，例如 qingshuang-sword。");
+        }
+    }
+    return {
+        title,
+        category,
+        aliases,
+        summary,
+        body,
+        sourceExcerpt,
+        ...suggestedSlug !== undefined ? {suggestedSlug} : {},
+    };
+}
+
+/**
+ * submit_lorebook_draft 工具：把一张设定卡草稿交给作者确认，绝不写盘。
+ *
+ * 与 M3 的 submit_critiques 同构：工具只登记草稿并返回一个悬挂标记，真正的落盘由作者
+ * 在卡上确认之后，走既有的 write / edit 写工具完成。本工具不持文件句柄、不做任何写入，
+ * 也不修改原消息。
+ */
+export const submitLorebookDraftTool = defineProfileTool<typeof SUBMIT_LOREBOOK_DRAFT_TOOL>({
+    key: SUBMIT_LOREBOOK_DRAFT_TOOL,
+    name: SUBMIT_LOREBOOK_DRAFT_TOOL,
+    label: "提交设定卡草稿",
+    description: "把这段讨论消化成一张设定条目草稿交给作者确认。草稿必须写清标题、类目（character / faction / location / item / system / world / event / note / instruction）、别名、摘要、条目正文与被提取的原文摘录。本工具不写任何文件，只登记草稿；作者会在确认卡上改动或取消，确认之后你才可以用文件写工具落盘。",
+    parameters: Type.Object({
+        title: Type.String({description: "条目名称，作者在设定库里看到的名字。"}),
+        category: Type.String({description: "设定类目：character（角色）/ faction（势力）/ location（地点）/ item（物品）/ system（体系）/ world（世界）/ event（事件）/ note（笔记）/ instruction（写作规范）。"}),
+        aliases: Type.Array(Type.String({description: "正文与对话里真实会出现的称呼、简称、职务、绰号、代称。"}), {description: "别名列表；它是后续对话里命中这条设定的关键，没有别名就给空列表。"}),
+        summary: Type.String({description: "一句话摘要（作者的设定卡与设定库列表上显示这句）。"}),
+        body: Type.String({description: "条目正文（Markdown，不含 frontmatter）。"}),
+        sourceExcerpt: Type.String({description: "被提取的原文摘录：照抄作者点选的那段讨论原话，不得转述或拼贴。"}),
+        suggestedSlug: Type.Optional(Type.String({description: "建议的条目目录名（小写字母、数字与中划线）。可以省略，落盘时再定。"})),
+    }, {additionalProperties: false}),
+    async executeWithContext(_context, _toolCallId, params: unknown): Promise<ProfileToolResult> {
+        const input = validateLorebookDraft(params);
+        const label = DRAFT_CATEGORY_LABELS[input.category] ?? input.category;
+        const lines = [
+            DRAFT_PENDING_MARKER,
+            "",
+            "已登记 1 张设定卡草稿（等待作者确认，未写任何文件）：",
+            "- 名称：" + input.title,
+            "- 类目：" + label + "（" + input.category + "）",
+            "- 摘要：" + input.summary,
+            ...input.aliases.length > 0 ? ["- 别名：" + input.aliases.join("、")] : [],
+            ...input.suggestedSlug !== undefined ? ["- 建议目录名：" + input.suggestedSlug] : [],
+            "",
+            "原文摘录：",
+            "```",
+            input.sourceExcerpt,
+            "```",
+            "",
+            "接下来等作者在设定卡上确认或取消。作者确认之前不要用文件写工具落盘，也不要自行改稿；作者确认后按确认内容写入 lorebook/<类目>/<条目>/index.md，并按下文纪律填写 frontmatter。",
+        ];
+        const details = JSON.parse(JSON.stringify({
+            marker: DRAFT_PENDING_MARKER,
+            draft: input,
+        })) as ProfileJsonValue;
+        return {
+            content: [{type: "text", text: lines.join(String.fromCharCode(10))}],
+            details,
+        };
+    },
+});
+
 export default defineAgentProfile({
     manifest: profileManifest,
     initialSchema: InitialSchema,
@@ -187,6 +337,8 @@ export default defineAgentProfile({
         builtin.agent.detach,
         builtin.control.requestUserInput,
         builtin.control.switchMode,
+        // 设定卡沉淀（M6）：只登记草稿、不写盘；落盘仍走 write / edit。
+        submitLorebookDraftTool,
         builtin.task.create,
         builtin.task.setStatus,
         builtin.world.execute("readwrite"),
@@ -384,10 +536,20 @@ const LEADER_SYSTEM_PROMPT = profileText`
         - 默认你应该尽可能的派发子代理来完成任务，除非用户明确要你自己完成
         - 自查当前 session 时调用 get_session({})，省略 sessionId；runtime 会自动使用当前 session。只有从上下文或工具结果拿到真实目标 ID 时才传 sessionId，禁止猜测、编造或默认传 1。
 
+        # 设定卡沉淀（「提取为设定」）
+
+        - 作者在消息底栏点「提取为设定」、划选一段点「提取为设定」，或直接明确要求把讨论沉淀成设定时，才走这条链路；其余场合不要主动沉淀。
+        - 先读清楚被提取的那段内容（划选时以选中原文为准），把它消化成一张规范设定卡草稿，经 submit_lorebook_draft 提交：标题、类目、别名、摘要、条目正文，以及照抄原文的摘录。别名要给全——它是后续对话里命中这条设定的关键。
+        - **草稿先交卡，未经作者确认不得落盘**：submit_lorebook_draft 本身不写任何文件，提交后卡片会呈现给作者改动或取消。作者确认之前，不许用 write / edit / apply_patch 提前写进 lorebook/，也不许自行改稿当作已完成。
+        - 作者在卡上改过字段的，以卡上最终内容为准落盘；作者取消则零副作用，什么都不写，也不要追问。
+        - 确认落盘时，条目写在 lorebook/<类目>/<条目目录>/index.md，governance.source 一律填 manual（这是作者确认过的人工结论，不新造来源值），并按下面的沉淀规范补齐 aliases 与 status。
+        - 沉淀来自讨论而不是正文：anchors 按「人工录入」口径按需填写（讨论里没有可直引的正文原句就留空 [] 合法）。不要拿对话原话或你的概括去凑 anchors——anchors 只认 manuscript 章节目录名或 Plot 章节名加正文原句直引。
+        - 对作者说话的文案保持创作人话：说「设定卡」「别名」「来源」，不说 category / frontmatter / governance 这些字段名。
+
         # Lorebook 沉淀规范
 
         - 凡是你写入或更新 lorebook 条目的场合，都必须按已注入的 reference/content/lorebook-anchors.md 填写三个字段：governance.source、aliases、anchors。
-        - governance.source 三选一：访谈期沉淀填 interview（此阶段 anchors 留空 [] 合法）；有正文之后的 AI 沉淀填 generated；人工录入或人工修改的条目填 manual。
+        - governance.source 三选一：访谈期沉淀填 interview（此阶段 anchors 留空 [] 合法）；有正文之后的 AI 沉淀填 generated；人工录入或人工修改的条目填 manual（作者在设定卡上确认过的沉淀走这一档，anchors 按需填写）。
         - aliases 必须穷举正文与对话里真实会出现的称呼、简称、职务、绰号、代称。按需注入依赖 title + aliases 做文本匹配，留空等于让该条目在后续对话中失联。
         - 有正文之后的沉淀**强制**填写 anchors，每条至少含 chapter（manuscript 章节目录名如 003-forge，或 Plot 章节名如「第三章 铸剑」）与 quote（正文原句直引，不能用你自己的概括替代）。
         - 禁止把出处信息塞进 ext 等自由对象：机器验收只认顶级结构化 anchors 字段。

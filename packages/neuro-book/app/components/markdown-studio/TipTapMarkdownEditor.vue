@@ -86,6 +86,7 @@ const emit = defineEmits<{
     (e: "inline-ai-reference", reference: InlineEditReference): void;
     (e: "stuck-interview", reference: InlineEditReference): void;
     (e: "selection-critique", reference: InlineEditReference): void;
+    (e: "extract-lorebook", reference: InlineEditReference): void;
 }>();
 
 const {prompt} = useDialog();
@@ -937,6 +938,44 @@ function startSelectionCritiqueFromSelection(): void {
 }
 
 /**
+ * 从当前选区触发「提取为设定」。
+ *
+ * 与「发给顾问挑刺」同一条选区取值链路：没有打开文件、没有选中正文都当场
+ * 给作者提示，不静默什么都不做。
+ */
+function startExtractLorebookFromSelection(): void {
+    const currentEditor = editor.value;
+    const path = props.activePath.trim();
+    if (!path) {
+        notification.warning(t("markdownStudio.editor.currentPathMissing"));
+        return;
+    }
+
+    const text = selectedClipboardText().trim();
+    if (!text) {
+        notification.warning(t("markdownStudio.editor.selectBodyFirst"));
+        return;
+    }
+
+    const locatedFromEditor: SelectionRangeLocation = currentEditor ? locateSelectionRangeFromEditor(currentEditor) : {match: "unknown"};
+    const located = locatedFromEditor.match === "unique"
+        ? locatedFromEditor
+        : locateSelectionRange(getMarkdown(), text);
+    const textRange = currentEditor ? locateInlineAiSelectionTextRange(currentEditor) : undefined;
+    emit("extract-lorebook", {
+        ref: buildSelectionRefChip({
+            path,
+            range: located.range,
+        }),
+        path,
+        range: located.range,
+        textRange,
+        match: located.match,
+        text,
+    });
+}
+
+/**
  * 当前选区是否包含内容。
  */
 function hasSelection(): boolean {
@@ -1403,6 +1442,7 @@ function isSaveShortcut(event: KeyboardEvent): boolean {
                 @add-ai-reference="addAiReferenceFromSelection"
                 @stuck-interview="startStuckInterviewFromSelection"
                 @selection-critique="startSelectionCritiqueFromSelection"
+                @extract-lorebook="startExtractLorebookFromSelection"
             />
 
             <ReferenceSelectorPopover

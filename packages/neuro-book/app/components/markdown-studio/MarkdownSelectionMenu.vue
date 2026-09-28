@@ -35,6 +35,7 @@ const emit = defineEmits<{
     (e: "add-ai-reference"): void;
     (e: "stuck-interview"): void;
     (e: "selection-critique"): void;
+    (e: "extract-lorebook"): void;
 }>();
 
 const {prompt} = useDialog();
@@ -334,6 +335,16 @@ onUnmounted(() => {
             >
                 <span class="i-lucide-message-square-warning h-3.5 w-3.5"></span>
                 <span>{{ t("markdownStudio.selection.selectionCritique") }}</span>
+            </button>
+
+            <button
+                type="button"
+                class="markdown-selection-menu__button markdown-selection-menu__button--improve"
+                :title="t('markdownStudio.selection.extractLorebook')"
+                @click="closeDropdowns(); emit('extract-lorebook')"
+            >
+                <span class="i-lucide-bookmark-plus h-3.5 w-3.5"></span>
+                <span>{{ t("markdownStudio.selection.extractLorebook") }}</span>
             </button>
 
             <div class="markdown-selection-menu__divider"></div>

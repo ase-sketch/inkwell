@@ -43,6 +43,15 @@ export {INLINE_PROPOSAL_PENDING_MARKER, INLINE_PROPOSE_EDIT_TOOL} from "nbook/sh
  */
 export const SUBMIT_CRITIQUES_TOOL = "submit_critiques";
 
+/**
+ * submit_lorebook_draft 工具名（M6 设定卡沉淀契约）。
+ *
+ * 与 SUBMIT_CRITIQUES_TOOL 同款：刻意写成字面量而不是 re-export
+ * `nbook/shared/lorebook-draft`（那个模块 import zod，会污染**每一个** profile artifact）。
+ * 两边取值一致由 leader 的契约测试钉住。
+ */
+export const SUBMIT_LOREBOOK_DRAFT_TOOL = "submit_lorebook_draft";
+
 export const {
     DirectorInitialSchema,
     DirectorOutputSchema,

@@ -142,6 +142,7 @@ describe("assets builtin v3 profiles", () => {
             "detach_agent",
             "request_user_input",
             "switch_mode",
+            "submit_lorebook_draft",
             "task_create",
             "task_set_status",
             "execute_world",

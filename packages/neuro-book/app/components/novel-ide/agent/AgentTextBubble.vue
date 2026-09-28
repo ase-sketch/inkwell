@@ -59,6 +59,8 @@ const emit = defineEmits<{
     (e: "attachment-registered", item: AgentSessionAttachmentItemDto): void;
     (e: "resend-unknown", message: AgentMessage): void;
     (e: "dismiss-unknown", message: AgentMessage): void;
+    /** 从这条消息提取设定卡草稿；只把整条正文交给调用方，组件不发起会话。 */
+    (e: "extract-to-lorebook", message: AgentMessage): void;
 }>();
 
 const { isCollapsed: isThinkingCollapsed, toggle: toggleThinking } = useCollapsible(true);
@@ -145,6 +147,23 @@ const isEditing = computed(() => canEdit.value && props.editingMessageId === pro
 
 /** 当前正文是否只是持久化消息的有界公开预览。 */
 const isContentOmitted = computed(() => props.node.message.contentOmitted === true);
+
+/**
+ * 是否为可以「提取为设定」的 AI 文本消息。
+ *
+ * 只看 AI 正文消息：作者的提问、系统提示、工具调用气泡都不是设定来源。
+ * 必须有真实文字——只有附件没有正文的消息提不出设定，点了也是空转，干脆不显示。
+ * 正文被截断成预览时仍可提取（提取的是现场这条预览文本，按钮改说法提示作者）。
+ */
+const isAiTextMessage = computed(() => {
+    if (props.node.message.type !== "ai") {
+        return false;
+    }
+    if (props.node.message.content.trim()) {
+        return true;
+    }
+    return Boolean(props.node.message.contentBlocks?.some((block) => block.type === "text" && block.content.preview.trim()));
+});
 
 /** 当前消息是否允许重试。 */
 const isUnknownDelivery = computed(() => props.node.message.deliveryState === "unknown");
@@ -517,6 +536,17 @@ const endSwipe = (event: PointerEvent): void => {
                 </button>
                 <button class="rounded p-1 transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-main)] disabled:cursor-not-allowed disabled:opacity-40" :disabled="props.actionDisabled || props.runActionDisabled" :title="t('agent.textBubble.branchFromHere')" @click="emit('branch-from-here', props.node.message)">
                     <span class="i-lucide-git-branch-plus h-3.5 w-3.5"></span>
+                </button>
+                <!-- 只对 AI 的文本消息开放：作者要把 AI 说清楚的设定收进设定库。 -->
+                <button
+                    v-if="isAiTextMessage"
+                    data-role="agent-extract-lorebook-button"
+                    class="rounded p-1 transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-main)] disabled:cursor-not-allowed disabled:opacity-40"
+                    :disabled="props.actionDisabled || props.runActionDisabled"
+                    :title="isContentOmitted ? t('agent.textBubble.extractPreview') : t('agent.textBubble.extract')"
+                    @click="emit('extract-to-lorebook', props.node.message)"
+                >
+                    <span class="i-lucide-bookmark-plus h-3.5 w-3.5"></span>
                 </button>
             </div>
         </div>

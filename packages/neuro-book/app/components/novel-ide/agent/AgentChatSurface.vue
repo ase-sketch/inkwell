@@ -56,11 +56,13 @@ import {
 } from "nbook/app/components/novel-ide/agent/agent-chat-surface-state";
 import {assertPublicToolCallId} from "nbook/shared/agent/public-tool-identity";
 import {AGENT_REQUEST_USER_INPUT_CONTEXT_KEY} from "nbook/app/components/novel-ide/agent/request-user-input-context";
+import {AGENT_SESSION_MESSAGE_CONTEXT_KEY} from "nbook/app/components/novel-ide/agent/agent-session-message-context";
 import {useConfigApi} from "nbook/app/composables/useConfigApi";
 import {useThemeManager} from "nbook/app/composables/useThemeManager";
 import {agentSessionScopeKey} from "nbook/app/utils/agent-session-scope-key";
 import {resolveApiErrorCode, resolveApiErrorMessage} from "nbook/app/utils/api-error";
 import {formatCost, formatCostExact, usingCnyRate} from "nbook/app/utils/cost-format";
+import {buildMessageExtractInstruction} from "nbook/app/utils/extract-entry";
 import {promptCacheHitRate, type PromptCacheUsage} from "nbook/app/utils/prompt-cache";
 import type {ConfigBootstrapDto, ConfigModelSettingsDto} from "nbook/shared/dto/config.dto";
 import type {AgentQueuedMessageDto, AgentSessionAttachmentItemDto, AgentSessionAttachmentResolveResultDto, AgentSessionInteractionDto, AgentSessionListPageDto, AgentSessionListQueryDto, AgentSessionRecoveryDto, AgentSessionSummaryDto, AgentMode, AgentSessionIdentity} from "nbook/shared/dto/agent-session.dto";
@@ -2105,6 +2107,37 @@ provide(AGENT_REQUEST_USER_INPUT_CONTEXT_KEY, {
     pendingSessions: pendingUserInputSessions,
 });
 
+/**
+ * 消息流里的卡片（如设定卡确认）要发一条消息进当前会话：复用作者手打那条路径，不另造通道。
+ *
+ * 会话没准备好或发送没落地时抛错——卡片据此留在待确认，不假装已经确认过。
+ */
+const sendSessionMessageFromCard = async (text: string): Promise<void> => {
+    const message = text.trim();
+    if (!message) {
+        return;
+    }
+    if (!activeSessionId.value) {
+        notification.info(t("agent.chatSurface.noSessionMessage"), {title: t("agent.chatSurface.noSessionTitle")});
+        sessionDialogOpen.value = true;
+        throw new Error(t("agent.chatSurface.noSessionMessage"));
+    }
+    const before = new Set(session.messages.value.map((item) => item.id));
+    inputText.value = message;
+    await send();
+    const delivered = session.messages.value.some((item) => !before.has(item.id)
+        && item.type === "user"
+        && item.content.trim() === message
+        && item.deliveryState !== "unknown");
+    if (!delivered) {
+        throw new Error(t("agent.chatSurface.runFailed"));
+    }
+};
+
+provide(AGENT_SESSION_MESSAGE_CONTEXT_KEY, {
+    sendMessage: sendSessionMessageFromCard,
+});
+
 /** 终止当前 pending 批次；canAbort 与回答能力相互独立。 */
 const cancelPendingUserInput = async (): Promise<void> => {
     if (submittingCurrentUserInput.value || !activeInteraction.value.canAbort) return;
@@ -3311,6 +3344,29 @@ const refreshMessage = async (message: AgentMessage): Promise<void> => {
 };
 
 /**
+ * 把一条 AI 消息提取成设定卡草稿：把整条正文交给本轮对话的 AI，起草后提交草稿等作者确认。
+ *
+ * 走的是当前会话，不新开会话——设定是从这场讨论里长出来的，AI 手上已经有上下文。
+ * 只发消息不落盘：落盘要等作者在确认卡上点头（红线见 M6 决策笔记）。
+ */
+const extractMessageToLorebook = async (message: AgentMessage): Promise<void> => {
+    if (!activeSessionId.value || running.value || !activeInteraction.value.canInvoke) {
+        return;
+    }
+    const resolved = await resolveMessageMarkdown(message);
+    const content = resolved.text.trim();
+    if (!content) {
+        return;
+    }
+    inputText.value = buildMessageExtractInstruction({
+        content,
+        // 出处认到具体这条消息：作者以后回看草稿卡片时认得出它是从哪句话里提出来的。
+        sourceRef: `本场对话 · ${message.id}`,
+    });
+    await send();
+};
+
+/**
  * 从这条消息新开一条分支：只把 active leaf 移到该消息，不删除任何历史。
  * 原来的后续内容留在原地成为一条非活动分支，可通过气泡上的分支切换器切回。
  */
@@ -4381,6 +4437,7 @@ function saveLastSession(sessionId: number, sessionIdentity: AgentSessionIdentit
                 @load-previous="void loadPreviousHistory()"
                 @attachment-registered="registerSessionAttachment"
                 @start-interview="void createSessionFromHeader('interview.new-book')"
+                @extract-to-lorebook="void extractMessageToLorebook($event)"
             />
 
             <!-- Codex 式空态主体：替代消息流与输入框，放在原来它们的位置 -->

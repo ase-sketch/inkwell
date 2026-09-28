@@ -71,6 +71,7 @@ import {buildWorkspaceReferenceSections} from "nbook/app/utils/workspace-referen
 import {resolveWorkspaceFileExtension, type FrontmatterProfileKind} from "nbook/shared/editor-workbench";
 import {buildSelectionRefChip, type InlineEditPayload, type InlineEditReference, type InlineEditTask} from "nbook/app/utils/inline-editor-selection";
 import {buildStuckInterviewMessage, findReusableStuckInterviewSession} from "nbook/app/utils/stuck-interview";
+import {buildSelectionExtractInstruction} from "nbook/app/utils/extract-entry";
 import {
     buildChapterReviewMessage,
     buildSelectionCritiqueMessage,
@@ -703,6 +704,36 @@ const handleChapterReview = async (chapterPath: string): Promise<void> => {
     if (typeof reviewedSessionId === "number") {
         rememberChapterReviewSession(reviewEntryStorage(), storageKey, reviewedSessionId);
     }
+};
+
+/**
+ * 划词「提取为设定」：把选段原文与出处交给当前会话的 AI 起草设定卡草稿。
+ *
+ * 不新开会话——设定是从刚读到的那段正文里提出来的，沿用作者手头这场对话；
+ * 没打开会话时 ensureSessionReady 会给出默认会话。只发指令、不落盘：
+ * 落盘要等作者在确认卡上点头（红线见 M6 决策笔记）。
+ */
+const handleExtractLorebook = async (reference: InlineEditReference): Promise<void> => {
+    leaveKnowledgeSurface();
+    writingRequested.value = false;
+    swapPreference.value = shellHasOpenDocument.value ? "chat" : null;
+    companionVisible.value = true;
+    await nextTick();
+
+    const surface = agentSurfaceRef.value;
+    if (!surface) {
+        return;
+    }
+
+    await surface.ensureSessionReady();
+    await nextTick();
+    const message = buildSelectionExtractInstruction({
+        ref: reference.ref,
+        path: reference.path,
+        text: reference.text,
+        sourceLabel: reference.path.split("/").pop()?.replace(/\.md$/u, "") ?? "",
+    });
+    await surface.sendMessage(message);
 };
 
 /** 伴随栏切换：对话在工作态下的独立开关。 */
@@ -3107,6 +3138,7 @@ onBeforeUnmount(() => {
                                 @inline-ai-reference="addInlineAiReference"
                                 @stuck-interview="void handleStuckInterview($event)"
                                 @selection-critique="void handleSelectionCritique($event)"
+                                @extract-lorebook="void handleExtractLorebook($event)"
                             >
                                 <template #tab-bar>
                                     <IdeDocumentTabs
@@ -3337,6 +3369,7 @@ onBeforeUnmount(() => {
                             @inline-ai-reference="addInlineAiReference"
                             @stuck-interview="void handleStuckInterview($event)"
                             @selection-critique="void handleSelectionCritique($event)"
+                            @extract-lorebook="void handleExtractLorebook($event)"
                         />
                     </div>
                 </div>

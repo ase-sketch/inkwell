@@ -79,6 +79,7 @@ const emit = defineEmits<{
     (e: "inline-ai-reference", reference: InlineEditReference): void;
     (e: "stuck-interview", reference: InlineEditReference): void;
     (e: "selection-critique", reference: InlineEditReference): void;
+    (e: "extract-lorebook", reference: InlineEditReference): void;
 }>();
 
 const isMarkdownFile = computed(() => resolveWorkspaceFileExtension(props.activePath) === ".md");
@@ -156,6 +157,7 @@ watch(() => props.activePath, () => {
                         @inline-ai-reference="emit('inline-ai-reference', $event)"
                         @stuck-interview="emit('stuck-interview', $event)"
                         @selection-critique="emit('selection-critique', $event)"
+                        @extract-lorebook="emit('extract-lorebook', $event)"
                     />
                     <MarkdownCommentFlowPanel
                         v-if="props.controller.commentViewOpen.value"
