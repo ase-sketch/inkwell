@@ -1,4 +1,4 @@
-import {mkdir, mkdtemp, readFile, rm, writeFile} from "node:fs/promises";
+import {mkdir, mkdtemp, readFile, readdir, rm, writeFile} from "node:fs/promises";
 import { testHostPath } from "@notnotype/neuro-book-test-support/test-path"
 import {dirname, join, resolve} from "node:path";
 import {DatabaseSync} from "node:sqlite";
@@ -180,13 +180,23 @@ describe("Application State migration runner", () => {
         const databasePath = join(root, "app.sqlite");
         await createOldPassportDatabase(databasePath);
         const before = await readFile(databasePath);
+        // apply 之前先数出「这个旧库还欠几条迁移」——apply 之后就全登记上了。
+        const pendingMigrations = await countPendingSqliteMigrations(databasePath);
+        expect(pendingMigrations).toBeGreaterThan(0);
 
         const applied = await runApplicationStateMigration({
             rootWorkspace: root,
             action: "apply",
             runId: "sqlite-byte-rollback",
         });
-        expect(applied.steps[0]).toMatchObject({id: "app-sqlite", status: "applied", changedItems: 1});
+        // 本步的真实意图是「App SQLite 确实被改动、且随后能逐字节回滚」，
+        // 不是「待应用迁移永远只有一条」。改动条数由该 fixture 自己的待应用集推导：
+        // 数据库只登记了前几条迁移，其后每一条都应被本次 apply 应用。
+        // （早期这里硬编码 1，每新增一条迁移就得回来改一次——已改为按语义断言。）
+        expect(applied.steps[0]).toMatchObject({id: "app-sqlite", status: "applied"});
+        expect(applied.steps[0]!.changedItems).toBe(pendingMigrations);
+        // apply 之后不应再有待应用迁移（否则「逐字节回滚」验的就不是同一个状态面）。
+        expect(await countPendingSqliteMigrations(databasePath)).toBe(0);
         expect(await readFile(databasePath)).not.toEqual(before);
 
         const rolledBack = await runApplicationStateMigration({
@@ -379,6 +389,31 @@ function restoreEnv(name: string, value: string | undefined): void {
     else process.env[name] = value;
 }
 
+/**
+ * 当前 fixture 库（已登记的迁移）之后，还有多少条 App SQLite 迁移待应用。
+ *
+ * 从真实 migration 目录推导，而不是写死数字：每新增一条迁移，本测试无需改动
+ * 就能继续验证「app-sqlite 这一步确实应用了所有待应用迁移」。
+ */
+async function countPendingSqliteMigrations(databasePath: string): Promise<number> {
+    const migrationsRoot = resolve(import.meta.dirname, "../../prisma/migrations/sqlite");
+    const all = (await readdir(migrationsRoot, {withFileTypes: true}))
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => entry.name)
+        .sort((left, right) => left.localeCompare(right));
+    const database = new DatabaseSync(databasePath, {readOnly: true});
+    try {
+        const applied = new Set(
+            database.prepare(`
+                SELECT migration_name FROM _prisma_migrations
+                WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL
+            `).all().map((row) => (row as {migration_name: string}).migration_name),
+        );
+        return all.filter((migrationId) => !applied.has(migrationId)).length;
+    } finally {
+        database.close();
+    }
+}
 /** 构造只缺最后一条 origin hard-cut migration 的旧 App SQLite。 */
 async function createOldPassportDatabase(databasePath: string): Promise<void> {
     await mkdir(dirname(databasePath), {recursive: true});

@@ -5,7 +5,7 @@ import type {ConfigBootstrapDto} from "nbook/shared/dto/config.dto";
 import {isNovelIdeTab, type NovelIdeTab} from "nbook/app/components/novel-ide/mock-data";
 import MarkdownStudioWorkbench from "nbook/app/components/markdown-studio/MarkdownStudioWorkbench.vue";
 import AgentChatSurface from "nbook/app/components/novel-ide/agent/AgentChatSurface.vue";
-import AgentTraceViewerDialog from "nbook/app/components/novel-ide/agent/trace-viewer/AgentTraceViewerDialog.vue";import WorkspaceHistoryInboxDialog from "nbook/app/components/novel-ide/history/WorkspaceHistoryInboxDialog.vue";import AgentModeSessionSidebar from "nbook/app/components/novel-ide/agent/AgentModeSessionSidebar.vue";
+import AgentTraceViewerDialog from "nbook/app/components/novel-ide/agent/trace-viewer/AgentTraceViewerDialog.vue";import WorkspaceHistoryInboxDialog from "nbook/app/components/novel-ide/history/WorkspaceHistoryInboxDialog.vue";import ChapterSnapshotPanel from "nbook/app/components/novel-ide/history/ChapterSnapshotPanel.vue";import AgentModeSessionSidebar from "nbook/app/components/novel-ide/agent/AgentModeSessionSidebar.vue";
 import NovelIdeActivityBar from "nbook/app/components/novel-ide/NovelIdeActivityBar.vue";
 import NovelIdeProfileDialog from "nbook/app/components/novel-ide/NovelIdeProfileDialog.vue";
 import IdeChatHost from "nbook/app/components/novel-ide/shell/IdeChatHost.vue";
@@ -106,6 +106,32 @@ const accountProfileOpen = ref(false);
 const settingsDialogOpen = ref(false);
 const traceViewerOpen = ref(false);
 const historyInboxOpen = ref(false);
+/** M7 章节快照面板：标签栏「快照」入口打开，正文与列表都贴着码字动线。 */
+const chapterSnapshotPanelOpen = ref(false);
+/** 作者看到的章节名，用于还原确认框说人话。 */
+const chapterSnapshotTitle = ref("");
+/** 快照只对章节正文有意义：非章节正文时面板不列任何快照。 */
+const chapterSnapshotPath = computed(() => parseManuscriptChapterPath(displayActiveWorkspaceTabPath.value)?.manuscriptPath ?? null);
+/** 从标签栏「快照」入口打开面板。 */
+const openChapterSnapshotPanel = (chapterTitle: string): void => {
+    chapterSnapshotTitle.value = chapterTitle;
+    chapterSnapshotPanelOpen.value = true;
+};
+/**
+ * 还原成功后必须从磁盘重读正文：还原是服务端直接改盘，编辑器手里还攥着旧缓冲区，
+ * 不重读的话作者会看到旧内容，接着一保存就把旧内容写回去、冲掉还原成果。
+ * forceDisk 会忽略现有缓冲区并先结算防抖输入（内部第一步），不会丢防抖窗口里的字。
+ */
+const refreshChapterAfterRestore = async (path: string): Promise<void> => {
+    if (!path) {
+        return;
+    }
+    try {
+        await novelIdeStore.loadWorkspaceFile(path, undefined, "permanent", {forceDisk: true});
+    } catch (error) {
+        notification.error(resolveApiErrorMessage(error, t("ide.chapterSnapshot.restoreFailed", "还原失败")));
+    }
+};
 const agentPanelOpen = ref(false);
 const historyInboxRefreshKey = ref(0);
 const worldEngineWorkbenchOpen = ref(false);
@@ -3147,6 +3173,7 @@ onBeforeUnmount(() => {
                                         @select-tab="void selectWorkspaceTab($event)"
                                         @close-tab="void closeEditorTab($event)"
                                         @review-chapter="void handleChapterReview($event)"
+                                        @open-snapshots="openChapterSnapshotPanel"
                                     />
                                 </template>
                             </MarkdownStudioWorkbench>
@@ -3462,6 +3489,16 @@ onBeforeUnmount(() => {
         <NovelIdeProfileDialog v-model="accountProfileOpen" />
         <AgentTraceViewerDialog v-if="projectSurfaceActive" v-model="traceViewerOpen" @open-session="void openTraceSession($event)" />
         <WorkspaceHistoryInboxDialog v-if="projectSurfaceActive" v-model="historyInboxOpen" :project-root="isUserAssetsWorkspace ? null : currentProjectRoot" :theme="activeThemeId" />
+        <!-- M7 章节快照：列表 + 差异 + 一键还原都收在编辑器这一处；还原后由宿主从磁盘重读正文。 -->
+        <ChapterSnapshotPanel
+            v-if="projectSurfaceActive"
+            v-model="chapterSnapshotPanelOpen"
+            :project-root="isUserAssetsWorkspace ? null : currentProjectRoot"
+            :path="chapterSnapshotPath"
+            :chapter-title="chapterSnapshotTitle"
+            :theme="activeThemeId"
+            @restored="void refreshChapterAfterRestore($event)"
+        />
         <UserProfileWorkbenchDialog v-model="profileWorkbenchOpen" />
         <WorkspaceFileConflictDialog
             v-if="projectSurfaceActive"

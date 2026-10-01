@@ -50,7 +50,10 @@ describe("App SQLite migration gate", () => {
 
         expect(check).toMatchObject({
             ready: false,
-            pendingMigrationIds: ["20260727210000_fix_official_passport_origin"],
+            pendingMigrationIds: [
+                "20260727210000_fix_official_passport_origin",
+                "20260729020000_add_chapter_snapshot",
+            ],
             applicationStateError: null,
         });
         await expect(assertProductMigrationsReady()).rejects.toThrow("20260727210000_fix_official_passport_origin");
@@ -58,7 +61,10 @@ describe("App SQLite migration gate", () => {
         expect(await readdir(stateRoot)).toEqual(beforeEntries);
 
         const applied = await applyAppSqliteMigrations({applicationRoot: process.cwd()});
-        expect(applied.appliedMigrationIds).toEqual(["20260727210000_fix_official_passport_origin"]);
+        expect(applied.appliedMigrationIds).toEqual([
+            "20260727210000_fix_official_passport_origin",
+            "20260729020000_add_chapter_snapshot",
+        ]);
         const database = new DatabaseSync(databasePath, {readOnly: true});
         try {
             const columns = database.prepare(`PRAGMA table_info("PassportCredential")`).all() as Array<{name: string}>;
@@ -68,6 +74,13 @@ describe("App SQLite migration gate", () => {
             `).get();
             expect(columns.map((column) => column.name)).not.toContain("siteBaseUrl");
             expect(migration).toBeTruthy();
+
+            // 章节快照表（M7）随迁移建出来，且只存指针字段——没有正文字段。
+            const snapshotColumns = database.prepare(`PRAGMA table_info("ChapterSnapshot")`).all() as Array<{name: string; notnull: number}>;
+            expect(snapshotColumns.map((column) => column.name)).toEqual(["id", "path", "entryId", "note", "createdAt"]);
+            // note 留空即 null（作者没起名），因此可空。
+            expect(snapshotColumns.find((column) => column.name === "note")?.notnull).toBe(0);
+            expect(snapshotColumns.some((column) => column.name === "content" || column.name === "body")).toBe(false);
         } finally {
             database.close();
         }

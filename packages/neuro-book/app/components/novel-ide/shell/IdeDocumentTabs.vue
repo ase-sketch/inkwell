@@ -2,6 +2,8 @@
 import {computed, onBeforeUnmount, onMounted, ref} from "vue";
 import Tooltip from "nbook/app/components/common/Tooltip.vue";
 import ChapterReadingDialog from "nbook/app/components/novel-ide/reading/ChapterReadingDialog.vue";
+import {useChapterSnapshots} from "nbook/app/composables/useChapterSnapshots";
+import {useDialog} from "nbook/app/composables/useDialog";
 import {useNotification} from "nbook/app/composables/useNotification";
 import {useNovelIdeStore, type WorkspaceEditorTab} from "nbook/app/stores/novel-ide";
 import {resolveApiErrorMessage} from "nbook/app/utils/api-error";
@@ -17,11 +19,14 @@ const emit = defineEmits<{
     (event: "select-tab", path: string): void;
     (event: "close-tab", path: string): void;
     (event: "review-chapter", path: string): void;
+    /** 打开当前章节的存档点面板，附带作者看到的章节名。 */
+    (event: "open-snapshots", chapterTitle: string): void;
 }>();
 
 const {t, te} = useI18n();
 const store = useNovelIdeStore();
 const notification = useNotification();
+const {confirm, prompt} = useDialog();
 
 const readingDialogOpen = ref(false);
 const exportMenuOpen = ref(false);
@@ -36,6 +41,61 @@ const hasActiveDocument = computed(() => Boolean(props.activePath));
 /** 当前打开的必须是章节正文（manuscript/{卷}/{章}/index.md）才谈得上「审这一章」。 */
 const activeChapter = computed(() => parseManuscriptChapterPath(props.activePath));
 const canReviewChapter = computed(() => activeChapter.value !== null);
+
+/** 快照只对章节正文有意义，跟「审这一章」同一口径：别的文件置灰。 */
+const snapshotPath = computed(() => activeChapter.value?.manuscriptPath ?? null);
+const canSnapshot = computed(() => snapshotPath.value !== null);
+/** 正文有未保存修改时，快照指向的是已落盘的那一版——先让作者保存，免得留了个自己不想要的存档。 */
+const activeTabDirty = computed(() => props.tabs.find((tab) => tab.path === props.activePath)?.dirty === true);
+const {creating, create} = useChapterSnapshots(() => store.currentProjectRoot || null, snapshotPath);
+
+/**
+ * 给当前章节留一个存档点。
+ *
+ * 备注可留空：留空就按拍摄时间兜底命名（拍板口径）。作者取消输入即放弃，不产生快照。
+ */
+async function takeSnapshot(): Promise<void> {
+    if (!canSnapshot.value || creating.value) {
+        return;
+    }
+    if (activeTabDirty.value) {
+        const goAhead = await confirmSaveFirst();
+        if (!goAhead) {
+            return;
+        }
+    }
+    const note = await prompt(
+        tt("ide.chapterSnapshot.createPrompt", "想给它起个名字吗？留空也行，就按现在的时间叫它。"),
+        "",
+        tt("ide.chapterSnapshot.createTitle", "给这一版留个存档点"),
+    );
+    if (note === null) {
+        return;
+    }
+    const trimmed = note.trim();
+    const ok = await create(trimmed || null, tt("ide.chapterSnapshot.createFailed", "留存档点失败"));
+    if (!ok) {
+        notification.error(resolveApiErrorMessage(null, tt("ide.chapterSnapshot.createFailed", "留存档点失败")));
+        return;
+    }
+    notification.success(trimmed
+        ? t("ide.chapterSnapshot.createSuccessNamed", {note: trimmed})
+        : tt("ide.chapterSnapshot.createSuccess", "已留存档点"));
+}
+
+/** 正文还脏着时先问一句：是先去保存，还是就用现在这样。 */
+async function confirmSaveFirst(): Promise<boolean> {
+    const title = tt("ide.chapterSnapshot.dirtyTitle", "这一章还有没保存的修改");
+    const message = tt("ide.chapterSnapshot.dirtyMessage", "存档点记的是已经保存到盘上的那一版——想留最新的一版，先去保存。")
+        .replace("\n\n", " ");
+    return await confirm(message, title);
+}
+
+/** 当前打开的章节名（作者看到的那句），没有就退回「这一章」。 */
+const activeChapterLabel = computed(() => {
+    const tab = props.tabs.find((item) => item.path === props.activePath);
+    return tab?.title?.trim() || tt("ide.chapterSnapshot.unknownChapter", "这一章");
+});
 
 /** 请顾问审当前这一章：只把章节正文路径交给宿主，路径口径由宿主再核一遍。 */
 function requestChapterReview(): void {
@@ -152,6 +212,35 @@ async function triggerExport(scope: ChapterExportScope): Promise<void> {
                 >
                     <span class="i-lucide-search-check h-3.5 w-3.5"></span>
                     <span class="hidden sm:inline">{{ t("ide.critique.entry.chapterLabel") }}</span>
+                </button>
+            </Tooltip>
+
+            <!-- 打快照：给当前章节留一个命名存档点（只对章节正文可用） -->
+            <Tooltip :text="canSnapshot ? tt('ide.chapterSnapshot.entryTooltip', '给这一章现在这一版留个存档点') : tt('ide.chapterSnapshot.entryDisabledTooltip', '打开一章正文才能打快照')" placement="bottom">
+                <button
+                    type="button"
+                    class="flex h-7 items-center gap-1 rounded px-2 text-[12px] text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-main)] disabled:cursor-not-allowed disabled:opacity-40"
+                    :disabled="!canSnapshot || creating"
+                    data-role="ide-snapshot-button"
+                    @click="void takeSnapshot()"
+                >
+                    <span v-if="creating" class="i-lucide-loader-2 h-3.5 w-3.5 animate-spin"></span>
+                    <span v-else class="i-lucide-camera h-3.5 w-3.5"></span>
+                    <span class="hidden sm:inline">{{ tt("ide.chapterSnapshot.entry", "打快照") }}</span>
+                </button>
+            </Tooltip>
+
+            <!-- 打开这一章的存档点列表 -->
+            <Tooltip :text="canSnapshot ? tt('ide.chapterSnapshot.openPanel', '打开快照') : tt('ide.chapterSnapshot.entryDisabledTooltip', '打开一章正文才能打快照')" placement="bottom">
+                <button
+                    type="button"
+                    class="flex h-7 items-center gap-1 rounded px-2 text-[12px] text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-main)] disabled:cursor-not-allowed disabled:opacity-40"
+                    :disabled="!canSnapshot"
+                    data-role="ide-snapshot-panel-button"
+                    @click="emit('open-snapshots', activeChapterLabel)"
+                >
+                    <span class="i-lucide-history h-3.5 w-3.5"></span>
+                    <span class="hidden sm:inline">{{ tt("ide.chapterSnapshot.open", "快照") }}</span>
                 </button>
             </Tooltip>
 

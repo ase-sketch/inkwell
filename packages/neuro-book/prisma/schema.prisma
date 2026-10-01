@@ -42,6 +42,19 @@ model DatabaseLock {
   updatedAt DateTime @default(now()) @updatedAt
 }
 
+// 章节快照（M7：章节快照时光机）。作者主动给正文打的命名存档点。
+// 只存指针：章节路径 + 指向 nb-history 时间线条目的 entryId + 可选备注 + 拍摄时间；
+// 正文与版本内容一律由 nb-history 快照提供，本表不存正文。
+model ChapterSnapshot {
+  id        Int      @id @default(autoincrement())
+  path      String
+  entryId   Int
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@index([path])
+}
+
 // Passport 凭据：一个账号槽位持有一份官方站授权（Task 112 spec §11；v1 只有 default 槽位）
 model PassportCredential {
   id                 Int      @id @default(autoincrement())
